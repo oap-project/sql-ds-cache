@@ -535,4 +535,18 @@ object OapConf {
       .doc("The commit algorithm version used by create index job")
       .intConf
       .createWithDefault(2)
+
+  val OAP_CLUSTER_CONSISTENTHASH_SCHEDULER_ENABLED =
+    SqlConfAdapter.buildConf("spark.sql.oap.cluster.consistenthash.scheduler.enabled")
+      .internal()
+      .doc("Whether enable consistenthash scheduler in cluster environment")
+      .booleanConf
+      .createWithDefault(false)
+
+  val OAP_CLUSTER_NODE_INFO =
+    SqlConfAdapter.buildConf("spark.sql.oap.cluster.node.info")
+      .internal()
+      .doc("Node info in the cluster")
+      .stringConf
+      .createWithDefault("0:host0;1:host1;2:host2")
 }
