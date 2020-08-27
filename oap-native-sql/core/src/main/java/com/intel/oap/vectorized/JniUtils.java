@@ -96,7 +96,7 @@ public class JniUtils {
           JniUtils.class.getClassLoader().getResource("include").openConnection();
       if (urlConnection instanceof JarURLConnection) {
         final JarFile jarFile = ((JarURLConnection) urlConnection).getJarFile();
-        copyResourcesToDirectory(jarFile, folderToLoad, tmp_dir + "/" + "nativesql_include");
+        extractResourcesToDirectory(jarFile, folderToLoad, tmp_dir + "/" + "nativesql_include");
       } else {
         throw new IOException(urlConnection.toString() + " is not JarUrlConnection");
       }
@@ -124,37 +124,37 @@ public class JniUtils {
   /**
    * Copies a directory from a jar file to an external directory.
    */
-  public static void copyResourcesToDirectory(
-      JarFile fromJar, String jarDir, String destDir) throws IOException {
-    for (Enumeration<JarEntry> entries = fromJar.entries(); entries.hasMoreElements();) {
-      JarEntry entry = entries.nextElement();
-      if (entry.getName().startsWith(jarDir + "/") && !entry.isDirectory()) {
-        File dest =
-            new File(destDir + "/" + entry.getName().substring(jarDir.length() + 1));
-        File parent = dest.getParentFile();
-        if (parent != null) {
-          parent.mkdirs();
+  public static void extractResourcesToDirectory(
+      JarFile origJar, String jarPath, String destPath) throws IOException {
+    for (Enumeration<JarEntry> entries = origJar.entries(); entries.hasMoreElements();) {
+      JarEntry oneEntry = entries.nextElement();
+      if (oneEntry.getName().startsWith(jarPath + "/") && !oneEntry.isDirectory()) {
+        File destFile =
+            new File(destPath + "/" + oneEntry.getName().substring(jarPath.length() + 1));
+        File parentFile = destFile.getParentFile();
+        if (parentFile != null) {
+          parentFile.mkdirs();
         }
 
-        FileOutputStream out = new FileOutputStream(dest);
-        InputStream in = fromJar.getInputStream(entry);
+        FileOutputStream outFile = new FileOutputStream(destFile);
+        InputStream inFile = origJar.getInputStream(oneEntry);
 
         try {
           byte[] buffer = new byte[8 * 1024];
 
           int s = 0;
-          while ((s = in.read(buffer)) > 0) {
-            out.write(buffer, 0, s);
+          while ((s = inFile.read(buffer)) > 0) {
+            outFile.write(buffer, 0, s);
           }
         } catch (IOException e) {
-          throw new IOException("Could not copy asset from jar file", e);
+          throw new IOException("Could not extract resource from jar file", e);
         } finally {
           try {
-            in.close();
+            inFile.close();
           } catch (IOException ignored) {
           }
           try {
-            out.close();
+            outFile.close();
           } catch (IOException ignored) {
           }
         }
