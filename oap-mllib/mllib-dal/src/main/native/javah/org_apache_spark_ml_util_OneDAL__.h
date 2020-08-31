@@ -14,12 +14,17 @@ extern "C" {
  */
 JNIEXPORT void JNICALL Java_org_apache_spark_ml_util_OneDAL_00024_setNumericTableValue
   (JNIEnv *, jobject, jlong, jint, jint, jdouble);
-  
-JNIEXPORT void JNICALL Java_org_apache_spark_ml_util_OneDAL_00024_cSetDoubleIterator
-  (JNIEnv *env, jobject,jlong numTableAddr, jobject jiter, jint curRows);
 
-JNIEXPORT void JNICALL Java_org_apache_spark_ml_util_OneDAL_00024_cAddNumericTable
-	  (JNIEnv *, jobject, jlong, jlong);
+JNIEXPORT void JNICALL Java_org_apache_spark_ml_util_OneDAL_00024_cSetDoubleIterator
+  (JNIEnv *, jobject, jlong, jobject, jint);
+
+/*
+ * Class:     org_apache_spark_ml_util_OneDAL__
+ * Method:    cCheckPlatformCompatibility
+ * Signature: ()Z
+ */
+JNIEXPORT jboolean JNICALL Java_org_apache_spark_ml_util_OneDAL_00024_cCheckPlatformCompatibility
+  (JNIEnv *, jobject);
 
 #ifdef __cplusplus
 }

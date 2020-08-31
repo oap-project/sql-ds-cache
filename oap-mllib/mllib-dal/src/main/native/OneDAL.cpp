@@ -21,6 +21,9 @@
 using namespace daal;
 using namespace daal::data_management;
 
+// Use oneDAL lib function
+extern bool daal_check_is_intel_cpu();
+
 /*
  * Class:     org_apache_spark_ml_util_OneDAL__
  * Method:    setNumericTableValue
@@ -89,3 +92,14 @@ JNIEXPORT void JNICALL Java_org_apache_spark_ml_util_OneDAL_00024_cAddNumericTab
     pRowMergedNumericTable->addNumericTable(pNumericTable);
 
   }
+
+/*
+ * Class:     org_apache_spark_ml_util_OneDAL__
+ * Method:    cCheckPlatformCompatibility
+ * Signature: ()Z
+ */
+JNIEXPORT jboolean JNICALL Java_org_apache_spark_ml_util_OneDAL_00024_cCheckPlatformCompatibility
+  (JNIEnv *, jobject) {
+    // Only guarantee compatibility and performance on Intel platforms, use oneDAL lib function
+    return daal_check_is_intel_cpu();
+}
