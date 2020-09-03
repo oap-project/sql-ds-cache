@@ -4,7 +4,7 @@ OAP is a project to optimize Spark by providing optimized implementation of pack
 
 ## Installation Guide
 Please follow the below link for the guide to compile and install OAP to your system.
-* [OAP Installation Guide](./docs/Installation-Guide.md)
+* [OAP Installation Guide](./docs/Conda-Installation-Guide.md)
 
 ## User Guide
 Please refer to the corresponding documents below for the introduction and how to use the features.
@@ -14,6 +14,8 @@ Please refer to the corresponding documents below for the introduction and how t
 * [Shuffle Remote PMem Extension](./oap-shuffle/RPMem-shuffle/README.md)
 * [Remote Shuffle](./oap-shuffle/remote-shuffle/README.md)
 * [Intel MLlib](./oap-mllib/README.md)
+* [Unified Arrow Data Source](./oap-data-source/arrow/README.md)
+* [Native SQL Engine](./oap-native-sql/README.md)
 
 ## Developer Guide
 Please follow the below link for the guide for developers.

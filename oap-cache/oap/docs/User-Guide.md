@@ -16,9 +16,11 @@ SQL Index and Data Source Cache on Spark requires a working Hadoop cluster with 
 
 ## Getting Started
 
-### Building
+### Installation
+We have provided a Conda package which will automatically install dependencies needed by OAP, you can refer to [Conda-Installation-Guide](../../../docs/Conda-Installation-Guide.md) for more information. If you have finished [Conda-Installation-Guide](../../../docs/Conda-Installation-Guide.md), you needn't  follow the build steps, you can find compiled OAP jars in `/root/miniconda2/envs/oapenv/oap_jars/`.
 
-We provided a Conda package which will automatically install most dependencies, you can refer to [Conda-Installation-Guide](../../../docs/Conda-Installation-Guide.md) for more information. If you’d like to build from source code, please refer to [Developer Guide](Developer-Guide.md) for the detailed steps.
+### Building
+If you’d like to build from source code, please refer to [Developer Guide](Developer-Guide.md) for the detailed steps.
 
 ### Spark Configurations
 
@@ -29,11 +31,11 @@ Before you run ` . $SPARK_HOME/bin/spark-shell `, you need to configure Spark fo
 ```
 spark.sql.extensions              org.apache.spark.sql.OapExtensions
 # absolute path of the jar on your working node
-spark.files                       /home/oap/jars/oap-cache-<version>-with-spark-<version>.jar,/home/oap/jars/oap-common-<version>-with-spark-<version>.jar
+spark.files                       /root/miniconda2/envs/oapenv/oap_jars/oap-cache-<version>-with-spark-<version>.jar,/root/miniconda2/envs/oapenv/oap_jars/oap-common-<version>-with-spark-<version>.jar
 # relative path of the jar
 spark.executor.extraClassPath     ./oap-cache-<version>-with-spark-<version>.jar:./oap-common-<version>-with-spark-<version>.jar
 # absolute path of the jar on your working node
-spark.driver.extraClassPath       /home/oap/jars/oap-cache-<version>-with-spark-<version>.jar:/home/oap/jars/oap-common-<version>-with-spark-<version>.jar
+spark.driver.extraClassPath       /root/miniconda2/envs/oapenv/oap_jars/oap-cache-<version>-with-spark-<version>.jar:/root/miniconda2/envs/oapenv/oap_jars/oap-common-<version>-with-spark-<version>.jar
 ```
 ### Verify Integration 
 
@@ -72,7 +74,7 @@ Add the following OAP configuration settings to `$SPARK_HOME/conf/spark-defaults
 ```
 spark.sql.extensions              org.apache.spark.sql.OapExtensions
 # absolute path on your working node
-spark.files                       /home/oap/jars/oap-cache-<version>-with-spark-<version>.jar,/home/oap/jars/oap-common-<version>-with-spark-<version>.jar
+spark.files                       /root/miniconda2/envs/oapenv/oap_jars/oap-cache-<version>-with-spark-<version>.jar,/root/miniconda2/envs/oapenv/oap_jars/oap-common-<version>-with-spark-<version>.jar
 # relative path    
 spark.executor.extraClassPath     ./oap-cache-<version>-with-spark-<version>.jar:./oap-common-<version>-with-spark-<version>.jar
 # relative path 
@@ -88,9 +90,9 @@ In addition to running on the YARN cluster manager, Spark also provides a simple
 ```
 spark.sql.extensions               org.apache.spark.sql.OapExtensions
 # absolute path on worker nodes
-spark.executor.extraClassPath      /home/oap/jars/oap-cache-<version>-with-spark-<version>.jar:/home/oap/jars/oap-common-<version>-with-spark-<version>.jar
+spark.executor.extraClassPath      /root/miniconda2/envs/oapenv/oap_jars/oap-cache-<version>-with-spark-<version>.jar:/root/miniconda2/envs/oapenv/oap_jars/oap-common-<version>-with-spark-<version>.jar
 # absolute path on worker nodes
-spark.driver.extraClassPath        /home/oap/jars/oap-cache-<version>-with-spark-<version>.jar:/home/oap/jars/oap-common-<version>-with-spark-<version>.jar
+spark.driver.extraClassPath        /root/miniconda2/envs/oapenv/oap_jars/oap-cache-<version>-with-spark-<version>.jar:/root/miniconda2/envs/oapenv/oap_jars/oap-common-<version>-with-spark-<version>.jar
 ```
 
 ## Working with SQL Index
@@ -238,7 +240,8 @@ The following are required to configure OAP to use PMem cache.
 Socket Configuration -> Memory Configuration -> NGN Configuration -> Snoopy mode for AD : enabled
 Socket configuration -> Intel UPI General configuration -> Stale Atos :  Disabled
 ``` 
-- Make sure [Vmemcache](https://github.com/pmem/vmemcache) library has been installed on every cluster worker node if vmemcache strategy is chosen for PMem cache. You can follow the build/install steps from vmemcache website and make sure libvmemcache.so exist in '/lib64' directory in each worker node. You can download [vmemcache RPM package](https://github.com/Intel-bigdata/OAP/releases/download/v0.9.0-spark-3.0.0/libvmemcache-0.8..rpm), and install it by running `rpm -i libvmemcache*.rpm`. Build and install step can refer to [build and install vmemcache](./Developer-Guide.md#build-and-install-vmemcache)
+
+- Make sure [Vmemcache](https://github.com/pmem/vmemcache) library has been installed on every cluster worker node if vmemcache strategy is chosen for PMem cache. If you have finished [Conda-Installation-Guide](../../docs/Conda-Installation-Guide.md), Vmemcache will be installed by Conda.Or you can follow the build/install steps from vmemcache website and make sure libvmemcache.so exist in '/lib64' directory in each worker node. You can download [vmemcache RPM package](https://github.com/Intel-bigdata/OAP/releases/download/v0.9.0-spark-3.0.0/libvmemcache-0.8..rpm), and install it by running `rpm -i libvmemcache*.rpm`. Build and install step can refer to [build and install vmemcache](./Developer-Guide.md#build-and-install-vmemcache)
 
 
 #### Configure for NUMA
@@ -279,11 +282,11 @@ spark.yarn.numa.enabled                                    true
 spark.sql.extensions                  org.apache.spark.sql.OapExtensions
 
 # absolute path of the jar on your working node, when in Yarn client mode
-spark.files                       /home/oap/jars/oap-cache-<version>-with-spark-<version>.jar,/home/oap/jars/oap-common-<version>-with-spark-<version>.jar
+spark.files                       /root/miniconda2/envs/oapenv/oap_jars/oap-cache-<version>-with-spark-<version>.jar,/root/miniconda2/envs/oapenv/oap_jars/oap-common-<version>-with-spark-<version>.jar
 # relative path of the jar, when in Yarn client mode
 spark.executor.extraClassPath     ./oap-cache-<version>-with-spark-<version>.jar:./oap-common-<version>-with-spark-<version>.jar
 # absolute path of the jar on your working node,when in Yarn client mode
-spark.driver.extraClassPath       /home/oap/jars/oap-cache-<version>-with-spark-<version>.jar:/home/oap/jars/oap-common-<version>-with-spark-<version>.jar
+spark.driver.extraClassPath       /root/miniconda2/envs/oapenv/oap_jars/oap-cache-<version>-with-spark-<version>.jar:/root/miniconda2/envs/oapenv/oap_jars/oap-common-<version>-with-spark-<version>.jar
 
 # for parquet file format, enable binary cache
 spark.sql.oap.parquet.binary.cache.enabled      true

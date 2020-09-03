@@ -12,8 +12,14 @@ tar -xf ./spark-3.0.0-bin-hadoop2.7.tgz
 export SPARK_HOME=`pwd`/spark-3.0.0-bin-hadoop2.7
 ```
 
-## Install arrow 0.17.0 dependencies
+## Install arrow 0.17.0 &  Native-SQL 
 
+We have provided a Conda package which will automatically install dependencies needed by OAP, you can refer to [Conda-Installation-Guide](../../docs/Conda-Installation-Guide.md) for more information. Once finished, you will get arrow 0.17.0 dependencies installed by Conda, and the compiled `spark-columnar-core jar` will be put into dir `/root/miniconda2/envs/${YOUR_ENV_NAME}/oap_jars/`
+
+When you finish [Conda-Installation-Guide](../../docs/Conda-Installation-Guide.md) , just jump to [Spark Configurations for Native SQL Engine](#spark-configurations-for-native-sql-engine).
+
+### Manully Install arrow 0.17.0 
+Step 1. Install arrow 0.17.0 dependencies
 ```
 git clone https://github.com/apache/arrow && cd arrow & git checkout arrow-0.17.0
 vim ci/conda_env_gandiva.yml 
@@ -30,11 +36,10 @@ conda create -y -n pyarrow-dev -c conda-forge \
     pandas
 conda activate pyarrow-dev
 ```
-
-## Install arrow 0.17.0
+Step2. Install arrow 0.17.0
 
 Please refer this doc to install Apache Arrow and Gandiva.
-[Apache Arrow Installation](/oap-native-sql/resource/ApacheArrowInstallation.md)
+[Apache Arrow Installation](/oap-native-sql/resource/ApacheArrowInstallation.md) 
 
 ## compile and install oap-native-sql
 
@@ -49,7 +54,7 @@ yum install gmock
 
 ``` shell
 git clone https://github.com/Intel-bigdata/OAP.git
-cd OAP && git checkout branch-nativesql-spark-3.0.0
+cd OAP && git checkout branch-0.17.0-oap-0.9
 cd oap-native-sql
 cd cpp/
 mkdir build/
@@ -81,11 +86,12 @@ spark.sql.extensions com.intel.oap.ColumnarPlugin
 spark.shuffle.manager org.apache.spark.shuffle.sort.ColumnarShuffleManager
 
 # note native sql engine depends on arrow data source
-spark.driver.extraClassPath ${PATH_TO_OAP_NATIVE_SQL}/core/target/spark-columnar-core-0.9.0-jar-with-dependencies.jar:${PATH_TO_OAP_DATA_SOURCE}/arrow/target/spark-arrow-datasource-0.9.0-SNAPSHOT-jar-with-dependencies.jar
-spark.executor.extraClassPath ${PATH_TO_OAP_NATIVE_SQL}/core/target/spark-columnar-core-0.9.0-jar-with-dependencies.jar:${PATH_TO_OAP_DATA_SOURCE}/arrow/target/spark-arrow-datasource-0.9.0-SNAPSHOT-jar-with-dependencies.jar
+spark.driver.extraClassPath /root/miniconda2/envs/${YOUR_ENV_NAME}/oap_jars/spark-columnar-core-0.9.0-jar-with-dependencies.jar:/root/miniconda2/envs/${YOUR_ENV_NAME}/oap_jars/spark-arrow-datasource-0.9.0-SNAPSHOT-jar-with-dependencies.jar
+spark.executor.extraClassPath /root/miniconda2/envs/${YOUR_ENV_NAME}/oap_jars/spark-columnar-core-0.9.0-jar-with-dependencies.jar:/root/miniconda2/envs/${YOUR_ENV_NAME}/oap_jars/spark-arrow-datasource-0.9.0-SNAPSHOT-jar-with-dependencies.jar
 
 ######
 ```
+About spark-arrow-datasource.jar, you can refer [Unified Arrow Data Source ](../../oap-data-source/arrow/README.md).                                                                                         
 Verify if native sql engine works with scala script or jupyter notebook:
 ```
 val orders = spark.read.format("arrow").load("hdfs:////user/root/date_tpch_10/orders")

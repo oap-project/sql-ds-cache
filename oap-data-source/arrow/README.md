@@ -4,6 +4,11 @@ A Spark DataSouce implementation for reading files into Arrow compatible columna
 ## Note
 The development of this library is still in progress. As a result some of the functionality may not be constantly stable for being used in production environments that have not been fully considered due to the limited testing capabilities so far.
 
+
+## Installation
+We have provided a Conda package which will automatically install dependencies needed by OAP, you can refer to [Conda-Installation-Guide](../../docs/Conda-Installation-Guide.md) for more information. If you have finished [Conda-Installation-Guide](../../docs/Conda-Installation-Guide.md), you needn't  follow the build steps,and you can find compiled OAP jars in `/root/miniconda2/envs/oapenv/oap_jars/`.
+
+
 ## Build
 ### Install libhdfs3 library
 
@@ -29,7 +34,7 @@ Then add following Spark configuration options before running the DataSource to 
 
 ```
 // build arrow-cpp
-git clone --branch native-sql-engine-clean https://github.com/Intel-bigdata/arrow.git
+git clone --branch branch-0.17.0-oap-0.9 https://github.com/Intel-bigdata/arrow.git
 cd arrow/cpp
 mkdir build
 cd build
