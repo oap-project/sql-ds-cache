@@ -126,6 +126,18 @@
       <artifactId>arrow-plasma</artifactId>
       <version>0.17.0</version>
     </dependency>
+    <!-- https://mvnrepository.com/artifact/redis.clients/jedis -->
+    <dependency>
+      <groupId>redis.clients</groupId>
+      <artifactId>jedis</artifactId>
+      <version>3.1.0</version>
+    </dependency>
+    <!-- https://mvnrepository.com/artifact/org.json4s/json4s-core -->
+    <dependency>
+      <groupId>org.json4s</groupId>
+      <artifactId>json4s-jackson_2.11</artifactId>
+      <version>3.5.3</version>
+    </dependency>
   </dependencies>
 
   <build>
