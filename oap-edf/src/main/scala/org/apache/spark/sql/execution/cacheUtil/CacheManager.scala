@@ -17,17 +17,48 @@
 
 package org.apache.spark.sql.execution.cacheUtil
 
-trait CacheManger {
+import java.util.concurrent.atomic.AtomicReference
+
+import org.apache.spark.sql.internal.SQLConf
+
+trait CacheManager {
 
   def init(): Unit
 
-  def put(): Unit
+  def put(id: ObjectId): Unit
 
-  def get(): Unit
+  def get(id: ObjectId): FiberCache
 
-  def contains: Boolean
+  def contains(id: ObjectId): Boolean
 
-  def delete(): Unit
+  def delete(id: ObjectId): Unit
 
   def status(): Unit
+
+  def create(id: ObjectId, length: Int): FiberCache
+
+  def seal(id: ObjectId): Unit
+
+}
+
+private[sql] object CacheManagerFactory {
+
+  private val lock = new Object()
+  private var manager: CacheManager = _
+
+  def getOrCreate(conf: SQLConf): CacheManager = {
+    lock.synchronized {
+      if (manager == null) {
+        manager = createCacheManager(conf)
+      }
+      manager
+    }
+  }
+
+  private def createCacheManager(conf: SQLConf): CacheManager = {
+    // TODO: will use reflection to construct a new instance. For now, Let's just
+    //  new a PlasmaCacheManager.
+    new PlasmaCacheManager(conf)
+  }
+
 }

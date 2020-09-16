@@ -109,22 +109,30 @@ public class ReadOnlyColumnVectorV1 extends ColumnVector {
     data = nativeAddress + DATA_OFFSET;
   }
 
-  public ReadOnlyColumnVectorV1(ByteBuffer buffer, DataType type) {
-    super(type);
-    if(isArray() || type instanceof StructType ||
-        type instanceof MapType || type instanceof CalendarIntervalType) {
-      throw new UnsupportedOperationException("Unsupported type: " + type.typeName());
-    }
+  //  public ReadOnlyColumnVectorV1(ByteBuffer buffer, DataType type) {
+  //    super(type);
+  //    if(isArray() || type instanceof StructType ||
+  //        type instanceof MapType || type instanceof CalendarIntervalType) {
+  //      throw new UnsupportedOperationException("Unsupported type: " + type.typeName());
+  //    }
+  //
+  //    this.buffer = buffer;
+  //    if(buffer.isDirect()) {
+  //      directBuffer = (DirectBuffer) buffer;
+  //      isDirect = true;
+  //      initWithDirectBuffer();
+  //    } else {
+  //      directBuffer = null;
+  //      isDirect = false;
+  //    }
+  //  }
 
-    this.buffer = buffer;
-    if(buffer.isDirect()) {
-      directBuffer = (DirectBuffer) buffer;
-      isDirect = true;
-      initWithDirectBuffer();
-    } else {
-      directBuffer = null;
-      isDirect = false;
-    }
+  public ReadOnlyColumnVectorV1(DataType type, long nullAddr, long dataAddr, int num) {
+    super(type);
+    nulls = nullAddr;
+    data = dataAddr;
+    total = num;
+    getNumNulls();
   }
 
   @Override
@@ -143,6 +151,8 @@ public class ReadOnlyColumnVectorV1 extends ColumnVector {
         nullsNum++;
       }
     }
+    noNull = nullsNum == 0 ? false : true;
+    allNull = nullsNum == total ? true : false;
   }
 
   @Override

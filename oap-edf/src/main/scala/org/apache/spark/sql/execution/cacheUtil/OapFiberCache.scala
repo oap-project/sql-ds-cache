@@ -17,6 +17,11 @@
 
 package org.apache.spark.sql.execution.cacheUtil
 
-class OapFiberCache extends FiberCache {
+import java.nio.ByteBuffer
+
+import sun.nio.ch.DirectBuffer
+
+class OapFiberCache(buffer: ByteBuffer) extends FiberCache {
+  def getBuffer(): DirectBuffer = buffer.asInstanceOf[DirectBuffer]
 
 }
