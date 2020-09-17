@@ -17,19 +17,62 @@
 
 package org.apache.spark.sql.execution.datasources
 
-import org.apache.spark.SparkEnv
-
 import scala.collection.mutable.ArrayBuffer
 
-class RedisClient extends ExternalDBClient {
+import org.json4s.DefaultFormats
+import org.json4s.JsonDSL._
+import org.json4s.jackson.JsonMethods._
+import redis.clients.jedis.Jedis
+
+import org.apache.spark.SparkEnv
+import org.apache.spark.internal.Logging
+import org.apache.spark.sql.internal.edf.EdfConf
+
+class RedisClient extends ExternalDBClient with Logging {
+
+  private var redisClient: Jedis = null
+
+  private implicit val formats = DefaultFormats
+
   override def init(sparkEnv: SparkEnv): Unit = {
-    /**
-     *     sparkEnv.conf.get(EdfConf.EDF_EXTERNAL_DB_SERVER)
-     *     sparkEnv.conf.get(EdfConf.EDF_EXTERNAL_DB_port)
-     */
+    logInfo("Initing RedisClient, server address is : " +
+      sparkEnv.conf.get(EdfConf.EDF_EXTERNAL_DB_SERVER))
+    redisClient = new Jedis(sparkEnv.conf.get(EdfConf.EDF_EXTERNAL_DB_SERVER))
   }
 
-  override def get(fileName: String, offSet: Long, length: Long): ArrayBuffer[CacheMetaInfoValue] = null
+  override def get(fileName: String, start: Long,
+                   length: Long): ArrayBuffer[CacheMetaInfoValue] = {
+    val cacheMetaInfoArrayBuffer: ArrayBuffer[CacheMetaInfoValue] =
+      new ArrayBuffer[CacheMetaInfoValue](0)
+    // start - 1 because zrange is (start, length]
+    val cacheMetaInfoValueSet = redisClient.zrange(fileName, start - 1, length)
+    for (x <- cacheMetaInfoValueSet.asInstanceOf[Set[String]]) {
+      cacheMetaInfoArrayBuffer.+=(parse(x.asInstanceOf[String]).extract[CacheMetaInfoValue])
+    }
+    cacheMetaInfoArrayBuffer
+  }
 
-  override def upsert(cacheMetaInfo: CacheMetaInfo): Boolean = false
+  override def upsert(cacheMetaInfo: CacheMetaInfo): Boolean = {
+    cacheMetaInfo match {
+      case storeInfo: StoreCacheMetaInfo =>
+        val value = storeInfo._value
+        val cacheMetaInfoJson = ("offSet" -> value._offSet) ~
+          ("length" -> value._length) ~
+          ("host" -> value._host)
+        redisClient
+          .zadd(storeInfo._key.asInstanceOf[String], value._offSet, compact(render(cacheMetaInfoJson)))
+          .equals(1L)
+      case evictInfo: EvictCacheMetaInfo =>
+        val value = evictInfo._value
+        val cacheMetaInfoJson = ("offSet" -> value._offSet) ~
+          ("length" -> value._length) ~
+          ("host" -> value._host)
+        redisClient.zrem(evictInfo._key.asInstanceOf[String], compact(render(cacheMetaInfoJson)))
+          .equals(1L)
+    }
+  }
+
+  override def stop(): Unit = {
+    redisClient.close()
+  }
 }
