@@ -28,12 +28,14 @@ class CacheMetaInfoValue(host: String, offSet: Long, length: Long) {
   var _length: Long = length
 }
 
-class StoreCacheMetaInfo(key: String, value: CacheMetaInfoValue) extends CacheMetaInfo(key, value) {
+class StoreCacheMetaInfo(key: String, value: CacheMetaInfoValue)
+    extends CacheMetaInfo(key, value) {
   override val _key: String = key
   override val _value: CacheMetaInfoValue = value
 }
 
-class EvictCacheMetaInfo(key: String, value: CacheMetaInfoValue) extends CacheMetaInfo(key, value) {
+class EvictCacheMetaInfo(key: String, value: CacheMetaInfoValue)
+    extends CacheMetaInfo(key, value) {
   override val _key: String = key
   override val _value: CacheMetaInfoValue = value
 }

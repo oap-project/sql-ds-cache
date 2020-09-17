@@ -22,9 +22,13 @@ import scala.collection.mutable.ArrayBuffer
 import org.apache.spark.SparkEnv
 
 trait ExternalDBClient {
+
   def init(sparkEnv: SparkEnv): Unit
 
-  def get(fileName: String, offSet: Long, length: Long): ArrayBuffer[CacheMetaInfoValue]
+  def get(fileName: String, start: Long, length: Long): ArrayBuffer[CacheMetaInfoValue]
 
   def upsert(cacheMetaInfo: CacheMetaInfo): Boolean
+
+  def stop(): Unit
+
 }

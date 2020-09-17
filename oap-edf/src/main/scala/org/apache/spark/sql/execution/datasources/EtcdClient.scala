@@ -29,4 +29,6 @@ class EtcdClient extends ExternalDBClient {
   override def get(fileName: String, offSet: Long, length: Long): ArrayBuffer[CacheMetaInfoValue] = null
 
   override def upsert(cacheMetaInfo: CacheMetaInfo): Boolean = false
+
+  override def stop(): Unit = {}
 }
