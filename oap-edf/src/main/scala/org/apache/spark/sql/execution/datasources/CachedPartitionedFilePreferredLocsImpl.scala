@@ -28,20 +28,9 @@ object CachedPartitionedFilePreferredLocsImpl extends PartitionedFilePreferredLo
 
   private var externalDBClient: ExternalDBClient = null
 
-  private def init() = synchronized {
-    if (null == externalDBClient) {
-      externalDBClient = Utils
-        .classForName(SparkEnv.get.conf.get(EdfConf.EDF_EXTERNAL_DB))
-        .getConstructor()
-        .newInstance()
-        .asInstanceOf[ExternalDBClient]
-      externalDBClient.init(SparkEnv.get)
-    }
-  }
-
   override def getPreferredLocs(split: Partition): Seq[String] = {
     if (null == externalDBClient) {
-      init
+      externalDBClient = ExternalDBClientFactory.getOrCreateDBClientInstance(SparkEnv.get)
     }
 
     val files = split.asInstanceOf[FilePartition].files
