@@ -22,7 +22,7 @@ import scala.collection.mutable.ArrayBuffer
 import org.json4s.DefaultFormats
 import org.json4s.JsonDSL._
 import org.json4s.jackson.JsonMethods._
-import redis.clients.jedis.Jedis
+import redis.clients.jedis.{Jedis, JedisPool, JedisPoolConfig}
 
 import org.apache.spark.SparkEnv
 import org.apache.spark.internal.Logging
@@ -30,49 +30,79 @@ import org.apache.spark.sql.internal.edf.EdfConf
 
 class RedisClient extends ExternalDBClient with Logging {
 
-  private var redisClient: Jedis = null
+  private var redisClientPool: JedisPool = null
 
   private implicit val formats = DefaultFormats
 
   override def init(sparkEnv: SparkEnv): Unit = {
-    logInfo("Initing RedisClient, server address is : " +
+    logInfo("Initing RedisClientPool, server address is : " +
       sparkEnv.conf.get(EdfConf.EDF_EXTERNAL_DB_SERVER))
-    redisClient = new Jedis(sparkEnv.conf.get(EdfConf.EDF_EXTERNAL_DB_SERVER))
+
+    val jedisPoolConfig = new JedisPoolConfig
+
+    jedisPoolConfig
+      .setMaxTotal(sparkEnv.conf.get(EdfConf.EDF_EXTERNAL_DB_CLIENT_NUM))
+    redisClientPool = new JedisPool(
+      jedisPoolConfig,
+      sparkEnv.conf.get(EdfConf.EDF_EXTERNAL_DB_SERVER))
   }
 
   override def get(fileName: String, start: Long,
                    length: Long): ArrayBuffer[CacheMetaInfoValue] = {
+    var jedisClientInstance: Jedis = null
     val cacheMetaInfoArrayBuffer: ArrayBuffer[CacheMetaInfoValue] =
       new ArrayBuffer[CacheMetaInfoValue](0)
-    // start - 1 because zrange is (start, length]
-    val cacheMetaInfoValueSet = redisClient.zrange(fileName, start - 1, length)
-    for (x <- cacheMetaInfoValueSet.asInstanceOf[Set[String]]) {
-      cacheMetaInfoArrayBuffer.+=(parse(x.asInstanceOf[String]).extract[CacheMetaInfoValue])
+    try {
+      jedisClientInstance = redisClientPool.getResource
+      // start - 1 because zrange is (start, length]
+      val cacheMetaInfoValueSet = jedisClientInstance.zrange(fileName, start - 1, length)
+      for (x <- cacheMetaInfoValueSet.asInstanceOf[Set[String]]) {
+        cacheMetaInfoArrayBuffer.+=(parse(x.asInstanceOf[String]).extract[CacheMetaInfoValue])
+      }
+    } finally {
+      if (null != jedisClientInstance) {
+        jedisClientInstance.close()
+      }
     }
     cacheMetaInfoArrayBuffer
   }
 
   override def upsert(cacheMetaInfo: CacheMetaInfo): Boolean = {
-    cacheMetaInfo match {
-      case storeInfo: StoreCacheMetaInfo =>
-        val value = storeInfo._value
-        val cacheMetaInfoJson = ("offSet" -> value._offSet) ~
-          ("length" -> value._length) ~
-          ("host" -> value._host)
-        redisClient
-          .zadd(storeInfo._key.asInstanceOf[String], value._offSet, compact(render(cacheMetaInfoJson)))
-          .equals(1L)
-      case evictInfo: EvictCacheMetaInfo =>
-        val value = evictInfo._value
-        val cacheMetaInfoJson = ("offSet" -> value._offSet) ~
-          ("length" -> value._length) ~
-          ("host" -> value._host)
-        redisClient.zrem(evictInfo._key.asInstanceOf[String], compact(render(cacheMetaInfoJson)))
-          .equals(1L)
+    var jedisClientInstance: Jedis = null
+    try {
+      jedisClientInstance = redisClientPool.getResource
+      cacheMetaInfo match {
+        case storeInfo: StoreCacheMetaInfo =>
+          val value = storeInfo._value
+          val cacheMetaInfoJson = ("offSet" -> value._offSet) ~
+            ("length" -> value._length) ~
+            ("host" -> value._host)
+          logInfo("upsert key: " + storeInfo._key +
+            "cacheMetaInfo is: " + compact(render(cacheMetaInfoJson)))
+          jedisClientInstance
+            .zadd(storeInfo._key, value._offSet, compact(render(cacheMetaInfoJson)))
+            .equals(1L)
+        case evictInfo: EvictCacheMetaInfo =>
+          val value = evictInfo._value
+          val cacheMetaInfoJson = ("offSet" -> value._offSet) ~
+            ("length" -> value._length) ~
+            ("host" -> value._host)
+          jedisClientInstance
+            .zrem(evictInfo._key.asInstanceOf[String], compact(render(cacheMetaInfoJson)))
+            .equals(1L)
+      }
+    } finally {
+      if (null != jedisClientInstance) {
+        jedisClientInstance.close()
+      }
     }
+    false
   }
 
   override def stop(): Unit = {
-    redisClient.close()
+    if (null != redisClientPool) {
+      redisClientPool.destroy()
+      logWarning("Redis client pool closed.")
+    }
   }
 }
