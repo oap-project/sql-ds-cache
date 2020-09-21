@@ -18,7 +18,7 @@
 package org.apache.spark.sql.execution.cacheUtil
 
 import org.apache.arrow.plasma.PlasmaClient
-import org.apache.arrow.plasma.exceptions.{DuplicateObjectException, PlasmaClientException, PlasmaGetException}
+import org.apache.arrow.plasma.exceptions.{DuplicateObjectException, PlasmaClientException, PlasmaGetException, PlasmaOutOfMemoryException}
 
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.internal.SQLConf
@@ -67,15 +67,22 @@ class PlasmaCacheManager(conf: SQLConf) extends CacheManager with Logging {
     throw new UnsupportedOperationException("Not support yet")
   }
 
-  override def create(id: ObjectId, length: Int): FiberCache = {
+  override def create(id: ObjectId, length: Long): FiberCache = {
     try {
-      new OapFiberCache(client.create(id.toByteArray(), length))
+      // TODO: We should extend plasma.create to support larger size object.
+      if (length > Int.MaxValue) {
+        throw new ArithmeticException(s"Can't create $length bytes Object")
+      }
+      new OapFiberCache(client.create(id.toByteArray(), length.toInt))
     } catch {
       case e: DuplicateObjectException =>
         // TODO: since we only have one client maybe we should not call get here?
         logWarning("Plasma object duplicate: " + e.getMessage +
         ". Will try to get this object.")
         get(id)
+      case e: PlasmaOutOfMemoryException =>
+        logWarning("Plasma Server is OutOfMemory! " + e.getMessage)
+        throw new CacheManagerException("Plasma exception:" + e.getMessage)
     }
   }
 
@@ -86,5 +93,9 @@ class PlasmaCacheManager(conf: SQLConf) extends CacheManager with Logging {
       case e: PlasmaClientException =>
         logWarning(" Plasma Seal object error: " + e.getMessage)
     }
+  }
+
+  override def release(id: ObjectId): Unit = {
+    client.release(id.toByteArray())
   }
 }

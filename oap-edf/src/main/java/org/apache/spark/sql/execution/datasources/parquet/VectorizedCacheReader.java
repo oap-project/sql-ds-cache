@@ -22,6 +22,7 @@ import org.apache.spark.sql.execution.cacheUtil.OapFiberCache;
 import org.apache.spark.sql.execution.vectorized.ReadOnlyColumnVectorV1;
 import org.apache.spark.sql.types.*;
 import org.apache.spark.sql.vectorized.ColumnVector;
+import org.apache.spark.unsafe.Platform;
 
 public class VectorizedCacheReader {
 
@@ -38,6 +39,7 @@ public class VectorizedCacheReader {
     this.fiberCache = fiberCache;
     this.type = type;
     this.typeSize = type.defaultSize();
+    this.total = Platform.getInt(null, ((OapFiberCache) fiberCache).getBuffer().address());
   }
 
   public void init() {
