@@ -35,9 +35,11 @@ trait CacheManager {
 
   def status(): Unit
 
-  def create(id: ObjectId, length: Int): FiberCache
+  def create(id: ObjectId, length: Long): FiberCache
 
   def seal(id: ObjectId): Unit
+
+  def release(id: ObjectId): Unit
 
 }
 

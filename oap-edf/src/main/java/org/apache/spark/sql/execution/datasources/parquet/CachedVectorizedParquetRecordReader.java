@@ -36,6 +36,7 @@ import org.apache.spark.sql.execution.vectorized.OffHeapColumnVector;
 import org.apache.spark.sql.execution.vectorized.OnHeapColumnVector;
 import org.apache.spark.sql.execution.vectorized.WritableColumnVector;
 import org.apache.spark.sql.internal.SQLConf;
+import org.apache.spark.sql.types.*;
 import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.vectorized.ColumnVector;
@@ -43,13 +44,25 @@ import org.apache.spark.sql.vectorized.ColumnarBatch;
 
 public class CachedVectorizedParquetRecordReader extends SpecificParquetRecordReaderBase<Object> {
 
+  /**
+   * For each cached column, the reader to read this column from cache. This is NULL if this column
+   * missing from cache, will populate the attribute with NULL.
+   */
   private VectorizedCacheReader[] cacheReaders;
 
+  /**
+   * Flags for which column have been cached.
+   * */
   private boolean[] cachedColumns;
 
   private CacheManager cacheManager;
 
   private FiberCache[] fiberCaches;
+
+  /**
+   * A key for each column chunk.
+   */
+  private ObjectId[] ids;
 
   StructType batchSchema;
 
@@ -269,7 +282,8 @@ public class CachedVectorizedParquetRecordReader extends SpecificParquetRecordRe
         ((WritableColumnVector)columnVectors[i]).reset();
         columnReaders[i].readBatch(num, (WritableColumnVector)columnVectors[i]);
         // TODO: async cache
-        asyncDumpToCache((WritableColumnVector)columnVectors[i], fiberCaches[i], num);
+        CacheDumper.syncDumpToCache((WritableColumnVector)columnVectors[i],
+                (OapFiberCache) fiberCaches[i], num);
       }
     }
 
@@ -312,6 +326,16 @@ public class CachedVectorizedParquetRecordReader extends SpecificParquetRecordRe
   private void checkEndOfRowGroup() throws IOException {
     if (rowsReturned != totalCountLoadedSoFar) return;
     // TODO: we need to close last cache
+    for (int i = 0; i < ids.length; i++) {
+      if(missingColumns[i]) continue;
+      if(cachedColumns[i]) {
+        // these columns are cached columns, need to release them.
+        cacheManager.release(ids[i]);
+      } else if (ids[i] != null) {
+        // these columns are caching columns, need to seal them.
+        cacheManager.seal(ids[i]);
+      }
+    }
     PageReadStore pages = reader.readNextRowGroup();
     if (pages == null) {
       throw new IOException("expecting more rows but reached last block. Read "
@@ -319,15 +343,18 @@ public class CachedVectorizedParquetRecordReader extends SpecificParquetRecordRe
     }
     List<ColumnDescriptor> columns = requestedSchema.getColumns();
     List<Type> types = requestedSchema.asGroupType().getFields();
-    columnReaders = new VectorizedColumnReader[columns.size()];
-    cacheReaders = new VectorizedCacheReader[columns.size()];
-    fiberCaches = new FiberCache[columns.size()];
-    cachedColumns = new boolean[columns.size()];
+    int columnNum = columns.size();
+    columnReaders = new VectorizedColumnReader[columnNum];
+    cacheReaders = new VectorizedCacheReader[columnNum];
+    fiberCaches = new FiberCache[columnNum];
+    cachedColumns = new boolean[columnNum];
+    ids = new ObjectId[columnNum];
 
     for (int i = 0; i < columns.size(); ++i) {
       if (missingColumns[i]) continue;
       String key = "file + row Group Id + column Id";
       ObjectId id = new ObjectId(key);
+      ids[i] = id;
       boolean hit = cacheManager.contains(id);
       if(hit) {
         try {
@@ -343,27 +370,22 @@ public class CachedVectorizedParquetRecordReader extends SpecificParquetRecordRe
                   pages.getPageReader(columns.get(i)), convertTz);
         }
       } else {
-        // TODO: if type is fixed size, we need to create/allocate a new cache! calculate size.
         // Maybe we should call reportCache here.
         columnReaders[i] = new VectorizedColumnReader(columns.get(i),
                 types.get(i).getOriginalType(),
                 pages.getPageReader(columns.get(i)), convertTz);
-        // TODO: calculate length
-        int length = 0;
-        fiberCaches[i] = cacheManager.create(id, length);
+        boolean needCache = CacheDumper.canCache(batchSchema.fields()[i].dataType());
+        if(needCache) {
+          long length = CacheDumper.calculateLength(batchSchema.fields()[i].dataType(),
+                                                    pages.getRowCount());
+          fiberCaches[i] = cacheManager.create(id, length);
+        } else {
+          // this columns can NOT cache.
+          ids[i] = null;
+        }
+
       }
     }
     totalCountLoadedSoFar += pages.getRowCount();
   }
-
-  private void asyncDumpToCache(WritableColumnVector columnVector,
-                                FiberCache fiberCache, int num) {
-
-  }
-
-  private void syncDumpToCache(WritableColumnVector columnVector,
-                               FiberCache fiberCache, int num) {
-
-  }
-
 }
