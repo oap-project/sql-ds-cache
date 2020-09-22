@@ -26,6 +26,10 @@ class CacheMetaInfoValue(host: String, offSet: Long, length: Long) {
   var _host: String = host
   var _offSet: Long = offSet
   var _length: Long = length
+
+  override def toString: String = {
+    "host: " + _host + ", offset: " + _offSet + ", length: " + _length + "."
+  }
 }
 
 class StoreCacheMetaInfo(key: String, value: CacheMetaInfoValue)
