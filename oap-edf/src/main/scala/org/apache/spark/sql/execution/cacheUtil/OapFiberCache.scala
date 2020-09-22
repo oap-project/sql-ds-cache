@@ -34,7 +34,48 @@ class OapFiberCache(buffer: ByteBuffer) extends FiberCache {
 
   def writeByte(b: Byte): Unit = {
     // TODO: should impl a writeBytes() method for better performance.
-    Platform.putByte(null, getBuffer().address() + headerLen + totalRow + index, b)
+    Platform.putByte(null,
+      getBuffer().address() + headerLen + totalRow + index * ByteType.defaultSize, b)
+    index += 1
+  }
+
+  def writeBoolean(b: Boolean): Unit = {
+    Platform.putBoolean(null,
+      getBuffer().address() + headerLen + totalRow + index * BooleanType.defaultSize, b)
+    index += 1
+  }
+
+
+  def writeShort(s: Short): Unit = {
+    Platform.putShort(null,
+      getBuffer().address() + headerLen + totalRow + index * ShortType.defaultSize, s)
+    index += 1
+  }
+
+
+  def writeInt(i: Int): Unit = {
+    Platform.putInt(null,
+      getBuffer().address() + headerLen + totalRow + index * IntegerType.defaultSize, i)
+    index += 1
+  }
+
+
+  def writeLong(l: Long): Unit = {
+    Platform.putLong(null,
+      getBuffer().address() + headerLen + totalRow + index * LongType.defaultSize, l)
+    index += 1
+  }
+
+
+  def writeFloat(f: Float): Unit = {
+    Platform.putFloat(null,
+      getBuffer().address() + headerLen + totalRow + index * FloatType.defaultSize, f)
+    index += 1
+  }
+
+  def writeDouble(d: Double): Unit = {
+    Platform.putDouble(null,
+      getBuffer().address() + headerLen + totalRow + index * DoubleType.defaultSize, d)
     index += 1
   }
 
@@ -58,13 +99,33 @@ object CacheDumper {
   def syncDumpToCache(columnVector: WritableColumnVector, fiberCache: OapFiberCache, num: Int): Unit = {
     columnVector.dataType() match {
       case ByteType =>
-        for (i <- 0 until num) {
-          if (columnVector.isNullAt(i)) {
-            fiberCache.writeNull()
-          } else {
-            fiberCache.writeByte(columnVector.getByte(i))
-          }
-        }
+        (0 until num).foreach(i =>
+          if (columnVector.isNullAt(i)) fiberCache.writeNull()
+          else fiberCache.writeByte(columnVector.getByte(i)))
+      case BooleanType =>
+        (0 until num).foreach(i =>
+          if (columnVector.isNullAt(i)) fiberCache.writeNull()
+          else fiberCache.writeBoolean(columnVector.getBoolean(i)))
+      case ShortType =>
+        (0 until num).foreach(i =>
+          if (columnVector.isNullAt(i)) fiberCache.writeNull()
+          else fiberCache.writeShort(columnVector.getShort(i)))
+      case IntegerType =>
+        (0 until num).foreach(i =>
+          if (columnVector.isNullAt(i)) fiberCache.writeNull()
+          else fiberCache.writeInt(columnVector.getInt(i)))
+      case LongType =>
+        (0 until num).foreach(i =>
+          if (columnVector.isNullAt(i)) fiberCache.writeNull()
+          else fiberCache.writeLong(columnVector.getLong(i)))
+      case FloatType =>
+        (0 until num).foreach(i =>
+          if (columnVector.isNullAt(i)) fiberCache.writeNull()
+          else fiberCache.writeFloat(columnVector.getFloat(i)))
+      case DoubleType =>
+        (0 until num).foreach(i =>
+          if (columnVector.isNullAt(i)) fiberCache.writeNull()
+          else fiberCache.writeDouble(columnVector.getDouble(i)))
       case other => throw new UnsupportedOperationException(s"$other data type is not support data cache.")
     }
   }
@@ -77,7 +138,8 @@ object CacheDumper {
 
   def canCache(dataType: DataType): Boolean = {
     dataType match {
-      case ByteType => true
+      case ByteType | BooleanType | ShortType | IntegerType | LongType |
+           FloatType | DoubleType => true
       case other => false
     }
   }
