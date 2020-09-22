@@ -29,8 +29,9 @@ import org.apache.spark.rdd.{InputFileBlockHolder, RDD}
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.execution.QueryExecutionException
+import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.vectorized.ColumnarBatch
-import org.apache.spark.util.NextIterator
+import org.apache.spark.util.{NextIterator, Utils}
 
 /**
  * A part (i.e. "block") of a single file that should be read, along with partition column values
@@ -67,6 +68,10 @@ class FileScanRDD(
   readFunction: (PartitionedFile) => Iterator[InternalRow],
   @transient val filePartitions: Seq[FilePartition])
   extends RDD[InternalRow](sparkSession.sparkContext, Nil) {
+
+  val sqlconf = sparkSession.sessionState.conf
+  private val partitionedFilePreferredLocsImplClass = Utils.
+    classForName(sqlconf.getConf(SQLConf.PARTITIONED_FILE_PREFERREDLOC_IMPL))
 
   private val ignoreCorruptFiles = sparkSession.sessionState.conf.ignoreCorruptFiles
   private val ignoreMissingFiles = sparkSession.sessionState.conf.ignoreMissingFiles
@@ -216,21 +221,9 @@ class FileScanRDD(
   override protected def getPartitions: Array[RDDPartition] = filePartitions.toArray
 
   override protected def getPreferredLocations(split: RDDPartition): Seq[String] = {
-    val files = split.asInstanceOf[FilePartition].files
-
-    // Computes total number of bytes can be retrieved from each host.
-    val hostToNumBytes = mutable.HashMap.empty[String, Long]
-    files.foreach { file =>
-      file.locations.filter(_ != "localhost").foreach { host =>
-        hostToNumBytes(host) = hostToNumBytes.getOrElse(host, 0L) + file.length
-      }
-    }
-
-    // Takes the first 3 hosts with the most data to be retrieved
-    hostToNumBytes.toSeq.sortBy {
-      case (host, numBytes) => numBytes
-    }.reverse.take(3).map {
-      case (host, numBytes) => host
-    }
+    partitionedFilePreferredLocsImplClass.
+      getDeclaredMethod(s"getPreferredLocs", classOf[RDDPartition])
+      .invoke(null, split)
+      .asInstanceOf[Seq[String]]
   }
 }

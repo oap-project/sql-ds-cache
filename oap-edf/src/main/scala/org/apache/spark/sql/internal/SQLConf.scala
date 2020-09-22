@@ -1668,6 +1668,20 @@ object SQLConf {
       .stringConf
       .createWithDefault(
         "https://maven-central.storage-download.googleapis.com/repos/central/data/")
+
+  val PARQUET_READER_IMPL =
+    buildConf("spark.sql.parquet.reader.impl")
+      .doc("Create a Parquet reader implementation class by reflection, default value is " +
+        "VectorizedParquetRecordReader, user could impl a pluggable class.")
+      .stringConf
+      .createWithDefault("VectorizedParquetRecordReader")
+
+  val PARTITIONED_FILE_PREFERREDLOC_IMPL =
+    buildConf("spark.sql.partitioned.file.preferredLoc.impl")
+      .doc("partitionedFile's preferred location, " +
+        "default implement is to get hosts according to hdfs location")
+      .stringConf
+      .createWithDefault("DefaultPartitionedFilePreferredLocsImpl")
 }
 
 /**

@@ -19,6 +19,7 @@ package org.apache.spark.sql.execution.datasources.parquet
 
 import java.io.IOException
 import java.net.URI
+import java.util.TimeZone
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
@@ -51,7 +52,7 @@ import org.apache.spark.sql.execution.vectorized.{OffHeapColumnVector, OnHeapCol
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types._
-import org.apache.spark.util.{SerializableConfiguration, ThreadUtils}
+import org.apache.spark.util.{SerializableConfiguration, ThreadUtils, Utils}
 
 class ParquetFileFormat
   extends FileFormat
@@ -410,8 +411,12 @@ class ParquetFileFormat
       }
       val taskContext = Option(TaskContext.get())
       if (enableVectorizedReader) {
-        val vectorizedReader = new VectorizedParquetRecordReader(
-          convertTz.orNull, enableOffHeapColumnVector && taskContext.isDefined, capacity)
+        val vectorizedReader = Utils.classForName(sqlConf.getConf(SQLConf.PARQUET_READER_IMPL))
+          .getConstructor(classOf[TimeZone], java.lang.Boolean.TYPE, java.lang.Integer.TYPE)
+          .newInstance(convertTz.orNull,
+            (enableOffHeapColumnVector && taskContext.isDefined).asInstanceOf[java.lang.Boolean],
+            capacity.asInstanceOf[java.lang.Integer])
+          .asInstanceOf[VectorizedParquetRecordReader]
         val iter = new RecordReaderIterator(vectorizedReader)
         // SPARK-23457 Register a task completion lister before `initialization`.
         taskContext.foreach(_.addTaskCompletionListener[Unit](_ => iter.close()))
