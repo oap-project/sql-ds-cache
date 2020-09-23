@@ -17,29 +17,27 @@
 
 package org.apache.spark.sql.execution.datasources
 
-abstract class CacheMetaInfo(key: String, value: CacheMetaInfoValue) {
-  val _key = key
-  val _value = value
-}
+import org.apache.spark.SparkEnv
+import org.apache.spark.sql.internal.edf.EdfConf
+import org.apache.spark.util.Utils
 
-class CacheMetaInfoValue(host: String, offSet: Long, length: Long) {
-  var _host: String = host
-  var _offSet: Long = offSet
-  var _length: Long = length
+object ExternalDBClientFactory {
 
-  override def toString: String = {
-    "host: " + _host + ", offset: " + _offSet + ", length: " + _length + "."
+  private var instance: ExternalDBClient = null
+
+  def getOrCreateDBClientInstance(sparkEnv: SparkEnv): ExternalDBClient = synchronized {
+    if (instance != null) return instance
+    instance = Utils.classForName(sparkEnv.conf.get(EdfConf.EDF_EXTERNAL_DB))
+      .getConstructor()
+      .newInstance()
+      .asInstanceOf[ExternalDBClient]
+
+    instance.init(sparkEnv)
+    instance
   }
-}
 
-class StoreCacheMetaInfo(key: String, value: CacheMetaInfoValue)
-    extends CacheMetaInfo(key, value) {
-  override val _key: String = key
-  override val _value: CacheMetaInfoValue = value
-}
+  def destroyDBClientInstance(externalDBClientInstance: ExternalDBClient): Unit = {
+    externalDBClientInstance.stop()
+  }
 
-class EvictCacheMetaInfo(key: String, value: CacheMetaInfoValue)
-    extends CacheMetaInfo(key, value) {
-  override val _key: String = key
-  override val _value: CacheMetaInfoValue = value
 }

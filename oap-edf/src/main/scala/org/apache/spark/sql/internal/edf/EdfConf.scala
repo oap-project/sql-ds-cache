@@ -39,4 +39,11 @@ object EdfConf {
       .doc("ExternalDB's port")
       .stringConf
       .createWithDefault("8080")
+
+    val EDF_EXTERNAL_DB_CLIENT_NUM =
+      SqlConfAdapter.buildConf("spark.sql.edf.externalDB.client.num")
+        .internal()
+        .doc("ExternalDB clients num")
+        .intConf
+        .createWithDefault(10)
 }

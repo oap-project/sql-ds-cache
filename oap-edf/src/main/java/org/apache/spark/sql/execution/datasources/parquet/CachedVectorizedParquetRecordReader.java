@@ -26,11 +26,21 @@ import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.page.PageReadStore;
+import org.apache.parquet.hadoop.metadata.BlockMetaData;
+import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.schema.Type;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import org.apache.spark.SparkEnv;
 import org.apache.spark.memory.MemoryMode;
 import org.apache.spark.sql.catalyst.InternalRow;
 import org.apache.spark.sql.execution.cacheUtil.*;
+import org.apache.spark.sql.execution.datasources.CacheMetaInfo;
+import org.apache.spark.sql.execution.datasources.CacheMetaInfoValue;
+import org.apache.spark.sql.execution.datasources.ExternalDBClient;
+import org.apache.spark.sql.execution.datasources.ExternalDBClientFactory;
+import org.apache.spark.sql.execution.datasources.StoreCacheMetaInfo;
 import org.apache.spark.sql.execution.vectorized.ColumnVectorUtils;
 import org.apache.spark.sql.execution.vectorized.OffHeapColumnVector;
 import org.apache.spark.sql.execution.vectorized.OnHeapColumnVector;
@@ -44,6 +54,8 @@ import org.apache.spark.sql.vectorized.ColumnarBatch;
 
 public class CachedVectorizedParquetRecordReader extends SpecificParquetRecordReaderBase<Object> {
 
+  private static final Logger LOG = LoggerFactory
+          .getLogger(CachedVectorizedParquetRecordReader.class);
   /**
    * For each cached column, the reader to read this column from cache. This is NULL if this column
    * missing from cache, will populate the attribute with NULL.
@@ -57,6 +69,8 @@ public class CachedVectorizedParquetRecordReader extends SpecificParquetRecordRe
 
   private CacheManager cacheManager;
 
+  private ExternalDBClient externalDBClient;
+
   private FiberCache[] fiberCaches;
 
   /**
@@ -65,6 +79,10 @@ public class CachedVectorizedParquetRecordReader extends SpecificParquetRecordRe
   private ObjectId[] ids;
 
   StructType batchSchema;
+
+  private int rowGroupId = 0;
+
+  private String hostname;
 
   // The capacity of vectorized batch.
   private int capacity;
@@ -137,7 +155,8 @@ public class CachedVectorizedParquetRecordReader extends SpecificParquetRecordRe
     MEMORY_MODE = useOffHeap ? MemoryMode.OFF_HEAP : MemoryMode.ON_HEAP;
     this.capacity = capacity;
     cacheManager = CacheManagerFactory.getOrCreate(sqlConf);
-    System.err.println("Using CachedVectorizedParquetRecordReader");
+    externalDBClient = ExternalDBClientFactory.getOrCreateDBClientInstance(SparkEnv.get());
+    hostname = SparkEnv.get().blockManager().blockManagerId().host();
   }
 
   /**
@@ -325,7 +344,8 @@ public class CachedVectorizedParquetRecordReader extends SpecificParquetRecordRe
 
   private void checkEndOfRowGroup() throws IOException {
     if (rowsReturned != totalCountLoadedSoFar) return;
-    // TODO: we need to close last cache
+    BlockMetaData rowGroupInfo =  reader.getFooter().getBlocks().get(rowGroupId);
+    long rowGroupOffset = rowGroupInfo.getStartingPos();
     for (int i = 0; i < ids.length; i++) {
       if(missingColumns[i]) continue;
       if(cachedColumns[i]) {
@@ -334,8 +354,17 @@ public class CachedVectorizedParquetRecordReader extends SpecificParquetRecordRe
       } else if (ids[i] != null) {
         // these columns are caching columns, need to seal them.
         cacheManager.seal(ids[i]);
+        ColumnChunkMetaData columnChunkMetaData = rowGroupInfo.getColumns().get(i);
+        CacheMetaInfoValue cacheMetaInfoValue = new CacheMetaInfoValue(hostname,
+                rowGroupOffset + columnChunkMetaData.getStartingPos(),
+                columnChunkMetaData.getTotalSize());
+        LOG.debug("cache info: file: " + reader.getFile() + ", " + cacheMetaInfoValue.toString());
+        CacheMetaInfo cacheMetaInfo = new StoreCacheMetaInfo(reader.getFile(), cacheMetaInfoValue);
+        externalDBClient.upsert(cacheMetaInfo);
+        // TODO: evict info
       }
     }
+    rowGroupId++;
     PageReadStore pages = reader.readNextRowGroup();
     if (pages == null) {
       throw new IOException("expecting more rows but reached last block. Read "
@@ -352,7 +381,10 @@ public class CachedVectorizedParquetRecordReader extends SpecificParquetRecordRe
 
     for (int i = 0; i < columns.size(); ++i) {
       if (missingColumns[i]) continue;
-      String key = "file + row Group Id + column Id";
+      // FIXME: how to get row group ID if this is a split file?
+      String key = file.getName() + " rowGroupId: " + rowGroupId + " columnId: " + i;
+      // TODO: remove this log, this maybe customer confident.
+      LOG.debug("cached key is " + key);
       ObjectId id = new ObjectId(key);
       ids[i] = id;
       boolean hit = cacheManager.contains(id);

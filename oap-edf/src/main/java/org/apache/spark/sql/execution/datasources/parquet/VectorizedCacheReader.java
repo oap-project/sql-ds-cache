@@ -33,7 +33,6 @@ public class VectorizedCacheReader {
   int total;
   int typeSize;
 
-  // TODO: pass some parameters or via init method.
   public VectorizedCacheReader(DataType type, FiberCache fiberCache) {
     this.index = 0;
     this.fiberCache = fiberCache;
@@ -48,7 +47,6 @@ public class VectorizedCacheReader {
 
   public ColumnVector readBatch(int num) {
     if(fiberCache instanceof OapFiberCache) {
-      // TODO: How to get offset/ address
       long addr = ((OapFiberCache) fiberCache).getBuffer().address();
       long header = 6; // total: Int, nonull: Boolean, allNull: Boolean
       long nullOffset = addr + header + index;
