@@ -18,6 +18,7 @@
 package org.apache.spark.sql.execution.datasources.parquet;
 
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.util.Arrays;
 import java.util.List;
 import java.util.TimeZone;
@@ -39,20 +40,15 @@ import org.apache.spark.sql.execution.cacheUtil.*;
 import org.apache.spark.sql.execution.datasources.CacheMetaInfo;
 import org.apache.spark.sql.execution.datasources.CacheMetaInfoValue;
 import org.apache.spark.sql.execution.datasources.ExternalDBClient;
-import org.apache.spark.sql.execution.datasources.ExternalDBClientFactory;
 import org.apache.spark.sql.execution.datasources.StoreCacheMetaInfo;
-import org.apache.spark.sql.execution.vectorized.ColumnVectorUtils;
-import org.apache.spark.sql.execution.vectorized.OffHeapColumnVector;
-import org.apache.spark.sql.execution.vectorized.OnHeapColumnVector;
-import org.apache.spark.sql.execution.vectorized.WritableColumnVector;
-import org.apache.spark.sql.internal.SQLConf;
+import org.apache.spark.sql.execution.vectorized.*;
 import org.apache.spark.sql.types.*;
 import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.vectorized.ColumnVector;
 import org.apache.spark.sql.vectorized.ColumnarBatch;
 
-public class CachedVectorizedParquetRecordReader extends SpecificParquetRecordReaderBase<Object> {
+public class CachedVectorizedParquetRecordReader extends VectorizedParquetRecordReader {
 
   private static final Logger LOG = LoggerFactory
           .getLogger(CachedVectorizedParquetRecordReader.class);
@@ -147,15 +143,14 @@ public class CachedVectorizedParquetRecordReader extends SpecificParquetRecordRe
   /**
    * The memory mode of the columnarBatch
    */
-  private final MemoryMode MEMORY_MODE;
+  private MemoryMode MEMORY_MODE;
 
   public CachedVectorizedParquetRecordReader(TimeZone convertTz, boolean useOffHeap,
-                                             int capacity, SQLConf sqlConf) {
+                                             int capacity) {
+    super(convertTz, useOffHeap, capacity);
     this.convertTz = convertTz;
     MEMORY_MODE = useOffHeap ? MemoryMode.OFF_HEAP : MemoryMode.ON_HEAP;
     this.capacity = capacity;
-    cacheManager = CacheManagerFactory.getOrCreate(sqlConf);
-    externalDBClient = ExternalDBClientFactory.getOrCreateDBClientInstance(SparkEnv.get());
     hostname = SparkEnv.get().blockManager().blockManagerId().host();
   }
 
@@ -185,6 +180,29 @@ public class CachedVectorizedParquetRecordReader extends SpecificParquetRecordRe
     if (columnarBatch != null) {
       columnarBatch.close();
       columnarBatch = null;
+    }
+    if (rowGroupId > 0) {
+      BlockMetaData rowGroupInfo =  reader.getRowGroups().get(rowGroupId - 1);
+      long rowGroupOffset = rowGroupInfo.getStartingPos();
+      for (int i = 0; i < ids.length; i++) {
+        if(missingColumns[i] || ids[i] == null) continue;
+        if(cachedColumns[i]) {
+          // these columns are cached columns, need to release them.
+          cacheManager.release(ids[i]);
+        } else if (ids[i] != null) {
+          // these columns are caching columns, need to seal them.
+          cacheManager.seal(ids[i]);
+          ColumnChunkMetaData columnChunkMetaData = rowGroupInfo.getColumns().get(i);
+          CacheMetaInfoValue cacheMetaInfoValue = new CacheMetaInfoValue(hostname,
+                  rowGroupOffset + columnChunkMetaData.getStartingPos(),
+                  columnChunkMetaData.getTotalSize());
+          LOG.info("cache info: file: " + reader.getFile() + ", " + cacheMetaInfoValue.toString());
+          CacheMetaInfo cacheMetaInfo = new StoreCacheMetaInfo(reader.getFile(),
+                  cacheMetaInfoValue);
+          if(externalDBClient != null) externalDBClient.upsert(cacheMetaInfo);
+          // TODO: evict info
+        }
+      }
     }
     super.close();
   }
@@ -232,29 +250,37 @@ public class CachedVectorizedParquetRecordReader extends SpecificParquetRecordRe
         batchSchema = batchSchema.add(f);
       }
     }
-
+    ColumnVector[] tmpColumnVector;
+    columnVectors = new ColumnVector[batchSchema.fields().length];
     if (memMode == MemoryMode.OFF_HEAP) {
-      columnVectors = OffHeapColumnVector.allocateColumns(capacity, batchSchema);
+      tmpColumnVector = OffHeapColumnVector.allocateColumns(capacity, batchSchema);
     } else {
-      columnVectors = OnHeapColumnVector.allocateColumns(capacity, batchSchema);
+      tmpColumnVector = OnHeapColumnVector.allocateColumns(capacity, batchSchema);
     }
-    columnarBatch = new ColumnarBatch(columnVectors);
+
     if (partitionColumns != null) {
       int partitionIdx = sparkSchema.fields().length;
       for (int i = 0; i < partitionColumns.fields().length; i++) {
-        ColumnVectorUtils.populate((WritableColumnVector) columnVectors[i + partitionIdx],
+        ColumnVectorUtils.populate((WritableColumnVector) tmpColumnVector[i + partitionIdx],
                 partitionValues, i);
-        ((WritableColumnVector)columnVectors[i + partitionIdx]).setIsConstant();
+        ((WritableColumnVector)tmpColumnVector[i + partitionIdx]).setIsConstant();
       }
     }
 
     // Initialize missing columns with nulls.
     for (int i = 0; i < missingColumns.length; i++) {
       if (missingColumns[i]) {
-        ((WritableColumnVector)columnVectors[i]).putNulls(0, capacity);
-        ((WritableColumnVector)columnVectors[i]).setIsConstant();
+        ((WritableColumnVector)tmpColumnVector[i]).putNulls(0, capacity);
+        ((WritableColumnVector)tmpColumnVector[i]).setIsConstant();
       }
     }
+
+    for (int i = 0; i < batchSchema.fields().length; i++) {
+      columnVectors[i] = new ReadOnlyColumnVectorV1(tmpColumnVector[i].dataType(), 0, 0, 0);
+      ((ReadOnlyColumnVectorV1)columnVectors[i])
+              .setColumnVectorWrapper((WritableColumnVector) tmpColumnVector[i]);
+    }
+    columnarBatch = new ColumnarBatch(columnVectors);
   }
 
   private void initBatch() {
@@ -292,20 +318,33 @@ public class CachedVectorizedParquetRecordReader extends SpecificParquetRecordRe
     checkEndOfRowGroup();
 
     int num = (int) Math.min((long) capacity, totalCountLoadedSoFar - rowsReturned);
-
+    ColumnVector[] tmpColumnVector = columnVectors;
+    columnVectors = new ColumnVector[sparkSchema.fields().length];
     for(int i = 0; i < columnReaders.length; ++i) {
       if(missingColumns[i]) continue;
       if(cachedColumns[i]) {
-        columnVectors[i] = cacheReaders[i].readBatch(num);
+        Array.set(columnVectors, i, cacheReaders[i].readBatch(num));
       } else {
-        ((WritableColumnVector)columnVectors[i]).reset();
-        columnReaders[i].readBatch(num, (WritableColumnVector)columnVectors[i]);
+        // columnVectors[i] = new OnHeapColumnVector(capacity, tmpColumnVector[i].dataType());
+        // ((WritableColumnVector)columnVectors[i]).reset();
+        // columnReaders[i].readBatch(num, (WritableColumnVector)columnVectors[i]);
+
+        WritableColumnVector column =
+                new OnHeapColumnVector(capacity, tmpColumnVector[i].dataType());
+        column.reset();
+        columnReaders[i].readBatch(num, column);
+        ReadOnlyColumnVectorV1 readOnlyColumnVectorV1 =
+                new ReadOnlyColumnVectorV1((tmpColumnVector[i]).dataType(), 0, 0, 0);
+        readOnlyColumnVectorV1.setColumnVectorWrapper(column);
+        Array.set(columnVectors, i, readOnlyColumnVectorV1);
         // TODO: async cache
-        CacheDumper.syncDumpToCache((WritableColumnVector)columnVectors[i],
-                (OapFiberCache) fiberCaches[i], num);
+        if(fiberCaches[i] != null){
+          CacheDumper.syncDumpToCache(column,
+                  (OapFiberCache) fiberCaches[i], num);
+        }
       }
     }
-
+    columnarBatch = new ColumnarBatch(columnVectors);
     rowsReturned += num;
     columnarBatch.setNumRows(num);
     numBatched = num;
@@ -314,8 +353,11 @@ public class CachedVectorizedParquetRecordReader extends SpecificParquetRecordRe
   }
 
   private void initializeInternal() throws IOException, UnsupportedOperationException {
+    cacheManager = CacheManagerFactory.getOrCreate(SparkEnv.get());
+    // externalDBClient = ExternalDBClientFactory.getOrCreateDBClientInstance(SparkEnv.get());
     // Check that the requested schema is supported.
     missingColumns = new boolean[requestedSchema.getFieldCount()];
+    ids = new ObjectId[requestedSchema.getFieldCount()];
     List<ColumnDescriptor> columns = requestedSchema.getColumns();
     List<String[]> paths = requestedSchema.getPaths();
     for (int i = 0; i < requestedSchema.getFieldCount(); ++i) {
@@ -344,10 +386,10 @@ public class CachedVectorizedParquetRecordReader extends SpecificParquetRecordRe
 
   private void checkEndOfRowGroup() throws IOException {
     if (rowsReturned != totalCountLoadedSoFar) return;
-    BlockMetaData rowGroupInfo =  reader.getFooter().getBlocks().get(rowGroupId);
+    BlockMetaData rowGroupInfo =  reader.getRowGroups().get(rowGroupId);
     long rowGroupOffset = rowGroupInfo.getStartingPos();
     for (int i = 0; i < ids.length; i++) {
-      if(missingColumns[i]) continue;
+      if(missingColumns[i] || ids[i] == null) continue;
       if(cachedColumns[i]) {
         // these columns are cached columns, need to release them.
         cacheManager.release(ids[i]);
@@ -358,13 +400,13 @@ public class CachedVectorizedParquetRecordReader extends SpecificParquetRecordRe
         CacheMetaInfoValue cacheMetaInfoValue = new CacheMetaInfoValue(hostname,
                 rowGroupOffset + columnChunkMetaData.getStartingPos(),
                 columnChunkMetaData.getTotalSize());
-        LOG.debug("cache info: file: " + reader.getFile() + ", " + cacheMetaInfoValue.toString());
+        LOG.info("cache info: file: " + reader.getFile() + ", " + cacheMetaInfoValue.toString());
         CacheMetaInfo cacheMetaInfo = new StoreCacheMetaInfo(reader.getFile(), cacheMetaInfoValue);
-        externalDBClient.upsert(cacheMetaInfo);
+        if(externalDBClient != null) externalDBClient.upsert(cacheMetaInfo);
         // TODO: evict info
       }
     }
-    rowGroupId++;
+
     PageReadStore pages = reader.readNextRowGroup();
     if (pages == null) {
       throw new IOException("expecting more rows but reached last block. Read "
@@ -381,10 +423,12 @@ public class CachedVectorizedParquetRecordReader extends SpecificParquetRecordRe
 
     for (int i = 0; i < columns.size(); ++i) {
       if (missingColumns[i]) continue;
-      // FIXME: how to get row group ID if this is a split file?
-      String key = file.getName() + " rowGroupId: " + rowGroupId + " columnId: " + i;
+      // we use row group offset + column name as key
+      String key = file.getName() +
+              " rowGroup offset: " + reader.getRowGroups().get(rowGroupId).getStartingPos() +
+              " columnId: " + sparkSchema.fields()[i].name();
       // TODO: remove this log, this maybe customer confident.
-      LOG.debug("cached key is " + key);
+      LOG.info("cached key is " + key);
       ObjectId id = new ObjectId(key);
       ids[i] = id;
       boolean hit = cacheManager.contains(id);
@@ -410,7 +454,15 @@ public class CachedVectorizedParquetRecordReader extends SpecificParquetRecordRe
         if(needCache) {
           long length = CacheDumper.calculateLength(batchSchema.fields()[i].dataType(),
                                                     pages.getRowCount());
-          fiberCaches[i] = cacheManager.create(id, length);
+          LOG.info("a cacheable type, total row num is " + pages.getRowCount()
+                  + " size is " + length);
+          try {
+            fiberCaches[i] = cacheManager.create(id, length);
+            ((OapFiberCache)fiberCaches[i]).setTotalRow((int)pages.getRowCount());
+          } catch (CacheManagerException e) {
+            fiberCaches[i] = null;
+            ids[i] = null;
+          }
         } else {
           // this columns can NOT cache.
           ids[i] = null;
@@ -418,6 +470,7 @@ public class CachedVectorizedParquetRecordReader extends SpecificParquetRecordRe
 
       }
     }
+    rowGroupId++;
     totalCountLoadedSoFar += pages.getRowCount();
   }
 }

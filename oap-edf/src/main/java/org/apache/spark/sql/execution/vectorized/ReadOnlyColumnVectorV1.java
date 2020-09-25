@@ -64,6 +64,10 @@ import org.apache.spark.unsafe.types.UTF8String;
 
 public class ReadOnlyColumnVectorV1 extends ColumnVector {
 
+  // ReadOnlyColumnVector will hold a wrapper even if this column is not cached.
+  // This is for code gen ,it will reflect to a subclass rather than a parent class.
+  private WritableColumnVector columnVectorWrapper = null;
+
   private ByteBuffer buffer;
   private DirectBuffer directBuffer;
   private boolean isDirect;
@@ -84,6 +88,10 @@ public class ReadOnlyColumnVectorV1 extends ColumnVector {
 
   private long nulls = 0;
   private long data = 0;
+
+  public void setColumnVectorWrapper(WritableColumnVector columnVector) {
+    columnVectorWrapper = columnVector;
+  }
 
   private void readDictionary(int dicLength, Long dicNativeAddress) {
     dictionary = null;
@@ -162,16 +170,19 @@ public class ReadOnlyColumnVectorV1 extends ColumnVector {
 
   @Override
   public boolean isNullAt(int rowId) {
-    return Platform.getByte(null, nulls + rowId) == 1;
+    if(columnVectorWrapper != null) return columnVectorWrapper.isNullAt(rowId);
+    return Platform.getBoolean(null, nulls + rowId) ;
   }
 
   @Override
   public boolean getBoolean(int rowId) {
+    if(columnVectorWrapper != null) return columnVectorWrapper.getBoolean(rowId);
     return Platform.getByte(null, data + rowId) == 1;
   }
 
   @Override
   public boolean[] getBooleans(int rowId, int count) {
+    if(columnVectorWrapper != null) return columnVectorWrapper.getBooleans(rowId, count);
     assert(dictionary == null);
     boolean[] array = new boolean[count];
     for (int i = 0; i < count; ++i) {
@@ -182,6 +193,7 @@ public class ReadOnlyColumnVectorV1 extends ColumnVector {
 
   @Override
   public byte getByte(int rowId) {
+    if(columnVectorWrapper != null) return columnVectorWrapper.getByte(rowId);
     if (dictionary == null) {
       return Platform.getByte(null, data + rowId);
     } else {
@@ -191,6 +203,7 @@ public class ReadOnlyColumnVectorV1 extends ColumnVector {
 
   @Override
   public byte[] getBytes(int rowId, int count) {
+    if(columnVectorWrapper != null) return columnVectorWrapper.getBytes(rowId, count);
     assert(dictionary == null);
     byte[] array = new byte[count];
     Platform.copyMemory(null, data + rowId, array, Platform.BYTE_ARRAY_OFFSET, count);
@@ -199,6 +212,7 @@ public class ReadOnlyColumnVectorV1 extends ColumnVector {
 
   @Override
   public short getShort(int rowId) {
+    if(columnVectorWrapper != null) return columnVectorWrapper.getShort(rowId);
     if (dictionary == null) {
       return Platform.getShort(null, data + 2L * rowId);
     } else {
@@ -208,6 +222,7 @@ public class ReadOnlyColumnVectorV1 extends ColumnVector {
 
   @Override
   public short[] getShorts(int rowId, int count) {
+    if(columnVectorWrapper != null) return columnVectorWrapper.getShorts(rowId, count);
     assert(dictionary == null);
     short[] array = new short[count];
     Platform.copyMemory(null, data + rowId * 2L, array, Platform.SHORT_ARRAY_OFFSET, count * 2L);
@@ -216,6 +231,7 @@ public class ReadOnlyColumnVectorV1 extends ColumnVector {
 
   @Override
   public int getInt(int rowId) {
+    if(columnVectorWrapper != null) return columnVectorWrapper.getInt(rowId);
     if (dictionary == null) {
       return Platform.getInt(null, data + 4L * rowId);
     } else {
@@ -225,6 +241,7 @@ public class ReadOnlyColumnVectorV1 extends ColumnVector {
 
   @Override
   public int[] getInts(int rowId, int count) {
+    if(columnVectorWrapper != null) return columnVectorWrapper.getInts(rowId, count);
     assert(dictionary == null);
     int[] array = new int[count];
     Platform.copyMemory(null, data + rowId * 4L, array, Platform.INT_ARRAY_OFFSET, count * 4L);
@@ -239,6 +256,7 @@ public class ReadOnlyColumnVectorV1 extends ColumnVector {
 
   @Override
   public long getLong(int rowId) {
+    if(columnVectorWrapper != null) return columnVectorWrapper.getLong(rowId);
     if (dictionary == null) {
       return Platform.getLong(null, data + 8L * rowId);
     } else {
@@ -248,6 +266,7 @@ public class ReadOnlyColumnVectorV1 extends ColumnVector {
 
   @Override
   public long[] getLongs(int rowId, int count) {
+    if(columnVectorWrapper != null) return columnVectorWrapper.getLongs(rowId, count);
     assert(dictionary == null);
     long[] array = new long[count];
     Platform.copyMemory(null, data + rowId * 8L, array, Platform.LONG_ARRAY_OFFSET, count * 8L);
@@ -256,6 +275,7 @@ public class ReadOnlyColumnVectorV1 extends ColumnVector {
 
   @Override
   public float getFloat(int rowId) {
+    if(columnVectorWrapper != null) return columnVectorWrapper.getFloat(rowId);
     if (dictionary == null) {
       return Platform.getFloat(null, data + rowId * 4L);
     } else {
@@ -265,6 +285,7 @@ public class ReadOnlyColumnVectorV1 extends ColumnVector {
 
   @Override
   public float[] getFloats(int rowId, int count) {
+    if(columnVectorWrapper != null) return columnVectorWrapper.getFloats(rowId, count);
     assert(dictionary == null);
     float[] array = new float[count];
     Platform.copyMemory(null, data + rowId * 4L, array, Platform.FLOAT_ARRAY_OFFSET, count * 4L);
@@ -273,6 +294,7 @@ public class ReadOnlyColumnVectorV1 extends ColumnVector {
 
   @Override
   public double getDouble(int rowId) {
+    if(columnVectorWrapper != null) return columnVectorWrapper.getDouble(rowId);
     if (dictionary == null) {
       return Platform.getDouble(null, data + rowId * 8L);
     } else {
@@ -282,6 +304,7 @@ public class ReadOnlyColumnVectorV1 extends ColumnVector {
 
   @Override
   public double[] getDoubles(int rowId, int count) {
+    if(columnVectorWrapper != null) return columnVectorWrapper.getDoubles(rowId, count);
     assert(dictionary == null);
     double[] array = new double[count];
     Platform.copyMemory(null, data + rowId * 8L, array, Platform.DOUBLE_ARRAY_OFFSET, count * 8L);
@@ -290,16 +313,19 @@ public class ReadOnlyColumnVectorV1 extends ColumnVector {
 
   @Override
   public ColumnarArray getArray(int rowId) {
+    if(columnVectorWrapper != null) return columnVectorWrapper.getArray(rowId);
     throw new UnsupportedOperationException();
   }
 
   @Override
   public ColumnarMap getMap(int ordinal) {
+    if(columnVectorWrapper != null) return columnVectorWrapper.getMap(ordinal);
     throw new UnsupportedOperationException();
   }
 
   @Override
   public Decimal getDecimal(int rowId, int precision, int scale) {
+    if(columnVectorWrapper != null) return columnVectorWrapper.getDecimal(rowId, precision, scale);
     if (isNullAt(rowId)) return null;
     if (precision <= Decimal.MAX_INT_DIGITS()) {
       return Decimal.createUnsafe(getInt(rowId), precision, scale);
@@ -316,16 +342,19 @@ public class ReadOnlyColumnVectorV1 extends ColumnVector {
 
   @Override
   public UTF8String getUTF8String(int rowId) {
+    if(columnVectorWrapper != null) return columnVectorWrapper.getUTF8String(rowId);
     throw new UnsupportedOperationException();
   }
 
   @Override
   public byte[] getBinary(int rowId) {
+    if(columnVectorWrapper != null) return columnVectorWrapper.getBinary(rowId);
     throw new UnsupportedOperationException();
   }
 
   @Override
   public ColumnVector getChild(int ordinal) {
+    if(columnVectorWrapper != null) return columnVectorWrapper.getChild(ordinal);
     throw new UnsupportedOperationException();
   }
 

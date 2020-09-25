@@ -48,7 +48,7 @@ import org.apache.spark.sql.catalyst.expressions.codegen.GenerateUnsafeProjectio
 import org.apache.spark.sql.catalyst.parser.LegacyTypeStringParser
 import org.apache.spark.sql.catalyst.util.DateTimeUtils
 import org.apache.spark.sql.execution.datasources._
-import org.apache.spark.sql.execution.vectorized.{OffHeapColumnVector, OnHeapColumnVector}
+import org.apache.spark.sql.execution.vectorized.{OffHeapColumnVector, OnHeapColumnVector, ReadOnlyColumnVectorV1}
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types._
@@ -278,7 +278,9 @@ class ParquetFileFormat
     partitionSchema: StructType,
     sqlConf: SQLConf): Option[Seq[String]] = {
     Option(Seq.fill(requiredSchema.fields.length + partitionSchema.fields.length)(
-      if (!sqlConf.offHeapColumnVectorEnabled) {
+      if (sqlConf.getConf(SQLConf.PARQUET_DATASOURCE_CACHE_ENABLE)) {
+        classOf[ReadOnlyColumnVectorV1].getName
+      } else if (!sqlConf.offHeapColumnVectorEnabled) {
         classOf[OnHeapColumnVector].getName
       } else {
         classOf[OffHeapColumnVector].getName
@@ -411,7 +413,7 @@ class ParquetFileFormat
       }
       val taskContext = Option(TaskContext.get())
       if (enableVectorizedReader) {
-        val vectorizedReader = Utils.classForName(sqlConf.getConf(SQLConf.PARQUET_READER_IMPL))
+        val vectorizedReader = Utils.classForName(sharedConf.get(SQLConf.PARQUET_READER_IMPL.key))
           .getConstructor(classOf[TimeZone], java.lang.Boolean.TYPE, java.lang.Integer.TYPE)
           .newInstance(convertTz.orNull,
             (enableOffHeapColumnVector && taskContext.isDefined).asInstanceOf[java.lang.Boolean],

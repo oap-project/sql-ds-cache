@@ -1682,6 +1682,12 @@ object SQLConf {
         "default implement is to get hosts according to hdfs location")
       .stringConf
       .createWithDefault("DefaultPartitionedFilePreferredLocsImpl")
+
+  val PARQUET_DATASOURCE_CACHE_ENABLE =
+    buildConf("spark.sql.parquet.datasouce.cache.enable")
+      .doc("if enable, will return ReadonlyColumnVector in  ParquetFileFormat.vectorTypes")
+      .booleanConf
+      .createWithDefault(false)
 }
 
 /**
