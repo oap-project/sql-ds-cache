@@ -17,9 +17,8 @@
 
 package org.apache.spark.sql.execution.cacheUtil
 
-import java.util.concurrent.atomic.AtomicReference
+import org.apache.spark.SparkEnv
 
-import org.apache.spark.sql.internal.SQLConf
 
 trait CacheManager {
 
@@ -48,19 +47,19 @@ private[sql] object CacheManagerFactory {
   private val lock = new Object()
   private var manager: CacheManager = _
 
-  def getOrCreate(conf: SQLConf): CacheManager = {
+  def getOrCreate(sparkEnv: SparkEnv): CacheManager = {
     lock.synchronized {
       if (manager == null) {
-        manager = createCacheManager(conf)
+        manager = createCacheManager(sparkEnv)
       }
       manager
     }
   }
 
-  private def createCacheManager(conf: SQLConf): CacheManager = {
+  private def createCacheManager(sparkEnv: SparkEnv): CacheManager = {
     // TODO: will use reflection to construct a new instance. For now, Let's just
     //  new a PlasmaCacheManager.
-    new PlasmaCacheManager(conf)
+    new PlasmaCacheManager(sparkEnv)
   }
 
 }

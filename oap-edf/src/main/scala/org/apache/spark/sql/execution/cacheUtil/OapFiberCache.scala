@@ -87,6 +87,7 @@ class OapFiberCache(buffer: ByteBuffer) extends FiberCache {
   def setTotalRow(num: Int): Unit = {
     totalRow = num
     Platform.putInt(null, getBuffer().address(), totalRow)
+    (0 until num).foreach(i => Platform.putBoolean(null, getBuffer().address() + headerLen + i, false))
   }
 
 }

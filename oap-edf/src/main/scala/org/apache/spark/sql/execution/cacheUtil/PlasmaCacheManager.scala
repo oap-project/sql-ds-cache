@@ -20,10 +20,10 @@ package org.apache.spark.sql.execution.cacheUtil
 import org.apache.arrow.plasma.PlasmaClient
 import org.apache.arrow.plasma.exceptions.{DuplicateObjectException, PlasmaClientException, PlasmaGetException, PlasmaOutOfMemoryException}
 
+import org.apache.spark.SparkEnv
 import org.apache.spark.internal.Logging
-import org.apache.spark.sql.internal.SQLConf
 
-class PlasmaCacheManager(conf: SQLConf) extends CacheManager with Logging {
+class PlasmaCacheManager(sparkEnv: SparkEnv) extends CacheManager with Logging {
 
   // TODO: do we need a pool here? If we need maintain a pool, we have to record a
   //  client-object map since one object have to be sealed by the client which create it.
@@ -33,6 +33,11 @@ class PlasmaCacheManager(conf: SQLConf) extends CacheManager with Logging {
   init()
 
   override def init(): Unit = {
+    try {
+      System.loadLibrary("plasma_java")
+    } catch {
+      case e: Exception => logError(s"load plasma jni lib failed " + e.getMessage)
+    }
     // TODO: get socket via SQLConf
     // val socketName = sqlConf.getConf("socket")
     client = new PlasmaClient("/tmp/plasmaStore", "", 0)
@@ -78,8 +83,8 @@ class PlasmaCacheManager(conf: SQLConf) extends CacheManager with Logging {
       case e: DuplicateObjectException =>
         // TODO: since we only have one client maybe we should not call get here?
         logWarning("Plasma object duplicate: " + e.getMessage +
-        ". Will try to get this object.")
-        get(id)
+        ". Please fallback.")
+        throw new CacheManagerException("Plasma exception:" + e.getMessage)
       case e: PlasmaOutOfMemoryException =>
         logWarning("Plasma Server is OutOfMemory! " + e.getMessage)
         throw new CacheManagerException("Plasma exception:" + e.getMessage)
