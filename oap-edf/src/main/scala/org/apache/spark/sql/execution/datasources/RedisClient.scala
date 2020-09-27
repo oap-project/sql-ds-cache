@@ -17,6 +17,7 @@
 
 package org.apache.spark.sql.execution.datasources
 
+import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
 
 import org.json4s.DefaultFormats
@@ -55,7 +56,11 @@ class RedisClient extends ExternalDBClient with Logging {
     try {
       jedisClientInstance = redisClientPool.getResource
       // start - 1 because zrange is (start, length]
-      val cacheMetaInfoValueSet = jedisClientInstance.zrange(fileName, start - 1, length)
+      val cacheMetaInfoValueJavaSet: java.util.Set[String] =
+        jedisClientInstance.zrange(fileName, start - 1, length)
+      val cacheMetaInfoValueSet: scala.collection.mutable.Set[String] =
+        cacheMetaInfoValueJavaSet.asScala
+
       for (x <- cacheMetaInfoValueSet.asInstanceOf[Set[String]]) {
         cacheMetaInfoArrayBuffer.+=(parse(x.asInstanceOf[String]).extract[CacheMetaInfoValue])
       }
