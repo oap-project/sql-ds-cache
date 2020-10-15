@@ -19,6 +19,7 @@ package org.apache.spark.sql.execution.datasources.parquet
 
 import java.io.IOException
 import java.net.URI
+import java.time.ZoneId
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
@@ -50,7 +51,7 @@ import org.apache.spark.sql.execution.vectorized.{OffHeapColumnVector, OnHeapCol
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types._
-import org.apache.spark.util.{SerializableConfiguration, ThreadUtils}
+import org.apache.spark.util.{SerializableConfiguration, ThreadUtils, Utils}
 
 class ParquetFileFormat
   extends FileFormat
@@ -316,7 +317,7 @@ class ParquetFileFormat
       val taskContext = Option(TaskContext.get())
       if (enableVectorizedReader) {
         val vectorizedReader = Utils.classForName(sharedConf.get(SQLConf.PARQUET_READER_IMPL.key))
-          .getConstructor(classOf[TimeZone], classOf[String], java.lang.Boolean.TYPE, java.lang.Integer.TYPE)
+          .getConstructor(classOf[ZoneId], classOf[String], java.lang.Boolean.TYPE, java.lang.Integer.TYPE)
           .newInstance(convertTz.orNull,
             datetimeRebaseMode.toString,
             (enableOffHeapColumnVector && taskContext.isDefined).asInstanceOf[java.lang.Boolean],
