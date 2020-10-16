@@ -25,6 +25,7 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.util.{Failure, Try}
 
+import com.intel.oap.vectorized.ArrowWritableColumnVector
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileStatus, Path}
 import org.apache.hadoop.mapreduce._
@@ -179,7 +180,9 @@ class ParquetFileFormat
     partitionSchema: StructType,
     sqlConf: SQLConf): Option[Seq[String]] = {
     Option(Seq.fill(requiredSchema.fields.length + partitionSchema.fields.length)(
-      if (!sqlConf.offHeapColumnVectorEnabled) {
+      if (sqlConf.getConf(SQLConf.PARQUET_DATASOURCE_CACHE_ENABLE)) {
+        classOf[ArrowWritableColumnVector].getName
+      } else if (!sqlConf.offHeapColumnVectorEnabled) {
         classOf[OnHeapColumnVector].getName
       } else {
         classOf[OffHeapColumnVector].getName
