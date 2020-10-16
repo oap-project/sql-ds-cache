@@ -28,54 +28,51 @@ import org.apache.spark.unsafe.Platform
 class OapFiberCache(buffer: ByteBuffer) extends FiberCache {
   def getBuffer(): DirectBuffer = buffer.asInstanceOf[DirectBuffer]
 
-  private var index: Int = 0
-  private var totalRow: Int = _
-  private val headerLen = 6
+  protected var index: Int = 0
+  protected var totalRow: Int = _
+  protected var nullArrayLen: Int = _
+  protected var headerLen = 6
 
   def writeByte(b: Byte): Unit = {
     // TODO: should impl a writeBytes() method for better performance.
     Platform.putByte(null,
-      getBuffer().address() + headerLen + totalRow + index * ByteType.defaultSize, b)
+      getBuffer().address() + headerLen + nullArrayLen + index * ByteType.defaultSize, b)
     index += 1
   }
 
   def writeBoolean(b: Boolean): Unit = {
     Platform.putBoolean(null,
-      getBuffer().address() + headerLen + totalRow + index * BooleanType.defaultSize, b)
+      getBuffer().address() + headerLen + nullArrayLen + index * BooleanType.defaultSize, b)
     index += 1
   }
-
 
   def writeShort(s: Short): Unit = {
     Platform.putShort(null,
-      getBuffer().address() + headerLen + totalRow + index * ShortType.defaultSize, s)
+      getBuffer().address() + headerLen + nullArrayLen + index * ShortType.defaultSize, s)
     index += 1
   }
-
 
   def writeInt(i: Int): Unit = {
     Platform.putInt(null,
-      getBuffer().address() + headerLen + totalRow + index * IntegerType.defaultSize, i)
+      getBuffer().address() + headerLen + nullArrayLen + index * IntegerType.defaultSize, i)
     index += 1
   }
-
 
   def writeLong(l: Long): Unit = {
     Platform.putLong(null,
-      getBuffer().address() + headerLen + totalRow + index * LongType.defaultSize, l)
+      getBuffer().address() + headerLen + nullArrayLen + index * LongType.defaultSize, l)
     index += 1
   }
 
-
   def writeFloat(f: Float): Unit = {
     Platform.putFloat(null,
-      getBuffer().address() + headerLen + totalRow + index * FloatType.defaultSize, f)
+      getBuffer().address() + headerLen + nullArrayLen + index * FloatType.defaultSize, f)
     index += 1
   }
 
   def writeDouble(d: Double): Unit = {
     Platform.putDouble(null,
-      getBuffer().address() + headerLen + totalRow + index * DoubleType.defaultSize, d)
+      getBuffer().address() + headerLen + nullArrayLen + index * DoubleType.defaultSize, d)
     index += 1
   }
 
@@ -86,8 +83,48 @@ class OapFiberCache(buffer: ByteBuffer) extends FiberCache {
 
   def setTotalRow(num: Int): Unit = {
     totalRow = num
+    nullArrayLen = totalRow
     Platform.putInt(null, getBuffer().address(), totalRow)
     (0 until num).foreach(i => Platform.putBoolean(null, getBuffer().address() + headerLen + i, false))
+  }
+
+}
+
+class ArrowFiberCache(buffer: ByteBuffer) extends OapFiberCache(buffer) {
+
+  private var nullCount: Long = 0
+  headerLen = 32
+
+  // TODO: use a bitmap rather than byte map for null array
+  override def writeNull() {
+    var s: Byte = Platform.getByte(null, getBuffer().address() + headerLen + index / 8)
+    s = (s | (0x01 << (index % 8))).toByte
+    Platform.putByte(null, getBuffer().address() + headerLen + index / 8, s)
+    nullCount += 1
+    index += 1
+  }
+
+  override def setTotalRow(num: Int): Unit = {
+    totalRow = num
+    // align to 16 Bytes
+    nullArrayLen = (totalRow / 8 + 0x0F) & (~0x0F)
+    Platform.putLong(null, getBuffer().address(), totalRow.toLong)
+    (0 until nullArrayLen).foreach(i => Platform.putByte(null,
+      getBuffer().address() + headerLen + i, 0.toByte))
+  }
+
+  def setDataType(dataType: DataType): Unit = {
+    val enum = dataType match {
+      case ByteType => 0
+      case BooleanType => 1
+      case ShortType => 2
+      case IntegerType => 3
+      case LongType => 4
+      case FloatType => 5
+      case DoubleType => 6
+      case _ => throw new UnsupportedOperationException("Type not support.")
+    }
+    Platform.putByte(null, getBuffer().address() + 16, enum.toByte)
   }
 
 }
@@ -135,6 +172,11 @@ object CacheDumper {
     // TODO: what if unfixed size type?
     // header + null + data
     6 + totalRow + dataType.defaultSize * totalRow
+  }
+
+  def calculateArrowLength(dataType: DataType, totalRow: Long): Long = {
+    // header + null bit array + data
+    32 + ((totalRow / 8 + 0x0F) & (~0x0F)) + dataType.defaultSize * totalRow
   }
 
   def canCache(dataType: DataType): Boolean = {

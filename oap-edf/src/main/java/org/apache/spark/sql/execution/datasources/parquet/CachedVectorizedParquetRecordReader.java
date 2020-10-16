@@ -23,6 +23,7 @@ import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.List;
 
+import com.intel.oap.vectorized.ArrowWritableColumnVector;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.parquet.column.ColumnDescriptor;
@@ -56,7 +57,7 @@ public class CachedVectorizedParquetRecordReader extends VectorizedParquetRecord
    * For each cached column, the reader to read this column from cache. This is NULL if this column
    * missing from cache, will populate the attribute with NULL.
    */
-  private VectorizedCacheReader[] cacheReaders;
+  private ArrowVectorizedCacheReader[] cacheReaders;
 
   /**
    * Flags for which column have been cached.
@@ -258,12 +259,7 @@ public class CachedVectorizedParquetRecordReader extends VectorizedParquetRecord
     }
     ColumnVector[] tmpColumnVector;
     columnVectors = new ColumnVector[batchSchema.fields().length];
-    if (memMode == MemoryMode.OFF_HEAP) {
-      tmpColumnVector = OffHeapColumnVector.allocateColumns(capacity, batchSchema);
-    } else {
-      tmpColumnVector = OnHeapColumnVector.allocateColumns(capacity, batchSchema);
-    }
-
+    tmpColumnVector = ArrowWritableColumnVector.allocateColumns(capacity, batchSchema);
     if (partitionColumns != null) {
       int partitionIdx = sparkSchema.fields().length;
       for (int i = 0; i < partitionColumns.fields().length; i++) {
@@ -282,9 +278,8 @@ public class CachedVectorizedParquetRecordReader extends VectorizedParquetRecord
     }
 
     for (int i = 0; i < batchSchema.fields().length; i++) {
-      columnVectors[i] = new ReadOnlyColumnVectorV1(tmpColumnVector[i].dataType(), 0, 0, 0);
-      ((ReadOnlyColumnVectorV1)columnVectors[i])
-              .setColumnVectorWrapper((WritableColumnVector) tmpColumnVector[i]);
+      columnVectors[i] = tmpColumnVector[i];
+
     }
     columnarBatch = new ColumnarBatch(columnVectors);
   }
@@ -336,13 +331,10 @@ public class CachedVectorizedParquetRecordReader extends VectorizedParquetRecord
         // columnReaders[i].readBatch(num, (WritableColumnVector)columnVectors[i]);
 
         WritableColumnVector column =
-                new OnHeapColumnVector(capacity, tmpColumnVector[i].dataType());
+                new ArrowWritableColumnVector(capacity, tmpColumnVector[i].dataType());
         column.reset();
         columnReaders[i].readBatch(num, column);
-        ReadOnlyColumnVectorV1 readOnlyColumnVectorV1 =
-                new ReadOnlyColumnVectorV1((tmpColumnVector[i]).dataType(), 0, 0, 0);
-        readOnlyColumnVectorV1.setColumnVectorWrapper(column);
-        Array.set(columnVectors, i, readOnlyColumnVectorV1);
+        Array.set(columnVectors, i, column);
         // TODO: async cache
         if(fiberCaches[i] != null){
           CacheDumper.syncDumpToCache(column,
@@ -422,7 +414,7 @@ public class CachedVectorizedParquetRecordReader extends VectorizedParquetRecord
     List<Type> types = requestedSchema.asGroupType().getFields();
     int columnNum = columns.size();
     columnReaders = new VectorizedColumnReader[columnNum];
-    cacheReaders = new VectorizedCacheReader[columnNum];
+    cacheReaders = new ArrowVectorizedCacheReader[columnNum];
     fiberCaches = new FiberCache[columnNum];
     cachedColumns = new boolean[columnNum];
     ids = new ObjectId[columnNum];
@@ -442,7 +434,7 @@ public class CachedVectorizedParquetRecordReader extends VectorizedParquetRecord
         try {
           fiberCaches[i] = cacheManager.get(id);
           cachedColumns[i] = true;
-          cacheReaders[i] = new VectorizedCacheReader(batchSchema.fields()[i].dataType(),
+          cacheReaders[i] = new ArrowVectorizedCacheReader(batchSchema.fields()[i].dataType(),
                   fiberCaches[i]);
         } catch (CacheManagerException e) {
           cachedColumns[i] = false;
