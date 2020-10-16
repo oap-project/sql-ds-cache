@@ -315,11 +315,13 @@ class ParquetFileFormat
       }
       val taskContext = Option(TaskContext.get())
       if (enableVectorizedReader) {
-        val vectorizedReader = new VectorizedParquetRecordReader(
-          convertTz.orNull,
-          datetimeRebaseMode.toString,
-          enableOffHeapColumnVector && taskContext.isDefined,
-          capacity)
+        val vectorizedReader = Utils.classForName(sharedConf.get(SQLConf.PARQUET_READER_IMPL.key))
+          .getConstructor(classOf[TimeZone], classOf[String], java.lang.Boolean.TYPE, java.lang.Integer.TYPE)
+          .newInstance(convertTz.orNull,
+            datetimeRebaseMode.toString,
+            (enableOffHeapColumnVector && taskContext.isDefined).asInstanceOf[java.lang.Boolean],
+            capacity.asInstanceOf[java.lang.Integer])
+          .asInstanceOf[VectorizedParquetRecordReader]
         val iter = new RecordReaderIterator(vectorizedReader)
         // SPARK-23457 Register a task completion listener before `initialization`.
         taskContext.foreach(_.addTaskCompletionListener[Unit](_ => iter.close()))

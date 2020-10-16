@@ -2446,6 +2446,29 @@ object SQLConf {
       .createWithDefault(
         "https://maven-central.storage-download.googleapis.com/maven2/")
 
+  val PARQUET_READER_IMPL =
+    buildConf("spark.sql.parquet.reader.impl")
+      .doc("Create a Parquet reader implementation class by reflection, default value is " +
+        "VectorizedParquetRecordReader, user could impl a pluggable class.")
+      .version("3.0.0")
+      .stringConf
+      .createWithDefault("VectorizedParquetRecordReader")
+
+  val PARTITIONED_FILE_PREFERREDLOC_IMPL =
+    buildConf("spark.sql.partitioned.file.preferredLoc.impl")
+      .doc("partitionedFile's preferred location, " +
+        "default implement is to get hosts according to hdfs location")
+      .version("3.0.0")
+      .stringConf
+      .createWithDefault("DefaultPartitionedFilePreferredLocsImpl")
+
+  val PARQUET_DATASOURCE_CACHE_ENABLE =
+    buildConf("spark.sql.parquet.datasouce.cache.enable")
+      .doc("if enable, will return ReadonlyColumnVector in  ParquetFileFormat.vectorTypes")
+      .version("3.0.0")
+      .booleanConf
+      .createWithDefault(false)
+
   val LEGACY_FROM_DAYTIME_STRING =
     buildConf("spark.sql.legacy.fromDayTimeString.enabled")
       .internal()

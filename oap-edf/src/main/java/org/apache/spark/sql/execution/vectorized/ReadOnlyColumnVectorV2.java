@@ -112,7 +112,7 @@ public class ReadOnlyColumnVectorV2 extends ColumnVector {
   }
 
   @Override
-  protected ColumnVector getChild(int ordinal) {
+  public ColumnVector getChild(int ordinal) {
     return null;
   }
 }
