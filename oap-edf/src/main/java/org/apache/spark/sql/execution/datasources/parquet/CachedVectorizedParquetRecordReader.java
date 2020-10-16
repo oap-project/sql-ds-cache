@@ -19,9 +19,9 @@ package org.apache.spark.sql.execution.datasources.parquet;
 
 import java.io.IOException;
 import java.lang.reflect.Array;
+import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.List;
-import java.util.TimeZone;
 
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
@@ -115,7 +115,12 @@ public class CachedVectorizedParquetRecordReader extends VectorizedParquetRecord
    * The timezone that timestamp INT96 values should be converted to. Null if no conversion. Here to
    * workaround incompatibilities between different engines when writing timestamp values.
    */
-  private TimeZone convertTz = null;
+  private final ZoneId convertTz;
+
+  /**
+   * The mode of rebasing date/timestamp from Julian to Proleptic Gregorian calendar.
+   */
+  private final String datetimeRebaseMode;
 
   /**
    * columnBatch object that is used for batch decoding. This is created on first use and triggers
@@ -145,10 +150,11 @@ public class CachedVectorizedParquetRecordReader extends VectorizedParquetRecord
    */
   private MemoryMode MEMORY_MODE;
 
-  public CachedVectorizedParquetRecordReader(TimeZone convertTz, boolean useOffHeap,
-                                             int capacity) {
-    super(convertTz, useOffHeap, capacity);
+  public CachedVectorizedParquetRecordReader(ZoneId convertTz, String datetimeRebaseMode,
+                                             boolean useOffHeap, int capacity) {
+    super(convertTz, datetimeRebaseMode, useOffHeap, capacity);
     this.convertTz = convertTz;
+    this.datetimeRebaseMode = datetimeRebaseMode;
     MEMORY_MODE = useOffHeap ? MemoryMode.OFF_HEAP : MemoryMode.ON_HEAP;
     this.capacity = capacity;
     hostname = SparkEnv.get().blockManager().blockManagerId().host();
@@ -443,13 +449,13 @@ public class CachedVectorizedParquetRecordReader extends VectorizedParquetRecord
           cacheReaders[i] = null;
           columnReaders[i] = new VectorizedColumnReader(columns.get(i),
                   types.get(i).getOriginalType(),
-                  pages.getPageReader(columns.get(i)), convertTz);
+                  pages.getPageReader(columns.get(i)), convertTz, datetimeRebaseMode);
         }
       } else {
         // Maybe we should call reportCache here.
         columnReaders[i] = new VectorizedColumnReader(columns.get(i),
                 types.get(i).getOriginalType(),
-                pages.getPageReader(columns.get(i)), convertTz);
+                pages.getPageReader(columns.get(i)), convertTz, datetimeRebaseMode);
         boolean needCache = CacheDumper.canCache(batchSchema.fields()[i].dataType());
         if(needCache) {
           long length = CacheDumper.calculateLength(batchSchema.fields()[i].dataType(),
