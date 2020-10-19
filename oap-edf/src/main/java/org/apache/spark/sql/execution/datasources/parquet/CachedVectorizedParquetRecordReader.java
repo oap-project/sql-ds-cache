@@ -454,7 +454,7 @@ public class CachedVectorizedParquetRecordReader extends VectorizedParquetRecord
                 pages.getPageReader(columns.get(i)), convertTz, datetimeRebaseMode);
         boolean needCache = CacheDumper.canCache(batchSchema.fields()[i].dataType());
         if(needCache) {
-          long length = CacheDumper.calculateLength(batchSchema.fields()[i].dataType(),
+          long length = CacheDumper.calculateArrowLength(batchSchema.fields()[i].dataType(),
                                                     pages.getRowCount());
           LOG.info("a cacheable type, total row num is " + pages.getRowCount()
                   + " size is " + length);
