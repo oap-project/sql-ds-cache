@@ -324,12 +324,13 @@ public class CachedVectorizedParquetRecordReader extends VectorizedParquetRecord
     for(int i = 0; i < columnReaders.length; ++i) {
       if(missingColumns[i]) continue;
       if(cachedColumns[i]) {
+        if(tmpColumnVector[i] != null) tmpColumnVector[i].close();
         Array.set(columnVectors, i, cacheReaders[i].readBatch(num));
       } else {
         // columnVectors[i] = new OnHeapColumnVector(capacity, tmpColumnVector[i].dataType());
         // ((WritableColumnVector)columnVectors[i]).reset();
         // columnReaders[i].readBatch(num, (WritableColumnVector)columnVectors[i]);
-
+        if(tmpColumnVector[i] != null) tmpColumnVector[i].close();
         WritableColumnVector column =
                 new ArrowWritableColumnVector(capacity, tmpColumnVector[i].dataType());
         column.reset();
@@ -403,6 +404,9 @@ public class CachedVectorizedParquetRecordReader extends VectorizedParquetRecord
         if(externalDBClient != null) externalDBClient.upsert(cacheMetaInfo);
         // TODO: evict info
       }
+    }
+    for (ColumnVector cv : columnVectors) {
+      cv.close();
     }
 
     PageReadStore pages = reader.readNextRowGroup();

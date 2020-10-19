@@ -32,6 +32,7 @@ import org.apache.spark.unsafe.Platform;
 public class ArrowVectorizedCacheReader extends VectorizedCacheReader {
 
   long total;
+  static BufferAllocator allocator = new RootAllocator(Long.MAX_VALUE);
 
   public ArrowVectorizedCacheReader(DataType type, FiberCache fiberCache) {
     super(type, fiberCache);
@@ -84,7 +85,6 @@ public class ArrowVectorizedCacheReader extends VectorizedCacheReader {
 
   // we are using byte type in cache while vector use bit.
   private ValueVector buildBitVector(long nullOffset, long dataOffset, int num) {
-    BufferAllocator allocator = new RootAllocator(Long.MAX_VALUE);
     BitVector vector = new BitVector("bit vector", allocator);
     vector.allocateNew(num);
     for (int i = 0; i < num; i++) {
@@ -95,7 +95,6 @@ public class ArrowVectorizedCacheReader extends VectorizedCacheReader {
   }
 
   private ValueVector buildTinyIntVector(long nullOffset, long dataOffset, int num) {
-    BufferAllocator allocator = new RootAllocator(Long.MAX_VALUE);
     TinyIntVector vector = new TinyIntVector("tinyint vector", allocator);
     vector.allocateNew(num);
     for (int i = 0; i < num; i++) {
@@ -106,7 +105,6 @@ public class ArrowVectorizedCacheReader extends VectorizedCacheReader {
   }
 
   private ValueVector buildSmallIntVector(long nullOffset, long dataOffset, int num) {
-    BufferAllocator allocator = new RootAllocator(Long.MAX_VALUE);
     SmallIntVector vector = new SmallIntVector("smallint vector", allocator);
     vector.allocateNew(num);
     for (int i = 0; i < num; i++) {
@@ -117,7 +115,6 @@ public class ArrowVectorizedCacheReader extends VectorizedCacheReader {
   }
 
   private ValueVector buildIntVector(long nullOffset, long dataOffset, int num) {
-    BufferAllocator allocator = new RootAllocator(Long.MAX_VALUE);
     IntVector vector = new IntVector("int vector", allocator);
     vector.allocateNew(num);
     for (int i = 0; i < num; i++) {
@@ -128,7 +125,6 @@ public class ArrowVectorizedCacheReader extends VectorizedCacheReader {
   }
 
   private ValueVector buildBigIntVector(long nullOffset, long dataOffset, int num) {
-    BufferAllocator allocator = new RootAllocator(Long.MAX_VALUE);
     BigIntVector vector = new BigIntVector("bigint vector", allocator);
     vector.allocateNew(num);
     for (int i = 0; i < num; i++) {
@@ -139,7 +135,6 @@ public class ArrowVectorizedCacheReader extends VectorizedCacheReader {
   }
 
   private ValueVector buildFloat4Vector(long nullOffset, long dataOffset, int num) {
-    BufferAllocator allocator = new RootAllocator(Long.MAX_VALUE);
     Float4Vector vector = new Float4Vector("float4 vector", allocator);
     vector.allocateNew(num);
     for (int i = 0; i < num; i++) {
@@ -150,7 +145,6 @@ public class ArrowVectorizedCacheReader extends VectorizedCacheReader {
   }
 
   private ValueVector buildFloat8Vector(long nullOffset, long dataOffset, int num) {
-    BufferAllocator allocator = new RootAllocator(Long.MAX_VALUE);
     Float8Vector vector = new Float8Vector("float8 vector", allocator);
     vector.allocateNew(num);
     for (int i = 0; i < num; i++) {
@@ -161,7 +155,6 @@ public class ArrowVectorizedCacheReader extends VectorizedCacheReader {
   }
 
   private ValueVector buildVarCharVector(long nullOffset, long dataOffset, int num) {
-    BufferAllocator allocator = new RootAllocator(Long.MAX_VALUE);
     VarCharVector vector = new VarCharVector("VarChar vector", allocator);
     // TODO: impl
     return vector;

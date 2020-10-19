@@ -51,7 +51,8 @@ class PlasmaCacheManager(sparkEnv: SparkEnv) extends CacheManager with Logging {
     // TODO: what if get an unsealed object? Let's throw an exception here,
     //  higher level should catch this exception and do some fall back.
     try {
-      new OapFiberCache(client.getObjAsByteBuffer(id.toByteArray(), -1, false));
+      // TODO: should not return a ArrowFiberCache directly
+      new ArrowFiberCache(client.getObjAsByteBuffer(id.toByteArray(), -1, false));
     } catch {
       case e: PlasmaGetException =>
         logWarning("Plasma get exception: " + e.getMessage + ". Please catch a  exception" +
@@ -78,7 +79,7 @@ class PlasmaCacheManager(sparkEnv: SparkEnv) extends CacheManager with Logging {
       if (length > Int.MaxValue) {
         throw new ArithmeticException(s"Can't create $length bytes Object")
       }
-      new OapFiberCache(client.create(id.toByteArray(), length.toInt))
+      new ArrowFiberCache(client.create(id.toByteArray(), length.toInt))
     } catch {
       case e: DuplicateObjectException =>
         // TODO: since we only have one client maybe we should not call get here?
