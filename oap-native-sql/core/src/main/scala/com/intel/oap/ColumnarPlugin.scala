@@ -35,24 +35,7 @@ case class ColumnarPreOverrides(conf: SparkConf) extends Rule[SparkPlan] {
   val columnarConf = ColumnarPluginConfig.getConf(conf)
 
   def replaceWithColumnarPlan(plan: SparkPlan): SparkPlan = plan match {
-    case plan: BatchScanExec =>
-      logDebug(s"Columnar Processing for ${plan.getClass} is currently supported.")
-      new ColumnarBatchScanExec(plan.output, plan.scan)
-    case plan: ProjectExec =>
-      //new ColumnarProjectExec(plan.projectList, replaceWithColumnarPlan(plan.child))
-      val columnarPlan = replaceWithColumnarPlan(plan.child)
-      val res = if (!columnarPlan.isInstanceOf[ColumnarConditionProjectExec]) {
-        new ColumnarConditionProjectExec(null, plan.projectList, columnarPlan)
-      } else {
-        val cur_plan = columnarPlan.asInstanceOf[ColumnarConditionProjectExec]
-        new ColumnarConditionProjectExec(cur_plan.condition, plan.projectList, cur_plan.child)
-      }
-      logDebug(s"Columnar Processing for ${plan.getClass} is currently supported.")
-      res
-    case plan: FilterExec =>
-      val child = replaceWithColumnarPlan(plan.child)
-      logDebug(s"Columnar Processing for ${plan.getClass} is currently supported.")
-      new ColumnarConditionProjectExec(plan.condition, null, child)
+    // remove these plans, should be more graceful like add some config.
     case plan: HashAggregateExec =>
       val child = replaceWithColumnarPlan(plan.child)
       logDebug(s"Columnar Processing for ${plan.getClass} is currently supported.")
