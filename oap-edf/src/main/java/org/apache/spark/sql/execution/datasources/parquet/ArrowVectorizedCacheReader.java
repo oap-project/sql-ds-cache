@@ -44,7 +44,7 @@ public class ArrowVectorizedCacheReader extends VectorizedCacheReader {
       long addr = ((ArrowFiberCache) fiberCache).getBuffer().address();
       long header = 32;
       long nullOffset = addr + header + index / 8;
-      long dataOffset = addr + header + ((total / 8 + 0x0F) & (~0x0F)) + index * typeSize;
+      long dataOffset = addr + header + ((total / 8 + 0x10) & (~0x0F)) + index * typeSize;
       // TODO: construct a ValueVector via Offset
       ValueVector vector = buildVector(nullOffset, dataOffset, num);
       ColumnVector column = new ArrowWritableColumnVector(vector, null, 0, num, false);

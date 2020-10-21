@@ -460,7 +460,7 @@ public class CachedVectorizedParquetRecordReader extends VectorizedParquetRecord
                   + " size is " + length);
           try {
             fiberCaches[i] = cacheManager.create(id, length);
-            ((OapFiberCache)fiberCaches[i]).setTotalRow((int)pages.getRowCount());
+            ((ArrowFiberCache)fiberCaches[i]).setTotalRow((int)pages.getRowCount());
           } catch (CacheManagerException e) {
             fiberCaches[i] = null;
             ids[i] = null;
