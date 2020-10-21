@@ -107,7 +107,7 @@ class ArrowFiberCache(buffer: ByteBuffer) extends OapFiberCache(buffer) {
   override def setTotalRow(num: Int): Unit = {
     totalRow = num
     // align to 16 Bytes
-    nullArrayLen = (totalRow / 8 + 0x0F) & (~0x0F)
+    nullArrayLen = (totalRow / 8 + 0x10) & (~0x0F)
     Platform.putLong(null, getBuffer().address(), totalRow.toLong)
     (0 until nullArrayLen).foreach(i => Platform.putByte(null,
       getBuffer().address() + headerLen + i, 0.toByte))
@@ -176,7 +176,7 @@ object CacheDumper {
 
   def calculateArrowLength(dataType: DataType, totalRow: Long): Long = {
     // header + null bit array + data
-    32 + ((totalRow / 8 + 0x0F) & (~0x0F)) + dataType.defaultSize * totalRow
+    32 + ((totalRow / 8 + 0x10) & (~0x0F)) + dataType.defaultSize * totalRow
   }
 
   def canCache(dataType: DataType): Boolean = {
