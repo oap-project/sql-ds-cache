@@ -24,6 +24,7 @@ import sun.nio.ch.DirectBuffer
 import org.apache.spark.sql.execution.vectorized.WritableColumnVector
 import org.apache.spark.sql.types._
 import org.apache.spark.unsafe.Platform
+import org.apache.spark.unsafe.types.UTF8String
 
 class OapFiberCache(buffer: ByteBuffer) extends FiberCache {
   def getBuffer(): DirectBuffer = buffer.asInstanceOf[DirectBuffer]
@@ -32,6 +33,8 @@ class OapFiberCache(buffer: ByteBuffer) extends FiberCache {
   protected var totalRow: Int = _
   protected var nullArrayLen: Int = _
   protected var headerLen = 6
+
+  private var currentDataAddrCursor: Int = 0
 
   def writeByte(b: Byte): Unit = {
     // TODO: should impl a writeBytes() method for better performance.
@@ -81,6 +84,30 @@ class OapFiberCache(buffer: ByteBuffer) extends FiberCache {
     index += 1
   }
 
+  def writeString(s: UTF8String): Unit = {
+    val length = s.getBytes.length
+
+    val offsetArrayAddr = getBuffer().address() + headerLen + nullArrayLen + index * 4
+    val lengthArrayAddr = getBuffer().address() + headerLen + nullArrayLen + totalRow * 4 + index * 4
+
+    // write this string's offset
+    Platform.putInt(null, offsetArrayAddr, headerLen + nullArrayLen + totalRow * 4 * 2 + currentDataAddrCursor)
+
+    // write this string's length
+    Platform.putInt(null, lengthArrayAddr, length)
+
+    var dataOffSet = getBuffer().address() + Platform.getInt(null, offsetArrayAddr)
+
+    // write data
+    for (byte <- s.getBytes) {
+      Platform.putByte(null, dataOffSet, byte)
+      dataOffSet += ByteType.defaultSize
+    }
+
+    currentDataAddrCursor += length
+    index += 1
+  }
+
   def setTotalRow(num: Int): Unit = {
     totalRow = num
     nullArrayLen = totalRow
@@ -122,6 +149,7 @@ class ArrowFiberCache(buffer: ByteBuffer) extends OapFiberCache(buffer) {
       case LongType => 4
       case FloatType => 5
       case DoubleType => 6
+      case StringType => 7
       case _ => throw new UnsupportedOperationException("Type not support.")
     }
     Platform.putByte(null, getBuffer().address() + 16, enum.toByte)
@@ -164,6 +192,11 @@ object CacheDumper {
         (0 until num).foreach(i =>
           if (columnVector.isNullAt(i)) fiberCache.writeNull()
           else fiberCache.writeDouble(columnVector.getDouble(i)))
+      case StringType =>
+        (0 until num).foreach(i =>
+          if (columnVector.isNullAt(i)) fiberCache.writeNull()
+          else fiberCache.writeString(columnVector.getUTF8String(i))
+        )
       case other => throw new UnsupportedOperationException(s"$other data type is not support data cache.")
     }
   }
@@ -175,14 +208,19 @@ object CacheDumper {
   }
 
   def calculateArrowLength(dataType: DataType, totalRow: Long): Long = {
+    dataType match {
+      case StringType =>
+        32 + ((totalRow / 8 + 0x10) & (~0x0F)) + totalRow * 4 + totalRow * 4 + dataType.defaultSize * totalRow
+      case _ =>
+        32 + ((totalRow / 8 + 0x10) & (~0x0F)) + dataType.defaultSize * totalRow
+    }
     // header + null bit array + data
-    32 + ((totalRow / 8 + 0x10) & (~0x0F)) + dataType.defaultSize * totalRow
   }
 
   def canCache(dataType: DataType): Boolean = {
     dataType match {
       case ByteType | BooleanType | ShortType | IntegerType | LongType |
-           FloatType | DoubleType => true
+           FloatType | DoubleType | StringType => true
       case other => false
     }
   }

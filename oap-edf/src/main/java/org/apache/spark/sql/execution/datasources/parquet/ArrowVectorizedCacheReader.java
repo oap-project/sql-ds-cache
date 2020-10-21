@@ -21,6 +21,7 @@ import com.intel.oap.vectorized.ArrowWritableColumnVector;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
 import org.apache.arrow.vector.*;
+import org.apache.arrow.vector.util.Text;
 
 import org.apache.spark.sql.execution.cacheUtil.ArrowFiberCache;
 import org.apache.spark.sql.execution.cacheUtil.FiberCache;
@@ -43,13 +44,22 @@ public class ArrowVectorizedCacheReader extends VectorizedCacheReader {
     if(fiberCache instanceof ArrowFiberCache) {
       long addr = ((ArrowFiberCache) fiberCache).getBuffer().address();
       long header = 32;
-      long nullOffset = addr + header + index / 8;
-      long dataOffset = addr + header + ((total / 8 + 0x10) & (~0x0F)) + index * typeSize;
-      // TODO: construct a ValueVector via Offset
-      ValueVector vector = buildVector(nullOffset, dataOffset, num);
-      ColumnVector column = new ArrowWritableColumnVector(vector, null, 0, num, false);
-      index += num;
-      return column;
+      long nullOffSet = addr + header + index / 8;
+      if (this.type instanceof StringType) {
+        long offSetAddr = addr + header + ((total / 8 + 0x10) & (~0x0F)) + index * 4;
+        long lengthAddr = addr + header + ((total / 8 + 0x10) & (~0x0F)) + total * 4 + index * 4;
+        ValueVector vector = buildNonFixedTypeVector(nullOffSet, offSetAddr, lengthAddr, num);
+        ColumnVector column = new ArrowWritableColumnVector(vector, null, 0, num, false);
+        index += num;
+        return column;
+      } else {
+        long dataOffset = addr + header + ((total / 8 + 0x10) & (~0x0F)) + index * typeSize;
+        // TODO: construct a ValueVector via Offset
+        ValueVector vector = buildVector(nullOffSet, dataOffset, num);
+        ColumnVector column = new ArrowWritableColumnVector(vector, null, 0, num, false);
+        index += num;
+        return column;
+      }
     } else {
       throw new UnsupportedOperationException("Only support ArrowFiberCache Now");
     }
@@ -70,11 +80,19 @@ public class ArrowVectorizedCacheReader extends VectorizedCacheReader {
       return buildFloat4Vector(nullOffset, dataOffset, num);
     } else if (type instanceof DoubleType) {
       return buildFloat8Vector(nullOffset, dataOffset, num);
-    } else if (type instanceof StringType) {
-      return buildVarCharVector(nullOffset, dataOffset, num);
     } else {
       // TODO: Decimal type, TimeStamp type.
-      throw new UnsupportedOperationException("type not support!");
+      throw new UnsupportedOperationException("type: " + type.typeName() + " not support!");
+    }
+  }
+
+  private ValueVector buildNonFixedTypeVector(long nullOffset,
+          long nonFixedOffSetAddr, long nonFixedLengthAddr, int num) {
+    if (type instanceof StringType) {
+      return buildVarCharVector(nullOffset, nonFixedOffSetAddr, nonFixedLengthAddr, num);
+    } else {
+      throw new UnsupportedOperationException("non fixed length type: "
+              + type.typeName() + " not support!");
     }
   }
 
@@ -154,9 +172,25 @@ public class ArrowVectorizedCacheReader extends VectorizedCacheReader {
     return vector;
   }
 
-  private ValueVector buildVarCharVector(long nullOffset, long dataOffset, int num) {
+  private ValueVector buildVarCharVector(long nullOffset,
+          long nonFixedOffsetAddr, long nonFixedLengthAddr, int num) {
     VarCharVector vector = new VarCharVector("VarChar vector", allocator);
-    // TODO: impl
+    vector.allocateNew(num);
+    long addr = ((ArrowFiberCache) fiberCache).getBuffer().address();
+    for (int i = 0; i < num; i++) {
+      if (isNullAt(nullOffset, i)) vector.setNull(i);
+      else {
+        int offSet = Platform.getInt(null, nonFixedOffsetAddr + i * 4);
+        long dataAddr = addr + offSet;
+        int length = Platform.getInt(null, nonFixedLengthAddr + i * 4);
+        byte[] bytes = new byte[length];
+        for (int j = 0; j < length; j++) {
+          bytes[j] = Platform.getByte(null, dataAddr);
+          dataAddr ++;
+        }
+        vector.setSafe(i, new Text(bytes));
+      }
+    }
     return vector;
   }
 }

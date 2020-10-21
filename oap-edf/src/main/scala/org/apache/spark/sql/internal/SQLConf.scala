@@ -2463,7 +2463,7 @@ object SQLConf {
       .createWithDefault("DefaultPartitionedFilePreferredLocsImpl")
 
   val PARQUET_DATASOURCE_CACHE_ENABLE =
-    buildConf("spark.sql.parquet.datasouce.cache.enable")
+    buildConf("spark.sql.parquet.datasource.cache.enable")
       .doc("if enable, will return ReadonlyColumnVector in  ParquetFileFormat.vectorTypes")
       .version("3.0.0")
       .booleanConf

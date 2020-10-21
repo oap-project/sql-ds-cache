@@ -26,7 +26,7 @@ import org.apache.spark.SparkFunSuite
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.execution.cacheUtil.{ArrowFiberCache, CacheDumper}
 import org.apache.spark.sql.execution.datasources.parquet.ArrowVectorizedCacheReader
-import org.apache.spark.sql.types.{BooleanType, DoubleType, FloatType, IntegerType, LongType, ShortType};
+import org.apache.spark.sql.types.{BooleanType, DoubleType, FloatType, IntegerType, LongType, ShortType, StringType};
 
 class CacheArrowWritableCoumnVectorSuite extends SparkFunSuite with BeforeAndAfterEach with Logging {
 
@@ -58,9 +58,7 @@ class CacheArrowWritableCoumnVectorSuite extends SparkFunSuite with BeforeAndAft
         assert(arrowColumn.isNullAt(i))
       } else {
         assert(!arrowColumn.isNullAt(i))
-        val val1 = column.getBoolean(i)
-        val val2 = arrowColumn.getBoolean(i)
-        assert(val1 == val2)
+        assert(column.getBoolean(i) == arrowColumn.getBoolean(i))
       }
     }
   }
@@ -93,9 +91,7 @@ class CacheArrowWritableCoumnVectorSuite extends SparkFunSuite with BeforeAndAft
         assert(arrowColumn.isNullAt(i))
       } else {
         assert(!arrowColumn.isNullAt(i))
-        val val1 = column.getShort(i)
-        val val2 = arrowColumn.getShort(i)
-        assert(val1 == val2)
+        assert(column.getShort(i) == arrowColumn.getShort(i))
       }
     }
   }
@@ -128,9 +124,7 @@ class CacheArrowWritableCoumnVectorSuite extends SparkFunSuite with BeforeAndAft
         assert(arrowColumn.isNullAt(i))
       } else {
         assert(!arrowColumn.isNullAt(i))
-        val val1 = column.getInt(i)
-        val val2 = arrowColumn.getInt(i)
-        assert(val1 == val2)
+        assert(column.getInt(i) == arrowColumn.getInt(i))
       }
     }
   }
@@ -163,9 +157,7 @@ class CacheArrowWritableCoumnVectorSuite extends SparkFunSuite with BeforeAndAft
         assert(arrowColumn.isNullAt(i))
       } else {
         assert(!arrowColumn.isNullAt(i))
-        val val1 = column.getLong(i)
-        val val2 = arrowColumn.getLong(i)
-        assert(val1 == val2)
+        assert(column.getLong(i) == arrowColumn.getLong(i))
       }
     }
   }
@@ -200,7 +192,7 @@ class CacheArrowWritableCoumnVectorSuite extends SparkFunSuite with BeforeAndAft
         assert(!arrowColumn.isNullAt(i))
         val val1 = column.getFloat(i)
         val val2 = arrowColumn.getFloat(i)
-        assert(val1 == val2)
+        assert(column.getFloat(i) == arrowColumn.getFloat(i))
       }
     }
   }
@@ -233,11 +225,46 @@ class CacheArrowWritableCoumnVectorSuite extends SparkFunSuite with BeforeAndAft
         assert(arrowColumn.isNullAt(i))
       } else {
         assert(!arrowColumn.isNullAt(i))
-        val val1 = column.getDouble(i)
-        val val2 = arrowColumn.getDouble(i)
-        assert(val1 == val2)
+        assert(column.getDouble(i) == arrowColumn.getDouble(i))
       }
     }
   }
 
+  test("String type test") {
+    val num = 10
+    val null_index = Array[Int](1, 2, 5)
+    val column = new ArrowWritableColumnVector(num, StringType)
+
+    val s = "abcd"
+    for (i <- 0 until num) {
+      if (null_index.contains(i)) {
+        column.putNull(i)
+      } else {
+        var tmps = s
+        for (m <- 0 until i) {
+          tmps += m
+        }
+        column.putByteArray(i, tmps.getBytes())
+      }
+    }
+
+    val len = CacheDumper.calculateArrowLength(StringType, num)
+    val buffer = ByteBuffer.allocateDirect(len.toInt)
+    val fiber = new ArrowFiberCache(buffer)
+    fiber.setTotalRow(num)
+    fiber.setDataType(StringType)
+    CacheDumper.syncDumpToCache(column, fiber, num)
+
+    val reader = new ArrowVectorizedCacheReader(StringType, fiber)
+    val arrowColumn = reader.readBatch(num)
+
+    for (i <- 0 until num) {
+      if (null_index.contains(i)) {
+        assert(arrowColumn.isNullAt(i))
+      } else {
+        assert(!arrowColumn.isNullAt(i))
+        assert(column.getUTF8String(i) == arrowColumn.getUTF8String(i))
+      }
+    }
+  }
 }
