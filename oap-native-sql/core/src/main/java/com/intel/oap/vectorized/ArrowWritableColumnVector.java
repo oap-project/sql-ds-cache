@@ -20,6 +20,7 @@ package com.intel.oap.vectorized;
 import io.netty.buffer.ArrowBuf;
 import java.lang.*;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.*;
@@ -72,6 +73,8 @@ public final class ArrowWritableColumnVector extends WritableColumnVector {
   public static AtomicLong vectorCount = new AtomicLong(0);
   private AtomicLong refCnt = new AtomicLong(0);
   private boolean closed = false;
+
+  private byte[] nulls;
 
   /**
    * Allocates columns to store elements of each field of the schema on heap.
@@ -158,10 +161,12 @@ public final class ArrowWritableColumnVector extends WritableColumnVector {
 
     List<FieldVector> fieldVectors = root.getFieldVectors();
     vector = fieldVectors.get(0);
+    LOG.info("type : " + dataType.toString());
     vector.setInitialCapacity(capacity);
     vector.allocateNew();
     this.writer = createVectorWriter(vector);
     createVectorAccessor(vector, null);
+    nulls = new byte[capacity];
   }
 
   public ValueVector getValueVector() {
@@ -423,10 +428,17 @@ public final class ArrowWritableColumnVector extends WritableColumnVector {
   @Override
   public void putNull(int rowId) {
     writer.setNull(rowId);
+    if(nulls != null)
+      nulls[rowId] = (byte)1;
   }
 
   @Override
   public void putNulls(int rowId, int count) {
+    if(nulls != null) {
+      for (int i = 0; i < count; ++i) {
+        nulls[rowId + i] = (byte)1;
+      }
+    }
     writer.setNulls(rowId, count);
   }
 
@@ -437,7 +449,11 @@ public final class ArrowWritableColumnVector extends WritableColumnVector {
 
   @Override
   public boolean isNullAt(int rowId) {
-    return accessor.isNullAt(rowId);
+    if (dictionary != null) {
+      return nulls[rowId] == 1;
+    } else {
+      return accessor.isNullAt(rowId);
+    }
   }
 
   //
@@ -491,7 +507,11 @@ public final class ArrowWritableColumnVector extends WritableColumnVector {
 
   @Override
   public byte getByte(int rowId) {
-    return accessor.getByte(rowId);
+    if (dictionary == null) {
+      return accessor.getByte(rowId);
+    } else {
+      return (byte) dictionary.decodeToInt(dictionaryIds.getDictId(rowId));
+    }
   }
 
   @Override
@@ -530,7 +550,11 @@ public final class ArrowWritableColumnVector extends WritableColumnVector {
 
   @Override
   public short getShort(int rowId) {
-    return accessor.getShort(rowId);
+    if (dictionary == null) {
+      return accessor.getShort(rowId);
+    } else {
+      return (short) dictionary.decodeToInt(dictionaryIds.getDictId(rowId));
+    }
   }
 
   @Override
@@ -570,7 +594,11 @@ public final class ArrowWritableColumnVector extends WritableColumnVector {
 
   @Override
   public int getInt(int rowId) {
-    return accessor.getInt(rowId);
+    if (dictionary == null) {
+      return accessor.getInt(rowId);
+    } else {
+      return dictionary.decodeToInt(dictionaryIds.getDictId(rowId));
+    }
   }
 
   @Override
@@ -619,7 +647,11 @@ public final class ArrowWritableColumnVector extends WritableColumnVector {
 
   @Override
   public long getLong(int rowId) {
-    return accessor.getLong(rowId);
+    if (dictionary == null) {
+      return accessor.getLong(rowId);
+    } else {
+      return dictionary.decodeToLong(dictionaryIds.getDictId(rowId));
+    }
   }
 
   @Override
@@ -653,7 +685,11 @@ public final class ArrowWritableColumnVector extends WritableColumnVector {
 
   @Override
   public float getFloat(int rowId) {
-    return accessor.getFloat(rowId);
+    if (dictionary == null) {
+      return accessor.getFloat(rowId);
+    } else {
+      return dictionary.decodeToFloat(dictionaryIds.getDictId(rowId));
+    }
   }
 
   @Override
@@ -687,7 +723,11 @@ public final class ArrowWritableColumnVector extends WritableColumnVector {
 
   @Override
   public double getDouble(int rowId) {
-    return accessor.getDouble(rowId);
+    if (dictionary == null) {
+      return accessor.getDouble(rowId);
+    } else {
+      return dictionary.decodeToDouble(dictionaryIds.getDictId(rowId));
+    }
   }
 
   @Override
@@ -720,6 +760,7 @@ public final class ArrowWritableColumnVector extends WritableColumnVector {
   @Override
   public int putByteArray(int rowId, byte[] value, int offset, int length) {
     writer.setBytes(rowId, length, value, offset);
+    // LOG.info("setBytes at:" + rowId + ", length: " + length);
     return length;
   }
 
@@ -730,19 +771,41 @@ public final class ArrowWritableColumnVector extends WritableColumnVector {
   @Override
   public Decimal getDecimal(int rowId, int precision, int scale) {
     if (isNullAt(rowId)) return null;
-    return accessor.getDecimal(rowId, precision, scale);
+    if (dictionary != null) {
+      if (precision <= Decimal.MAX_INT_DIGITS()) {
+        return Decimal.createUnsafe(getInt(rowId), precision, scale);
+      } else if (precision <= Decimal.MAX_LONG_DIGITS()) {
+        return Decimal.createUnsafe(getLong(rowId), precision, scale);
+      } else {
+        // TODO: best perf?
+        byte[] bytes = getBinary(rowId);
+        BigInteger bigInteger = new BigInteger(bytes);
+        BigDecimal javaDecimal = new BigDecimal(bigInteger, scale);
+        return Decimal.apply(javaDecimal, precision, scale);
+      }
+    } else {
+      return accessor.getDecimal(rowId, precision, scale);
+    }
   }
 
   @Override
   public UTF8String getUTF8String(int rowId) {
     if (isNullAt(rowId)) return null;
+    if (dictionary != null) {
+      byte[] bytes = dictionary.decodeToBinary(dictionaryIds.getDictId(rowId));
+      return UTF8String.fromBytes(bytes);
+    }
     return accessor.getUTF8String(rowId);
   }
 
   @Override
   public byte[] getBinary(int rowId) {
     if (isNullAt(rowId)) return null;
-    return accessor.getBinary(rowId);
+    if (dictionary == null) {
+      return accessor.getBinary(rowId);
+    } else {
+      return dictionary.decodeToBinary(dictionaryIds.getDictId(rowId));
+    }
   }
 
   private abstract static class ArrowVectorAccessor {
@@ -997,6 +1060,7 @@ public final class ArrowWritableColumnVector extends WritableColumnVector {
 
     @Override
     final UTF8String getUTF8String(int rowId) {
+      // LOG.info("get String at row " + rowId);
       accessor.get(rowId, stringResult);
       if (stringResult.isSet == 0) {
         return null;
@@ -1045,6 +1109,7 @@ public final class ArrowWritableColumnVector extends WritableColumnVector {
 
     @Override
     final byte[] getBinary(int rowId) {
+      LOG.info("get Binary at row " + rowId);
       return accessor.getObject(rowId);
     }
   }
@@ -1725,6 +1790,18 @@ public final class ArrowWritableColumnVector extends WritableColumnVector {
     void setInts(int rowId, int count, int value) {
       for (int i = 0; i < count; i++) {
         writer.setSafe(rowId + i, value);
+      }
+    }
+
+    @Override
+    void setIntsLittleEndian(int rowId, int count, byte[] src, int srcIndex) {
+      int srcOffset = srcIndex + Platform.BYTE_ARRAY_OFFSET;
+      for (int i = 0; i < count; i++, srcOffset += 4) {
+        int tmp = Platform.getInt(src, srcOffset);
+        if (bigEndianPlatform) {
+          tmp = java.lang.Integer.reverseBytes(tmp);
+        }
+        writer.setSafe(rowId + i, tmp);
       }
     }
 
