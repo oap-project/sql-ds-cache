@@ -1583,6 +1583,14 @@ public final class ArrowWritableColumnVector extends WritableColumnVector {
         writer.setSafe(rowId + i, src[srcIndex + i]);
       }
     }
+
+    @Override
+    final void setFloats(int rowId, int count, byte[] src, int srcIndex) {
+      int srcOffset = srcIndex + Platform.BYTE_ARRAY_OFFSET;
+      for (int i = 0; i < count; i++, srcOffset += 4) {
+        writer.setSafe(rowId + i, Platform.getFloat(src, srcOffset));
+      }
+    }
   }
 
   private static class DoubleWriter extends ArrowVectorWriter {
@@ -1622,6 +1630,14 @@ public final class ArrowWritableColumnVector extends WritableColumnVector {
     final void setDoubles(int rowId, int count, double[] src, int srcIndex) {
       for (int i = 0; i < count; i++) {
         writer.setSafe(rowId + i, src[srcIndex + i]);
+      }
+    }
+
+    @Override
+    final void setDoubles(int rowId, int count, byte[] src, int srcIndex) {
+      int srcOffset = srcIndex + Platform.BYTE_ARRAY_OFFSET;
+      for (int i = 0; i < count; i++, srcOffset += 8) {
+        writer.setSafe(rowId + i, Platform.getDouble(src, srcOffset));
       }
     }
   }
