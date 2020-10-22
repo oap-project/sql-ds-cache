@@ -339,7 +339,7 @@ public class CachedVectorizedParquetRecordReader extends VectorizedParquetRecord
         // TODO: async cache
         if(fiberCaches[i] != null){
           CacheDumper.syncDumpToCache(column,
-                  (OapFiberCache) fiberCaches[i], num);
+                  (ArrowFiberCache) fiberCaches[i], num);
         }
       }
     }
@@ -456,7 +456,8 @@ public class CachedVectorizedParquetRecordReader extends VectorizedParquetRecord
         if(needCache) {
           long length = CacheDumper.calculateArrowLength(batchSchema.fields()[i].dataType(),
                                                     pages.getRowCount());
-          LOG.info("a cacheable type, total row num is " + pages.getRowCount()
+          LOG.info("a cacheable type,"  + batchSchema.fields()[i].dataType().toString()
+                  + " total row num is " + pages.getRowCount()
                   + " size is " + length);
           try {
             fiberCaches[i] = cacheManager.create(id, length);
