@@ -46,6 +46,8 @@
         <module>oap-data-source/arrow</module>
 <!--        <module>oap-shuffle/remote-shuffle</module>-->
 <!--        <module>oap-shuffle/RPMem-shuffle</module>-->
+
+        <module>oap-fs/pmem-cached-hcfs</module>
     </modules>
 
 </project>
