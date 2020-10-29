@@ -8,6 +8,7 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.permission.FsPermission;
+import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.util.Progressable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,15 +25,22 @@ public class CachedFileSystem extends FileSystem {
 
     private URI uri;
 
+    private String scheme;
+
     @Override
     public void initialize(URI name, Configuration conf) throws IOException {
         super.initialize(name, conf);
         this.setConf(conf);
         this.uri = name;
+        this.scheme = name.getScheme();
 
         URI hdfsName = URIConverter.toHDFSScheme(name);
         LOG.info("hdfs name: {}", hdfsName.toString());
-        this.hdfs = new Path(hdfsName).getFileSystem(conf);
+
+        // to prevent stackoverflow from use of: new Path(hdfsName).getFileSystem(conf)
+        // when fs.hdfs.impl is configured as CachedFileSystem itself
+        this.hdfs = new DistributedFileSystem();
+        this.hdfs.initialize(hdfsName, conf);
     }
 
     @Override
@@ -88,7 +96,8 @@ public class CachedFileSystem extends FileSystem {
     public FileStatus[] listStatus(Path path) throws FileNotFoundException, IOException {
         FileStatus[] result = this.hdfs.listStatus(PathConverter.toHDFSScheme(path));
         for (FileStatus status : result) {
-            status.setPath(PathConverter.toCachedFSScheme(status.getPath()));
+            // convert scheme back
+            status.setPath(PathConverter.toScheme(status.getPath(), path.toUri().getScheme()));
         }
         return result;
     }
@@ -99,7 +108,8 @@ public class CachedFileSystem extends FileSystem {
 
     public Path getWorkingDirectory() {
         Path result = this.hdfs.getWorkingDirectory();
-        return PathConverter.toCachedFSScheme(result);
+        // convert scheme back
+        return PathConverter.toScheme(result, this.scheme);
     }
 
     public boolean mkdirs(Path path, FsPermission fsPermission) throws IOException {
@@ -108,7 +118,8 @@ public class CachedFileSystem extends FileSystem {
 
     public FileStatus getFileStatus(Path path) throws IOException {
         FileStatus result = this.hdfs.getFileStatus(PathConverter.toHDFSScheme(path));
-        result.setPath(PathConverter.toCachedFSScheme(result.getPath()));
+        // convert scheme back
+        result.setPath(PathConverter.toScheme(result.getPath(), path.toUri().getScheme()));
         return result;
     }
 }
