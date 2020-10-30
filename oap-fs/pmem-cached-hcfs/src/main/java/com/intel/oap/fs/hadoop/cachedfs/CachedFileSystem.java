@@ -1,5 +1,6 @@
 package com.intel.oap.fs.hadoop.cachedfs;
 
+import com.intel.oap.fs.hadoop.cachedfs.redis.RedisPMemBlockLocationStore;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.BlockLocation;
 import org.apache.hadoop.fs.FSDataInputStream;
@@ -16,6 +17,9 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.FileNotFoundException;
 import java.net.URI;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 public class CachedFileSystem extends FileSystem {
     private static final Logger LOG = LoggerFactory.getLogger(CachedFileSystem.class);
@@ -27,15 +31,19 @@ public class CachedFileSystem extends FileSystem {
 
     private String scheme;
 
+    private long pmemCachedBlockSize = Constants.DEFAULT_CACHED_BLOCK_SIZE;
+
     @Override
     public void initialize(URI name, Configuration conf) throws IOException {
+        LOG.info("initialize cachedFs with uri: {}", name.toString());
         super.initialize(name, conf);
         this.setConf(conf);
         this.uri = name;
         this.scheme = name.getScheme();
+        this.pmemCachedBlockSize = conf.getLong("fs.cachedFs.block.size", Constants.DEFAULT_CACHED_BLOCK_SIZE);
 
         URI hdfsName = URIConverter.toHDFSScheme(name);
-        LOG.info("hdfs name: {}", hdfsName.toString());
+        LOG.info("backend hdfs uri: {}", hdfsName.toString());
 
         // to prevent stackoverflow from use of: new Path(hdfsName).getFileSystem(conf)
         // when fs.hdfs.impl is configured as CachedFileSystem itself
@@ -64,17 +72,51 @@ public class CachedFileSystem extends FileSystem {
 
     @Override
     public BlockLocation[] getFileBlockLocations(FileStatus file, long start, long len) throws IOException {
-        // TODO return based on cache checking result
+        if (file == null) {
+            throw new NullPointerException();
+        }
 
-        file.setPath(PathConverter.toHDFSScheme(file.getPath()));
-        return this.hdfs.getFileBlockLocations(file, start, len);
+        return this.getFileBlockLocations(file.getPath(), start, len);
     }
 
     @Override
     public BlockLocation[] getFileBlockLocations(Path path, long start, long len) throws IOException {
-        // TODO return based on cache checking result
+        if (path == null) {
+            throw new NullPointerException();
+        }
+        LOG.info("getFileBlockLocations with: " + path.toString());
 
-        return this.hdfs.getFileBlockLocations(PathConverter.toHDFSScheme(path), start, len);
+        List<BlockLocation> result = new ArrayList<BlockLocation>();
+
+        // return block locations based on cache checking result
+        PMemBlock[] blocks = CachedFileSystemUtils.computePossiblePMemBlocks(path, start, len, this.pmemCachedBlockSize);
+
+        if (blocks.length > 0) {
+            PMemBlockLocationStore locationStore = new RedisPMemBlockLocationStore();
+
+            for (PMemBlock block : blocks) {
+                // get pmem block locations
+                PMemBlockLocation blockLocation = locationStore.getBlockLocation(block);
+
+                // found pmem block locations
+                if (blockLocation != null && blockLocation.getHosts() != null && blockLocation.getHosts().length > 0) {
+
+                    LOG.info("getFileBlockLocations found pmem cache locations, start: {}, len: {}, hosts: {}",
+                            block.getOffset(), block.getLength(), Arrays.toString(blockLocation.getHosts()));
+                    result.add(blockLocation);
+
+                } else {
+                    // get HDFS block locations
+                    LOG.info("getFileBlockLocations fell back to HDFS native, start: {}, len: {}",
+                            block.getOffset(), block.getLength());
+                    BlockLocation[] hdfsBlockLocations = this.hdfs.getFileBlockLocations(
+                            PathConverter.toHDFSScheme(path), block.getOffset(), block.getLength());
+                    result.addAll(Arrays.asList(hdfsBlockLocations));
+                }
+            }
+        }
+
+        return result.toArray(new BlockLocation[0]);
     }
 
     public FSDataOutputStream create(Path path, FsPermission fsPermission, boolean overwrite, int bufferSize, short replication, long blockSize, Progressable progressable) throws IOException {
