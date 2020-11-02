@@ -7,6 +7,18 @@
     <groupId>com.intel.oap</groupId>
     <artifactId>pmem-cached-hcfs</artifactId>
     <version>0.0.1-SNAPSHOT</version>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <source>7</source>
+                    <target>7</target>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
     <packaging>jar</packaging>
     <name>OAP Project HCFS</name>
 
@@ -24,6 +36,11 @@
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-hdfs</artifactId>
             <version>${hadoop.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.intel.arrow</groupId>
+            <artifactId>arrow-plasma</artifactId>
+            <version>0.17.0</version>
         </dependency>
     </dependencies>
 
