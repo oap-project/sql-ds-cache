@@ -40,7 +40,7 @@ public class CachedFileSystem extends FileSystem {
         this.setConf(conf);
         this.uri = name;
         this.scheme = name.getScheme();
-        this.pmemCachedBlockSize = conf.getLong("fs.cachedFs.block.size", Constants.DEFAULT_CACHED_BLOCK_SIZE);
+        this.pmemCachedBlockSize = conf.getLong(Constants.CONF_KEY_CACHED_FS_BLOCK_SIZE, Constants.DEFAULT_CACHED_BLOCK_SIZE);
 
         URI hdfsName = URIConverter.toHDFSScheme(name);
         LOG.info("backend hdfs uri: {}", hdfsName.toString());
@@ -92,7 +92,7 @@ public class CachedFileSystem extends FileSystem {
         PMemBlock[] blocks = CachedFileSystemUtils.computePossiblePMemBlocks(path, start, len, this.pmemCachedBlockSize);
 
         if (blocks.length > 0) {
-            PMemBlockLocationStore locationStore = new RedisPMemBlockLocationStore();
+            PMemBlockLocationStore locationStore = new RedisPMemBlockLocationStore(this.getConf());
 
             for (PMemBlock block : blocks) {
                 // get pmem block locations
