@@ -18,19 +18,20 @@
 package com.intel.oap.fs.hadoop.cachedfs.cacheUtil;
 
 public class CacheManagerFactory {
-  private Object lock = new Object();
-  private CacheManager manager;
+  private static final Object lock = new Object();
+  private static CacheManager manager;
 
-  public CacheManager getOrCreate() {
+  public static CacheManager getOrCreate() {
     synchronized (lock) {
       if(manager == null) {
         manager = createCacheManager();
+        manager.init();
       }
       return manager;
     }
   }
 
-  private CacheManager createCacheManager() {
+  private static CacheManager createCacheManager() {
     // TODO: will use reflection to construct a new instance. For now, Let's just
     //  new a PlasmaCacheManager.
     return new PlasmaCacheManager();

@@ -20,7 +20,13 @@ package com.intel.oap.fs.hadoop.cachedfs.cacheUtil;
 import java.nio.ByteBuffer;
 
 public class SimpleFiberCache implements FiberCache {
-  public SimpleFiberCache(ByteBuffer buffer) {
+  private ByteBuffer buffer;
 
+  public SimpleFiberCache(ByteBuffer buffer) {
+    this.buffer = buffer;
+  }
+
+  public ByteBuffer getBuffer() {
+    return buffer;
   }
 }
