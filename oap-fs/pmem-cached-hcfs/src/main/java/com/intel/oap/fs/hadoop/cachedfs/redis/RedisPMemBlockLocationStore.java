@@ -11,6 +11,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+/**
+ * Class for storage of block locations.
+ */
 public class RedisPMemBlockLocationStore implements PMemBlockLocationStore {
     private final static String REDIS_ZSET_VALUE_DELIM = "_";
 

@@ -26,7 +26,7 @@ public class PlasmaCacheManager implements CacheManager {
 
   public void init() {
     try {
-      System.load("plasma_java");
+      System.loadLibrary("plasma_java");
     } catch(Exception e) {
 
     }

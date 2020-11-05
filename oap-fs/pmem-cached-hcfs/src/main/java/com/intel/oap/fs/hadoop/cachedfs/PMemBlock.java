@@ -69,4 +69,9 @@ public class PMemBlock {
     public void setData(byte[] data) {
         this.data = data;
     }
+
+    @Override
+    public String toString() {
+        return "path: " + path.toString() + ", offset: " + offset + ", length: " + length;
+    }
 }

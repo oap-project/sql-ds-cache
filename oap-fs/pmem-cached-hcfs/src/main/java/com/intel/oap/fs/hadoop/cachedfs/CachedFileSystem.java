@@ -66,7 +66,7 @@ public class CachedFileSystem extends FileSystem {
             throw new FileNotFoundException("Can't open " + path + " because it is a directory");
         } else {
             FSDataInputStream hdfsInputStream = this.hdfs.open(PathConverter.toHDFSScheme(path), bufferSize);
-            return new FSDataInputStream(new CachedInputStream(hdfsInputStream, this.getConf(), path, bufferSize, fileStatus.getLen()));
+            return new FSDataInputStream(new SimpleCachedInputStream(hdfsInputStream, this.getConf(), path, bufferSize, fileStatus.getLen()));
         }
     }
 
