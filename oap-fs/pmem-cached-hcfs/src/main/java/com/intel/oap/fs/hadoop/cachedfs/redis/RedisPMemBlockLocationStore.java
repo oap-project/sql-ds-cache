@@ -34,7 +34,13 @@ public class RedisPMemBlockLocationStore implements PMemBlockLocationStore {
                 .zadd(
                         block.getPath().toString(),
                         block.getOffset(),
-                        String.format("%d%s%s", block.getLength(), REDIS_ZSET_VALUE_DELIM, host)
+                        String.format(
+                                "%d%s%d%s%s",
+                                block.getOffset(),
+                                REDIS_ZSET_VALUE_DELIM,
+                                block.getLength(),
+                                REDIS_ZSET_VALUE_DELIM,
+                                host)
                 );
 
     }
@@ -142,12 +148,12 @@ public class RedisPMemBlockLocationStore implements PMemBlockLocationStore {
 
             // get locations for current block
             locationStrings.forEach(t -> {
-                long offset = (long) t.getScore();
                 String[] parts = t.getElement().split(REDIS_ZSET_VALUE_DELIM);
 
-                if (parts.length >= 2) {
-                    long length = Long.parseLong(parts[0]);
-                    String host = parts[1];
+                if (parts.length >= 3) {
+                    long offset = Long.parseLong(parts[0]);
+                    long length = Long.parseLong(parts[1]);
+                    String host = parts[2];
 
                     // check cached block's offset and length
                     if (offset == block.getOffset() && length == block.getLength()) {

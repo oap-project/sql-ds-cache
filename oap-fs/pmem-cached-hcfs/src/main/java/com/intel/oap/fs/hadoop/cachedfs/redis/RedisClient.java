@@ -124,6 +124,24 @@ public class RedisClient {
     }
 
     /**
+     * @param key String
+     * @param count long
+     * @return Long
+     */
+    public Long incrBy(String key, long count) {
+        Jedis jedis = null;
+        try {
+            jedis = getJedis();
+            return jedis.incrBy(key, count);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new JedisException(e.getMessage(), e);
+        } finally {
+            close(jedis);
+        }
+    }
+
+    /**
      * hset
      *
      * @param key   String
