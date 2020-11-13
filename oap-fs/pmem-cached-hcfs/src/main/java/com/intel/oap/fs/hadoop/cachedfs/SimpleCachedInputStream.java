@@ -108,8 +108,8 @@ public class SimpleCachedInputStream extends FSInputStream {
 
             // read data from local pmem cache
             FiberCache cacheObject = cacheManager.get(objectId);
-            ((SimpleFiberCache)cacheObject).getBuffer().get(buffer);
-            block.setData(buffer);
+            ByteBuffer cacheBuffer = ((SimpleFiberCache)cacheObject).getBuffer();
+            block.setData(cacheBuffer);
 
             LOG.info("data read from pmem for block: {}", block);
         } else {
@@ -118,7 +118,7 @@ public class SimpleCachedInputStream extends FSInputStream {
             // read data from backend stream
             this.hdfsInputStream.seek(block.getOffset());
             this.hdfsInputStream.readFully(buffer, 0, (int)len);
-            block.setData(buffer);
+            block.setData(ByteBuffer.wrap(buffer));
 
             LOG.info("data read from HDFS for block: {}", block);
 
@@ -187,7 +187,13 @@ public class SimpleCachedInputStream extends FSInputStream {
         // read byte
         int byteRead = -1;
         if (this.partRemaining != 0L) {
+<<<<<<< HEAD
             byteRead = this.currentBlock.getData()[(int)this.currentBlock.getLength() - (int)this.partRemaining] & 255;
+=======
+            int idx = (int)this.currentBlock.getLength() - (int)this.partRemaining;
+            byteRead = this.currentBlock.getData().get(idx) & 255;
+
+>>>>>>> 40d2538... [POAE7-540] optimization on read()
         }
 
         if (byteRead >= 0) {
