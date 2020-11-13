@@ -7,14 +7,12 @@ import com.intel.oap.fs.hadoop.cachedfs.cacheUtil.ObjectId;
 import com.intel.oap.fs.hadoop.cachedfs.cacheUtil.SimpleFiberCache;
 import com.intel.oap.fs.hadoop.cachedfs.redis.RedisGlobalPMemCacheStatisticsStore;
 import com.intel.oap.fs.hadoop.cachedfs.redis.RedisPMemBlockLocationStore;
-import com.intel.oap.fs.hadoop.cachedfs.unsafe.UnsafeUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSInputStream;
 import org.apache.hadoop.fs.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import sun.nio.ch.DirectBuffer;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -118,17 +116,7 @@ public class SimpleCachedInputStream extends FSInputStream {
             // read data from local pmem cache
             FiberCache cacheObject = cacheManager.get(objectId);
             ByteBuffer cacheBuffer = ((SimpleFiberCache)cacheObject).getBuffer();
-
-            if (UnsafeUtils.available() && cacheBuffer.isDirect()) {
-                LOG.info("copy memory directly from ByteBuffer");
-
-                UnsafeUtils.copyMemory(
-                        null, ((DirectBuffer)cacheBuffer).address(), buffer, UnsafeUtils.BYTE_ARRAY_OFFSET, len);
-            } else {
-                cacheBuffer.get(buffer);
-            }
-
-            block.setData(buffer);
+            block.setData(cacheBuffer);
 
             LOG.info("data read from pmem for block: {}", block);
         } else {
@@ -139,7 +127,7 @@ public class SimpleCachedInputStream extends FSInputStream {
             // read data from backend stream
             this.hdfsInputStream.seek(block.getOffset());
             this.hdfsInputStream.readFully(buffer, 0, (int)len);
-            block.setData(buffer);
+            block.setData(ByteBuffer.wrap(buffer));
 
             LOG.info("data read from HDFS for block: {}", block);
 
@@ -212,7 +200,7 @@ public class SimpleCachedInputStream extends FSInputStream {
         int byteRead = -1;
         if (this.partRemaining != 0L) {
             int idx = (int)this.currentBlock.getLength() - (int)this.partRemaining;
-            byteRead = this.currentBlock.getData()[idx] & 255;
+            byteRead = this.currentBlock.getData().get(idx) & 255;
 
         }
 

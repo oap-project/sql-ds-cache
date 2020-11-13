@@ -17,6 +17,7 @@
 
 package com.intel.oap.fs.hadoop.cachedfs;
 
+import com.intel.oap.fs.hadoop.cachedfs.redis.RedisGlobalPMemCacheStatisticsStore;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSInputStream;
@@ -35,6 +36,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.EOFException;
 import java.net.InetAddress;
+import java.nio.ByteBuffer;
 
 public class CachedInputStream extends FSInputStream {
   private static final Logger LOG = LoggerFactory.getLogger(CachedInputStream.class);
@@ -54,6 +56,8 @@ public class CachedInputStream extends FSInputStream {
   private PMemBlock currentBlock;
   private CacheManager cacheManager;
   private PMemBlockLocationStore locationStore;
+  private PMemCacheStatisticsStore statisticsStore;
+
   private final long pmemCachedBlockSize;
 
   public CachedInputStream(FSDataInputStream hdfsInputStream, Configuration conf,
@@ -73,6 +77,7 @@ public class CachedInputStream extends FSInputStream {
     this.locationStore = new RedisPMemBlockLocationStore(conf);
     this.pmemCachedBlockSize = conf.getLong(Constants.CONF_KEY_CACHED_FS_BLOCK_SIZE,
                                             Constants.DEFAULT_CACHED_BLOCK_SIZE);
+    this.statisticsStore = new RedisGlobalPMemCacheStatisticsStore(conf);
 
     LOG.info("Opening file: {} for reading.", path);
   }
@@ -146,17 +151,23 @@ public class CachedInputStream extends FSInputStream {
       return false;
     }
     final long bytesToRead = Math.min(pmemCachedBlockSize, contentLength - currentCachePos);
-    byte[] cacheBytes = new byte[(int)bytesToRead];
     currentBlock = new PMemBlock(path, currentCachePos, bytesToRead);
     ObjectId id = new ObjectId(currentBlock.getCacheKey());
+
+    boolean cached = true;
+    ByteBuffer cachedByteBuffer;
     boolean hit = cacheManager.contains(id);
     if (hit) {
       LOG.info("read block {} from cache", currentBlock);
-      ((SimpleFiberCache)cacheManager.get(id)).getBuffer().get(cacheBytes);
+      this.statisticsStore.incrementCacheHit(1);
+      cachedByteBuffer = ((SimpleFiberCache)cacheManager.get(id)).getBuffer();
     } else {
       LOG.info("read block {} from hdfs", currentBlock);
+      this.statisticsStore.incrementCacheMissed(1);
       hdfsInputStream.seek(currentCachePos);
+      byte[] cacheBytes = new byte[(int)bytesToRead];
       hdfsInputStream.readFully(cacheBytes);
+      cachedByteBuffer = ByteBuffer.wrap(cacheBytes);
       hdfsInputStream.seek(pos);
       if (!cacheManager.contains(id)) {
         try {
@@ -164,21 +175,29 @@ public class CachedInputStream extends FSInputStream {
           ((SimpleFiberCache)fiberCache).getBuffer().put(cacheBytes);
           cacheManager.seal(id);
           LOG.info("data cached to pmem for block: {}", currentBlock);
-          try {
-            String host = InetAddress.getLocalHost().getHostName();
-            locationStore.addBlockLocation(currentBlock, host);
-            LOG.info("block location saved for block: {}, host: {}", currentBlock, host);
-          } catch (Exception ex) {
-            // ignore
-          }
         } catch (Exception ex) {
+          cached = false;
           LOG.warn("exception, data not cached to pmem for block: {}", currentBlock);
         }
       } else {
         LOG.info("data already cached to pmem by others for block: {}", currentBlock);
       }
     }
-    currentBlock.setData(cacheBytes);
+
+    if (cached) {
+      // save location info to redis
+      String host = "";
+      try {
+        host = InetAddress.getLocalHost().getHostName();
+
+        this.locationStore.addBlockLocation(currentBlock, host);
+        LOG.info("block location saved for block: {}, host: {}", currentBlock, host);
+      } catch (Exception ex) {
+        // ignore
+      }
+    }
+
+    currentBlock.setData(cachedByteBuffer);
     return true;
   }
 
@@ -194,7 +213,10 @@ public class CachedInputStream extends FSInputStream {
       int currentOffsetInCache = (int)(pos - currentCachePos);
       int bytesRemainingInCurrentCache = (int)(currentBlock.getLength() - currentOffsetInCache);
       int bytesToRead = Math.min(len, bytesRemainingInCurrentCache);
-      System.arraycopy(currentBlock.getData(), currentOffsetInCache, buf, off, bytesToRead);
+
+      currentBlock.getData().position(currentOffsetInCache);
+      currentBlock.getData().get(buf, off, bytesToRead);
+
       totalBytesRead += bytesToRead;
       pos += bytesToRead;
       off += bytesToRead;
