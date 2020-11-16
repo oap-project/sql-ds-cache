@@ -155,20 +155,44 @@ public class CachedInputStream extends FSInputStream {
     ObjectId id = new ObjectId(currentBlock.getCacheKey());
 
     boolean cached = true;
-    ByteBuffer cachedByteBuffer;
+    ByteBuffer cachedByteBuffer = null;
     boolean hit = cacheManager.contains(id);
+
+    // read block from cache
     if (hit) {
-      LOG.info("read block {} from cache", currentBlock);
+      LOG.info("read block from cache: {}", currentBlock);
       this.statisticsStore.incrementCacheHit(1);
-      cachedByteBuffer = ((SimpleFiberCache)cacheManager.get(id)).getBuffer();
-    } else {
-      LOG.info("read block {} from hdfs", currentBlock);
+
+      // get cache
+      try {
+        cachedByteBuffer = ((SimpleFiberCache)cacheManager.get(id)).getBuffer();
+      } catch (Exception ex) {
+        // fail
+        LOG.warn("exception when get cache: {}, block: {}", ex.toString(), currentBlock);
+        cached = false;
+
+        // remove cache
+        try {
+          cacheManager.delete(id);
+          LOG.info("block cache removed, block: {}", currentBlock);
+        } catch (Exception ex1) {
+          // ignore
+          LOG.warn("exception when removing block cache: {}, block: {}", ex1.toString(), currentBlock);
+        }
+      }
+    }
+
+    // read block from HDFS
+    if (!hit || !cached){
+      LOG.info("read block from hdfs: {}", currentBlock);
       this.statisticsStore.incrementCacheMissed(1);
       hdfsInputStream.seek(currentCachePos);
       byte[] cacheBytes = new byte[(int)bytesToRead];
       hdfsInputStream.readFully(cacheBytes);
       cachedByteBuffer = ByteBuffer.wrap(cacheBytes);
       hdfsInputStream.seek(pos);
+
+      // save to cache
       if (!cacheManager.contains(id)) {
         try {
           FiberCache fiberCache = cacheManager.create(id, bytesToRead);
