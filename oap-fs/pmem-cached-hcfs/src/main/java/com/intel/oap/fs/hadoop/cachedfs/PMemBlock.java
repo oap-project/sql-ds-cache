@@ -2,6 +2,8 @@ package com.intel.oap.fs.hadoop.cachedfs;
 
 import org.apache.hadoop.fs.Path;
 
+import java.nio.ByteBuffer;
+
 /**
  * pmem cache block
  */
@@ -15,14 +17,13 @@ public class PMemBlock {
 
     private String cacheKey;
 
-    private byte[] data;
-
+    private ByteBuffer data;
 
     public PMemBlock(Path path, long offset, long length) {
         this(path, offset, length, null);
     }
 
-    public PMemBlock(Path path, long offset, long length, byte[] data) {
+    public PMemBlock(Path path, long offset, long length, ByteBuffer data) {
         this.path = path;
         this.offset = offset;
         this.length = length;
@@ -62,11 +63,11 @@ public class PMemBlock {
         this.cacheKey = cacheKey;
     }
 
-    public byte[] getData() {
+    public ByteBuffer getData() {
         return data;
     }
 
-    public void setData(byte[] data) {
+    public void setData(ByteBuffer data) {
         this.data = data;
     }
 

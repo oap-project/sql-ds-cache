@@ -5,6 +5,7 @@ import com.intel.oap.fs.hadoop.cachedfs.cacheUtil.CacheManagerFactory;
 import com.intel.oap.fs.hadoop.cachedfs.cacheUtil.FiberCache;
 import com.intel.oap.fs.hadoop.cachedfs.cacheUtil.ObjectId;
 import com.intel.oap.fs.hadoop.cachedfs.cacheUtil.SimpleFiberCache;
+import com.intel.oap.fs.hadoop.cachedfs.redis.RedisGlobalPMemCacheStatisticsStore;
 import com.intel.oap.fs.hadoop.cachedfs.redis.RedisPMemBlockLocationStore;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
@@ -15,6 +16,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.InetAddress;
+import java.nio.ByteBuffer;
 
 public class SimpleCachedInputStream extends FSInputStream {
     private static final Logger LOG = LoggerFactory.getLogger(SimpleCachedInputStream.class);
@@ -34,12 +36,13 @@ public class SimpleCachedInputStream extends FSInputStream {
     private long expectNextPos;
     private long lastByteStart;
 
-    private long pmemCachedBlockSize = Constants.DEFAULT_CACHED_BLOCK_SIZE;
+    private long pmemCachedBlockSize;
 
     private PMemBlock currentBlock;
 
     private CacheManager cacheManager;
     private PMemBlockLocationStore locationStore;
+    private PMemCacheStatisticsStore statisticsStore;
 
     public SimpleCachedInputStream(FSDataInputStream hdfsInputStream, Configuration conf, Path path, int bufferSize, Long contentLength) {
         this.hdfsInputStream = hdfsInputStream;
@@ -57,6 +60,7 @@ public class SimpleCachedInputStream extends FSInputStream {
 
         this.cacheManager = CacheManagerFactory.getOrCreate();
         this.locationStore = new RedisPMemBlockLocationStore(conf);
+        this.statisticsStore = new RedisGlobalPMemCacheStatisticsStore(conf);
     }
 
     public synchronized void seek(long pos) throws IOException {
@@ -103,22 +107,27 @@ public class SimpleCachedInputStream extends FSInputStream {
         // check pmem cache for new block
         ObjectId objectId = new ObjectId(block.getCacheKey());
 
+        boolean cached = true;
         if (cacheManager.contains(objectId)) {
             LOG.info("pmem cache found for block: {}", block);
 
+            this.statisticsStore.incrementCacheHit(1);
+
             // read data from local pmem cache
             FiberCache cacheObject = cacheManager.get(objectId);
-            ((SimpleFiberCache)cacheObject).getBuffer().get(buffer);
-            block.setData(buffer);
+            ByteBuffer cacheBuffer = ((SimpleFiberCache)cacheObject).getBuffer();
+            block.setData(cacheBuffer);
 
             LOG.info("data read from pmem for block: {}", block);
         } else {
             LOG.info("pmem cache NOT found for block: {}", block);
 
+            this.statisticsStore.incrementCacheMissed(1);
+
             // read data from backend stream
             this.hdfsInputStream.seek(block.getOffset());
             this.hdfsInputStream.readFully(buffer, 0, (int)len);
-            block.setData(buffer);
+            block.setData(ByteBuffer.wrap(buffer));
 
             LOG.info("data read from HDFS for block: {}", block);
 
@@ -135,21 +144,24 @@ public class SimpleCachedInputStream extends FSInputStream {
                     LOG.info("data cached to pmem for block: {}", block);
                 } catch (Exception exception) {
                     LOG.warn("exception, data not cached to pmem for block: {}", block);
+                    cached = false;
                 }
             } else {
                 LOG.info("data already cached to pmem by others for block: {}", block);
             }
+        }
 
+        if (cached) {
             // save location info to redis
             String host = "";
             try {
                 host = InetAddress.getLocalHost().getHostName();
+
+                this.locationStore.addBlockLocation(block, host);
+                LOG.info("block location saved for block: {}, host: {}", block, host);
             } catch (Exception ex) {
                 // ignore
             }
-            this.locationStore.addBlockLocation(block, host);
-
-            LOG.info("block location saved for block: {}, host: {}", block, host);
         }
     }
 
@@ -187,7 +199,9 @@ public class SimpleCachedInputStream extends FSInputStream {
         // read byte
         int byteRead = -1;
         if (this.partRemaining != 0L) {
-            byteRead = this.currentBlock.getData()[(int)this.currentBlock.getLength() - (int)this.partRemaining] & 255;
+            int idx = (int)this.currentBlock.getLength() - (int)this.partRemaining;
+            byteRead = this.currentBlock.getData().get(idx) & 255;
+
         }
 
         if (byteRead >= 0) {
