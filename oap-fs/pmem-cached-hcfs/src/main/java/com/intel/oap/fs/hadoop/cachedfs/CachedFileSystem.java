@@ -66,7 +66,7 @@ public class CachedFileSystem extends FileSystem {
             throw new FileNotFoundException("Can't open " + path + " because it is a directory");
         } else {
             FSDataInputStream hdfsInputStream = this.hdfs.open(PathConverter.toHDFSScheme(path), bufferSize);
-            return new FSDataInputStream(new SimpleCachedInputStream(hdfsInputStream, this.getConf(), path, bufferSize, fileStatus.getLen()));
+            return new FSDataInputStream(new CachedInputStream(hdfsInputStream, this.getConf(), path, bufferSize, fileStatus.getLen()));
         }
     }
 
@@ -84,7 +84,7 @@ public class CachedFileSystem extends FileSystem {
         if (path == null) {
             throw new NullPointerException();
         }
-        LOG.info("getFileBlockLocations with: " + path.toString());
+        LOG.info("getFileBlockLocations with: {}, start: {}, len: {}", path.toString(), start, len);
 
         List<BlockLocation> result = new ArrayList<BlockLocation>();
 
@@ -94,26 +94,20 @@ public class CachedFileSystem extends FileSystem {
         if (blocks.length > 0) {
             PMemBlockLocationStore locationStore = new RedisPMemBlockLocationStore(this.getConf());
 
-            for (PMemBlock block : blocks) {
-                // get pmem block locations
-                PMemBlockLocation blockLocation = locationStore.getBlockLocation(block);
+            PMemBlockLocation[] pmemBlockLocations = locationStore.getBlockLocations(blocks, true);
 
-                // found pmem block locations
-                if (blockLocation != null && blockLocation.getHosts() != null && blockLocation.getHosts().length > 0) {
+            result.addAll(Arrays.asList(pmemBlockLocations));
 
-                    LOG.info("getFileBlockLocations found pmem cache locations, start: {}, len: {}, hosts: {}",
-                            block.getOffset(), block.getLength(), Arrays.toString(blockLocation.getHosts()));
-                    result.add(blockLocation);
+            if (pmemBlockLocations.length < blocks.length) {
+                // get HDFS block locations
+                LOG.info("getFileBlockLocations fell back to HDFS native, start: {}, len: {}", start, len);
 
-                } else {
-                    // get HDFS block locations
-                    LOG.info("getFileBlockLocations fell back to HDFS native, start: {}, len: {}",
-                            block.getOffset(), block.getLength());
-                    BlockLocation[] hdfsBlockLocations = this.hdfs.getFileBlockLocations(
-                            PathConverter.toHDFSScheme(path), block.getOffset(), block.getLength());
-                    result.addAll(Arrays.asList(hdfsBlockLocations));
-                }
+                BlockLocation[] hdfsBlockLocations = this.hdfs.getFileBlockLocations(
+                        PathConverter.toHDFSScheme(path), start, len);
+
+                result.addAll(Arrays.asList(hdfsBlockLocations));
             }
+
         }
 
         return result.toArray(new BlockLocation[0]);
