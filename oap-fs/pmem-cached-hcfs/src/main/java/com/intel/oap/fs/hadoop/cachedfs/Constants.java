@@ -28,4 +28,10 @@ public class Constants {
     public static final String CONF_KEY_CACHED_FS_REDIS_MAX_TOTAL = "fs.cachedFs.redis.max_total";
 
     public static final String CONF_KEY_CACHED_FS_REDIS_MAX_IDLE = "fs.cachedFs.redis.max_idle";
+
+    public static final String REDIS_KEY_PMEM_CACHE_GLOBAL_STATISTICS_CACHE_HIT = "pmem_cache_global_cache_hit";
+
+    public static final String REDIS_KEY_PMEM_CACHE_GLOBAL_STATISTICS_CACHE_MISSED = "pmem_cache_global_cache_missed";
+
+    public static final long UNSAFE_COPY_MEMORY_STEP_LENGTH = 1024 * 1024;
 }
