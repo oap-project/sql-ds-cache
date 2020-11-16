@@ -160,7 +160,7 @@ public class CachedInputStream extends FSInputStream {
 
     // read block from cache
     if (hit) {
-      LOG.info("read block from cache: {}", currentBlock);
+      LOG.debug("read block from cache: {}", currentBlock);
       this.statisticsStore.incrementCacheHit(1);
 
       // get cache

@@ -1,5 +1,7 @@
 package com.intel.oap.fs.hadoop.cachedfs.redis;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
@@ -14,6 +16,7 @@ import java.util.Set;
  * a singleton instance mechanism is needed.
  */
 public class RedisClient {
+    private static final Logger LOG = LoggerFactory.getLogger(RedisClient.class);
 
     private JedisPool jedisPool;
 
@@ -80,7 +83,7 @@ public class RedisClient {
             jedis = getJedis();
             return jedis.get(key);
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.error("redis exception: {}, when: {}, key: {}", e.toString(), "get", key);
             throw new JedisException(e.getMessage(), e);
         } finally {
             close(jedis);
@@ -99,7 +102,7 @@ public class RedisClient {
             jedis = getJedis();
             jedis.set(key, value);
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.error("redis exception: {}, when: {}, key: {}", e.toString(), "set", key);
             throw new JedisException(e.getMessage(), e);
         } finally {
             close(jedis);
@@ -116,7 +119,7 @@ public class RedisClient {
             jedis = getJedis();
             return jedis.incr(key);
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.error("redis exception: {}, when: {}, key: {}", e.toString(), "incr", key);
             throw new JedisException(e.getMessage(), e);
         } finally {
             close(jedis);
@@ -134,7 +137,7 @@ public class RedisClient {
             jedis = getJedis();
             return jedis.incrBy(key, count);
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.error("redis exception: {}, when: {}, key: {}", e.toString(), "incrBy", key);
             throw new JedisException(e.getMessage(), e);
         } finally {
             close(jedis);
@@ -154,7 +157,7 @@ public class RedisClient {
             jedis = getJedis();
             jedis.hset(key, field, value);
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.error("redis exception: {}, when: {}, key: {}", e.toString(), "hset", key);
             throw new JedisException(e.getMessage(), e);
         } finally {
             close(jedis);
@@ -174,11 +177,11 @@ public class RedisClient {
             jedis = getJedis();
             return jedis.hget(key, field);
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.error("redis exception: {}, when: {}, key: {}", e.toString(), "hget", key);
+            throw new JedisException(e.getMessage(), e);
         } finally {
             close(jedis);
         }
-        return null;
     }
 
     /**
@@ -193,7 +196,7 @@ public class RedisClient {
             jedis = getJedis();
             return jedis.hgetAll(key);
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.error("redis exception: {}, when: {}, key: {}", e.toString(), "hgetAll", key);
             throw new JedisException(e.getMessage(), e);
         } finally {
             close(jedis);
@@ -206,7 +209,7 @@ public class RedisClient {
             jedis = getJedis();
             jedis.lpush(key, value);
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.error("redis exception: {}, when: {}, key: {}", e.toString(), "lpush", key);
             throw new JedisException(e.getMessage(), e);
         }
     }
@@ -222,7 +225,7 @@ public class RedisClient {
             jedis = getJedis();
             return jedis.sadd(key, value);
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.error("redis exception: {}, when: {}, key: {}", e.toString(), "sadd", key);
             throw new JedisException(e.getMessage(), e);
         } finally {
             close(jedis);
@@ -239,7 +242,7 @@ public class RedisClient {
             jedis = getJedis();
             return jedis.smembers(key);
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.error("redis exception: {}, when: {}, key: {}", e.toString(), "smembers", key);
             throw new JedisException(e.getMessage(), e);
         } finally {
             close(jedis);
@@ -258,7 +261,7 @@ public class RedisClient {
             jedis = getJedis();
             return jedis.zadd(key, score, member);
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.error("redis exception: {}, when: {}, key: {}", e.toString(), "zadd", key);
             throw new JedisException(e.getMessage(), e);
         } finally {
             close(jedis);
@@ -271,7 +274,7 @@ public class RedisClient {
             jedis = getJedis();
             return jedis.zrem(key, members);
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.error("redis exception: {}, when: {}, key: {}", e.toString(), "zrem", key);
             throw new JedisException(e.getMessage(), e);
         } finally {
             close(jedis);
@@ -290,7 +293,7 @@ public class RedisClient {
             jedis = getJedis();
             return jedis.zrange(key, start, stop);
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.error("redis exception: {}, when: {}, key: {}", e.toString(), "zrange", key);
             throw new JedisException(e.getMessage(), e);
         } finally {
             close(jedis);
@@ -309,7 +312,7 @@ public class RedisClient {
             jedis = getJedis();
             return jedis.zrangeByScoreWithScores(key, min, max);
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.error("redis exception: {}, when: {}, key: {}", e.toString(), "zrangeByScoreWithScores", key);
             throw new JedisException(e.getMessage(), e);
         } finally {
             close(jedis);
@@ -326,7 +329,7 @@ public class RedisClient {
             jedis = getJedis();
             return jedis.expire(key, seconds);
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.error("redis exception: {}, when: {}, key: {}", e.toString(), "expire", key);
             throw new JedisException(e.getMessage(), e);
         } finally {
             close(jedis);
@@ -345,7 +348,7 @@ public class RedisClient {
             jedis = getJedis();
             return jedis.ttl(key);
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.error("redis exception: {}, when: {}, key: {}", e.toString(), "ttl", key);
             throw new JedisException(e.getMessage(), e);
         } finally {
             close(jedis);

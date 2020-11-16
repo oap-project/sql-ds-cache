@@ -3,8 +3,12 @@ package com.intel.oap.fs.hadoop.cachedfs.redis;
 import com.intel.oap.fs.hadoop.cachedfs.Constants;
 import com.intel.oap.fs.hadoop.cachedfs.PMemCacheStatisticsStore;
 import org.apache.hadoop.conf.Configuration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class RedisGlobalPMemCacheStatisticsStore implements PMemCacheStatisticsStore {
+    private static final Logger LOG = LoggerFactory.getLogger(RedisGlobalPMemCacheStatisticsStore.class);
+
     private final Configuration conf;
 
     public RedisGlobalPMemCacheStatisticsStore(Configuration conf) {
@@ -46,7 +50,8 @@ public class RedisGlobalPMemCacheStatisticsStore implements PMemCacheStatisticsS
             try {
                 return Long.parseLong(result);
             } catch (Exception ex) {
-                ex.printStackTrace();
+                LOG.error("exception when parse cache hit count: {}", ex.toString());
+                throw ex;
             }
         }
 
@@ -63,7 +68,8 @@ public class RedisGlobalPMemCacheStatisticsStore implements PMemCacheStatisticsS
             try {
                 return Long.parseLong(result);
             } catch (Exception ex) {
-                ex.printStackTrace();
+                LOG.error("exception when parse cache missed count: {}", ex.toString());
+                throw ex;
             }
         }
 
