@@ -59,6 +59,7 @@ public class CachedInputStream extends FSInputStream {
   private PMemCacheStatisticsStore statisticsStore;
 
   private final long pmemCachedBlockSize;
+  private ObjectId[] ids;
 
   public CachedInputStream(FSDataInputStream hdfsInputStream, Configuration conf,
                            Path path, int bufferSize, long contentLength) {
@@ -78,6 +79,7 @@ public class CachedInputStream extends FSInputStream {
     this.pmemCachedBlockSize = conf.getLong(Constants.CONF_KEY_CACHED_FS_BLOCK_SIZE,
                                             Constants.DEFAULT_CACHED_BLOCK_SIZE);
     this.statisticsStore = new RedisGlobalPMemCacheStatisticsStore(conf);
+    this.ids = new ObjectId[(int)((contentLength + pmemCachedBlockSize - 1) / pmemCachedBlockSize)];
 
     LOG.info("Opening file: {} for reading.", path);
   }
@@ -198,6 +200,7 @@ public class CachedInputStream extends FSInputStream {
           FiberCache fiberCache = cacheManager.create(id, bytesToRead);
           ((SimpleFiberCache)fiberCache).getBuffer().put(cacheBytes);
           cacheManager.seal(id);
+          ids[(int)(currentCachePos / pmemCachedBlockSize)] = id;
           LOG.info("data cached to pmem for block: {}", currentBlock);
         } catch (Exception ex) {
           cached = false;
@@ -259,9 +262,17 @@ public class CachedInputStream extends FSInputStream {
 
   @Override
   public synchronized void close() throws IOException {
-    super.close();
-    hdfsInputStream.close();
-    closed = true;
+    if (!closed) {
+      super.close();
+      hdfsInputStream.close();
+      closed = true;
+      for (int i = 0; i < ids.length; i++) {
+        if (ids[i] != null) {
+          cacheManager.release(ids[i]);
+          LOG.debug("release id: {}", ids[i]);
+        }
+      }
+    }
   }
 
   private void checkNotClosed() throws IOException {
