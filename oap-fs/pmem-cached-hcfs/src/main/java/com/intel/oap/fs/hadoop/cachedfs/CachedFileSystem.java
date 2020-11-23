@@ -19,6 +19,8 @@ import java.io.FileNotFoundException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 public class CachedFileSystem extends FileSystem {
@@ -86,7 +88,7 @@ public class CachedFileSystem extends FileSystem {
         }
         LOG.info("getFileBlockLocations with: {}, start: {}, len: {}", path.toString(), start, len);
 
-        List<BlockLocation> result = new ArrayList<BlockLocation>();
+        List<BlockLocation> result = new ArrayList<>();
 
         // return block locations based on cache checking result
         PMemBlock[] blocks = CachedFileSystemUtils.computePossiblePMemBlocks(path, start, len, this.pmemCachedBlockSize);
@@ -96,8 +98,6 @@ public class CachedFileSystem extends FileSystem {
 
             PMemBlockLocation[] pmemBlockLocations = locationStore.getBlockLocations(blocks, true);
 
-            result.addAll(Arrays.asList(pmemBlockLocations));
-
             if (pmemBlockLocations.length < blocks.length) {
                 // get HDFS block locations
                 LOG.info("getFileBlockLocations fell back to HDFS native, start: {}, len: {}", start, len);
@@ -106,6 +106,8 @@ public class CachedFileSystem extends FileSystem {
                         PathConverter.toHDFSScheme(path), start, len);
 
                 result.addAll(Arrays.asList(hdfsBlockLocations));
+            } else {
+                result.addAll(Arrays.asList(pmemBlockLocations));
             }
 
         }
