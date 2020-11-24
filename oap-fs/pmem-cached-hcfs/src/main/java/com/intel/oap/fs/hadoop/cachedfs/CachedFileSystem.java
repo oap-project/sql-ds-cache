@@ -19,8 +19,6 @@ import java.io.FileNotFoundException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 
 public class CachedFileSystem extends FileSystem {
@@ -34,6 +32,8 @@ public class CachedFileSystem extends FileSystem {
     private String scheme;
 
     private long pmemCachedBlockSize = Constants.DEFAULT_CACHED_BLOCK_SIZE;
+
+    private String locationPolicy;
 
     @Override
     public void initialize(URI name, Configuration conf) throws IOException {
@@ -51,6 +51,11 @@ public class CachedFileSystem extends FileSystem {
         // when fs.hdfs.impl is configured as CachedFileSystem itself
         this.hdfs = new DistributedFileSystem();
         this.hdfs.initialize(hdfsName, conf);
+
+        this.locationPolicy = this.getConf().get(
+                Constants.CONF_KEY_CACHED_FS_BLOCK_LOCATION_POLICY,
+                Constants.CONF_VALUE_CACHED_FS_BLOCK_LOCATION_POLICY_CACHE_MERGING_HDFS);
+        LOG.info("block location policy: {}", this.locationPolicy);
     }
 
     @Override
@@ -86,42 +91,52 @@ public class CachedFileSystem extends FileSystem {
         if (path == null) {
             throw new NullPointerException();
         }
-        LOG.info("getFileBlockLocations with: {}, start: {}, len: {}", path.toString(), start, len);
+        LOG.debug("getFileBlockLocations with: {}, start: {}, len: {}", path.toString(), start, len);
 
         List<BlockLocation> result = new ArrayList<>();
 
-        // return block locations based on cache checking result
-        PMemBlock[] blocks = CachedFileSystemUtils.computePossiblePMemBlocks(path, start, len, this.pmemCachedBlockSize);
+        if (start >= 0 && len > 0) {
+            PMemBlock[] blocks;
+            PMemBlockLocation[] pmemBlockLocations;
+            BlockLocation[] hdfsBlockLocations;
+            PMemBlockLocationStore locationStore;
 
-        if (blocks.length > 0) {
-            String locationStrategy = this.getConf().get(
-                    Constants.CONF_KEY_CACHED_FS_BLOCK_LOCATION_STRATEGY,
-                    Constants.CONF_VALUE_CACHED_FS_BLOCK_LOCATION_STRATEGY_CACHE_AWARE);
-
-            if (locationStrategy.equalsIgnoreCase(Constants.CONF_VALUE_CACHED_FS_BLOCK_LOCATION_STRATEGY_HDFS_ONLY)) {
-                // get HDFS block locations
-                LOG.info("getFileBlockLocations fell back to HDFS native, start: {}, len: {}", start, len);
-
-                BlockLocation[] hdfsBlockLocations = this.hdfs.getFileBlockLocations(
-                        PathConverter.toHDFSScheme(path), start, len);
-
-                result.addAll(Arrays.asList(hdfsBlockLocations));
-            } else {
-                PMemBlockLocationStore locationStore = new RedisPMemBlockLocationStore(this.getConf());
-                PMemBlockLocation[] pmemBlockLocations = locationStore.getBlockLocations(blocks, true);
-
-                if (pmemBlockLocations.length < blocks.length) {
+            switch (this.locationPolicy) {
+                case Constants.CONF_VALUE_CACHED_FS_BLOCK_LOCATION_POLICY_HDFS_ONLY:
                     // get HDFS block locations
-                    LOG.info("getFileBlockLocations fell back to HDFS native, start: {}, len: {}", start, len);
+                    LOG.debug("getFileBlockLocations with native HDFS, start: {}, len: {}", start, len);
+                    hdfsBlockLocations = this.hdfs.getFileBlockLocations(PathConverter.toHDFSScheme(path), start, len);
+                    result.addAll(Arrays.asList(hdfsBlockLocations));
+                    break;
+                case Constants.CONF_VALUE_CACHED_FS_BLOCK_LOCATION_POLICY_CACHE_OVER_HDFS:
+                    // return block locations based on cache checking result
+                    blocks = CachedFileSystemUtils.computePossiblePMemBlocks(path, start, len, this.pmemCachedBlockSize);
+                    locationStore = new RedisPMemBlockLocationStore(this.getConf());
+                    pmemBlockLocations = locationStore.getBlockLocations(blocks, true);
 
-                    BlockLocation[] hdfsBlockLocations = this.hdfs.getFileBlockLocations(
-                            PathConverter.toHDFSScheme(path), start, len);
+                    if (pmemBlockLocations.length < blocks.length) {
+                        // get HDFS block locations
+                        LOG.debug("getFileBlockLocations fell back to native HDFS, start: {}, len: {}", start, len);
+                        hdfsBlockLocations = this.hdfs.getFileBlockLocations(PathConverter.toHDFSScheme(path), start, len);
+                        result.addAll(Arrays.asList(hdfsBlockLocations));
+                    } else {
+                        result.addAll(Arrays.asList(pmemBlockLocations));
+                    }
+                    break;
+                default:
+                    // return block locations based on cache checking result
+                    blocks = CachedFileSystemUtils.computePossiblePMemBlocks(path, start, len, this.pmemCachedBlockSize);
+                    locationStore = new RedisPMemBlockLocationStore(this.getConf());
+                    pmemBlockLocations = locationStore.getBlockLocations(blocks, true);
 
-//                    result.addAll(Arrays.asList(hdfsBlockLocations));
-                    result.addAll(mergeBlockLocations(pmemBlockLocations, hdfsBlockLocations, start, len));
-                } else {
-                    result.addAll(Arrays.asList(pmemBlockLocations));
-                }
+                    if (pmemBlockLocations.length < blocks.length) {
+                        // get HDFS block locations
+                        LOG.debug("getFileBlockLocations fell back to native HDFS, start: {}, len: {}", start, len);
+                        hdfsBlockLocations = this.hdfs.getFileBlockLocations(PathConverter.toHDFSScheme(path), start, len);
+                        result.addAll(mergeBlockLocations(pmemBlockLocations, hdfsBlockLocations, start, len));
+                    } else {
+                        result.addAll(Arrays.asList(pmemBlockLocations));
+                    }
             }
 
         }

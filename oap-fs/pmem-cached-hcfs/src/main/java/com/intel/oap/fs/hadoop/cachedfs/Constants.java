@@ -35,11 +35,14 @@ public class Constants {
 
     public static final long UNSAFE_COPY_MEMORY_STEP_LENGTH = 1024 * 1024;
 
-    public static final String CONF_KEY_CACHED_FS_BLOCK_LOCATION_STRATEGY = "fs.cachedFs.block-location.strategy";
+    public static final String CONF_KEY_CACHED_FS_BLOCK_LOCATION_POLICY = "fs.cachedFs.block-location.policy";
 
-    // file block locations consist of cached blocks and hdfs blocks (if cached blocks are incomplete)
-    public static final String CONF_VALUE_CACHED_FS_BLOCK_LOCATION_STRATEGY_CACHE_AWARE = "cache_aware";
+    // default policy. file block locations consist of cached blocks and hdfs blocks (if cached blocks are incomplete)
+    public static final String CONF_VALUE_CACHED_FS_BLOCK_LOCATION_POLICY_CACHE_MERGING_HDFS = "cache_merging_hdfs";
+
+    // use cached block location only if all requested content is cached, otherwise use HDFS block locations.
+    public static final String CONF_VALUE_CACHED_FS_BLOCK_LOCATION_POLICY_CACHE_OVER_HDFS = "cache_over_hdfs";
 
     // use HDFS file block locations directly. ignoring cached blocks when finding file block locations
-    public static final String CONF_VALUE_CACHED_FS_BLOCK_LOCATION_STRATEGY_HDFS_ONLY = "hdfs_only";
+    public static final String CONF_VALUE_CACHED_FS_BLOCK_LOCATION_POLICY_HDFS_ONLY = "hdfs_only";
 }
