@@ -5,7 +5,7 @@ public class Constants {
 
     public static final String CACHED_FS_SCHEME = "cachedFs";
 
-    public static final long DEFAULT_CACHED_BLOCK_SIZE = 1024 * 1024 * 20;
+    public static final long DEFAULT_CACHED_BLOCK_SIZE = 1024 * 1024 * 16;
 
     public static final String DEFAULT_REDIS_HOST = "localhost";
 
@@ -34,4 +34,12 @@ public class Constants {
     public static final String REDIS_KEY_PMEM_CACHE_GLOBAL_STATISTICS_CACHE_MISSED = "pmem_cache_global_cache_missed";
 
     public static final long UNSAFE_COPY_MEMORY_STEP_LENGTH = 1024 * 1024;
+
+    public static final String CONF_KEY_CACHED_FS_BLOCK_LOCATION_STRATEGY = "fs.cachedFs.block-location.strategy";
+
+    // file block locations consist of cached blocks and hdfs blocks (if cached blocks are incomplete)
+    public static final String CONF_VALUE_CACHED_FS_BLOCK_LOCATION_STRATEGY_CACHE_AWARE = "cache_aware";
+
+    // use HDFS file block locations directly. ignoring cached blocks when finding file block locations
+    public static final String CONF_VALUE_CACHED_FS_BLOCK_LOCATION_STRATEGY_HDFS_ONLY = "hdfs_only";
 }

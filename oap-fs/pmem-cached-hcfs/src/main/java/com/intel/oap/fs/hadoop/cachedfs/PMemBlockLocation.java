@@ -5,7 +5,7 @@ import org.apache.hadoop.fs.BlockLocation;
 /**
  * pmem cache block location
  */
-public class PMemBlockLocation extends BlockLocation {
+public class PMemBlockLocation extends BlockLocation implements Comparable<BlockLocation> {
     private PMemBlock cachedBlock;
 
     public PMemBlockLocation(String[] hosts, PMemBlock cachedBlock) {
@@ -19,5 +19,12 @@ public class PMemBlockLocation extends BlockLocation {
 
     public void setCachedBlock(PMemBlock cachedBlock) {
         this.cachedBlock = cachedBlock;
+    }
+
+    @Override
+    public int compareTo(BlockLocation o) {
+        final long diff = getOffset() - o.getOffset();
+
+        return diff < 0 ? -1 : diff > 0 ? 1 : 0;
     }
 }

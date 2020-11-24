@@ -94,11 +94,11 @@ public class CachedFileSystem extends FileSystem {
         PMemBlock[] blocks = CachedFileSystemUtils.computePossiblePMemBlocks(path, start, len, this.pmemCachedBlockSize);
 
         if (blocks.length > 0) {
-            PMemBlockLocationStore locationStore = new RedisPMemBlockLocationStore(this.getConf());
+            String locationStrategy = this.getConf().get(
+                    Constants.CONF_KEY_CACHED_FS_BLOCK_LOCATION_STRATEGY,
+                    Constants.CONF_VALUE_CACHED_FS_BLOCK_LOCATION_STRATEGY_CACHE_AWARE);
 
-            PMemBlockLocation[] pmemBlockLocations = locationStore.getBlockLocations(blocks, true);
-
-            if (pmemBlockLocations.length < blocks.length) {
+            if (locationStrategy.equalsIgnoreCase(Constants.CONF_VALUE_CACHED_FS_BLOCK_LOCATION_STRATEGY_HDFS_ONLY)) {
                 // get HDFS block locations
                 LOG.info("getFileBlockLocations fell back to HDFS native, start: {}, len: {}", start, len);
 
@@ -107,12 +107,82 @@ public class CachedFileSystem extends FileSystem {
 
                 result.addAll(Arrays.asList(hdfsBlockLocations));
             } else {
-                result.addAll(Arrays.asList(pmemBlockLocations));
+                PMemBlockLocationStore locationStore = new RedisPMemBlockLocationStore(this.getConf());
+                PMemBlockLocation[] pmemBlockLocations = locationStore.getBlockLocations(blocks, true);
+
+                if (pmemBlockLocations.length < blocks.length) {
+                    // get HDFS block locations
+                    LOG.info("getFileBlockLocations fell back to HDFS native, start: {}, len: {}", start, len);
+
+                    BlockLocation[] hdfsBlockLocations = this.hdfs.getFileBlockLocations(
+                            PathConverter.toHDFSScheme(path), start, len);
+
+//                    result.addAll(Arrays.asList(hdfsBlockLocations));
+                    result.addAll(mergeBlockLocations(pmemBlockLocations, hdfsBlockLocations, start, len));
+                } else {
+                    result.addAll(Arrays.asList(pmemBlockLocations));
+                }
             }
 
         }
 
         return result.toArray(new BlockLocation[0]);
+    }
+
+    // Merge cached block locations and HDFS block locations.
+    // Cached block locations hold higher priority.
+    private List<BlockLocation> mergeBlockLocations(
+            PMemBlockLocation[] pmemBlockLocations, BlockLocation[] hdfsBlockLocations, long start, long len) {
+
+        List<BlockLocation> result = new ArrayList<>();
+
+        if (pmemBlockLocations.length == 0) {
+            result.addAll(Arrays.asList(hdfsBlockLocations));
+        } else {
+            long currentOffset = start;
+            int pmemIndex = 0;
+            int hdfsIndex = 0;
+            while (currentOffset < start + len) {
+
+                long pmemOffset = pmemIndex >= pmemBlockLocations.length ?
+                        Long.MAX_VALUE : pmemBlockLocations[pmemIndex].getOffset();
+                long hdfsOffset = hdfsIndex >= hdfsBlockLocations.length ?
+                        Long.MAX_VALUE : hdfsBlockLocations[hdfsIndex].getOffset();
+
+                if (pmemOffset <= currentOffset) {
+
+                    result.add(pmemBlockLocations[pmemIndex]);
+                    currentOffset = pmemBlockLocations[pmemIndex].getOffset() + pmemBlockLocations[pmemIndex].getLength();
+                    pmemIndex ++;
+
+                } else if (hdfsOffset <= currentOffset) {
+
+                    if (hdfsOffset + hdfsBlockLocations[hdfsIndex].getLength() > currentOffset) {
+                        // copy block location data. keep no changes to hdfsBlockLocations[hdfsIndex]
+                        BlockLocation temp = new BlockLocation(hdfsBlockLocations[hdfsIndex]);
+
+                        temp.setOffset(currentOffset);
+                        temp.setLength(temp.getLength() - (currentOffset - hdfsOffset));
+
+                        if (temp.getOffset() + temp.getLength() > pmemOffset) {
+
+                            temp.setLength(pmemOffset - temp.getOffset());
+                        }
+
+                        result.add(temp);
+                        currentOffset = temp.getOffset() + temp.getLength();
+                    } else {
+                        hdfsIndex ++;
+                    }
+
+                } else {
+                    break;
+                }
+            }
+
+        }
+
+        return result;
     }
 
     public FSDataOutputStream create(Path path, FsPermission fsPermission, boolean overwrite, int bufferSize, short replication, long blockSize, Progressable progressable) throws IOException {
