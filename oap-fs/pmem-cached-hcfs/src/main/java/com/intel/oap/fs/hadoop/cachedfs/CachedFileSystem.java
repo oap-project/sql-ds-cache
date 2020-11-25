@@ -54,7 +54,7 @@ public class CachedFileSystem extends FileSystem {
 
         this.locationPolicy = this.getConf().get(
                 Constants.CONF_KEY_CACHED_FS_BLOCK_LOCATION_POLICY,
-                Constants.CONF_VALUE_CACHED_FS_BLOCK_LOCATION_POLICY_CACHE_MERGING_HDFS);
+                Constants.CACHE_LOCATION_POLICY_MERGING_HDFS);
         LOG.info("block location policy: {}", this.locationPolicy);
     }
 
@@ -102,13 +102,13 @@ public class CachedFileSystem extends FileSystem {
             PMemBlockLocationStore locationStore;
 
             switch (this.locationPolicy) {
-                case Constants.CONF_VALUE_CACHED_FS_BLOCK_LOCATION_POLICY_HDFS_ONLY:
+                case Constants.CACHE_LOCATION_POLICY_HDFS_ONLY:
                     // get HDFS block locations
                     LOG.debug("getFileBlockLocations with native HDFS, start: {}, len: {}", start, len);
                     hdfsBlockLocations = this.hdfs.getFileBlockLocations(PathConverter.toHDFSScheme(path), start, len);
                     result.addAll(Arrays.asList(hdfsBlockLocations));
                     break;
-                case Constants.CONF_VALUE_CACHED_FS_BLOCK_LOCATION_POLICY_CACHE_OVER_HDFS:
+                case Constants.CACHE_LOCATION_POLICY_OVER_HDFS:
                     // return block locations based on cache checking result
                     blocks = CachedFileSystemUtils.computePossiblePMemBlocks(path, start, len, this.pmemCachedBlockSize);
                     locationStore = new RedisPMemBlockLocationStore(this.getConf());
@@ -153,48 +153,46 @@ public class CachedFileSystem extends FileSystem {
 
         if (pmemBlockLocations.length == 0) {
             result.addAll(Arrays.asList(hdfsBlockLocations));
-        } else {
-            long currentOffset = start;
-            int pmemIndex = 0;
-            int hdfsIndex = 0;
-            while (currentOffset < start + len) {
+            return result;
+        }
 
-                long pmemOffset = pmemIndex >= pmemBlockLocations.length ?
-                        Long.MAX_VALUE : pmemBlockLocations[pmemIndex].getOffset();
-                long hdfsOffset = hdfsIndex >= hdfsBlockLocations.length ?
-                        Long.MAX_VALUE : hdfsBlockLocations[hdfsIndex].getOffset();
+        long currentOffset = start;
+        int pmemIndex = 0;
+        int hdfsIndex = 0;
+        while (currentOffset < start + len) {
 
-                if (pmemOffset <= currentOffset) {
+            long pmemOffset = pmemIndex >= pmemBlockLocations.length ?
+                    Long.MAX_VALUE : pmemBlockLocations[pmemIndex].getOffset();
+            long hdfsOffset = hdfsIndex >= hdfsBlockLocations.length ?
+                    Long.MAX_VALUE : hdfsBlockLocations[hdfsIndex].getOffset();
 
-                    result.add(pmemBlockLocations[pmemIndex]);
-                    currentOffset = pmemBlockLocations[pmemIndex].getOffset() + pmemBlockLocations[pmemIndex].getLength();
-                    pmemIndex ++;
+            if (pmemOffset <= currentOffset) {
 
-                } else if (hdfsOffset <= currentOffset) {
+                result.add(pmemBlockLocations[pmemIndex]);
+                currentOffset = pmemBlockLocations[pmemIndex].getOffset() + pmemBlockLocations[pmemIndex].getLength();
+                pmemIndex ++;
 
-                    if (hdfsOffset + hdfsBlockLocations[hdfsIndex].getLength() > currentOffset) {
-                        // copy block location data. keep no changes to hdfsBlockLocations[hdfsIndex]
-                        BlockLocation temp = new BlockLocation(hdfsBlockLocations[hdfsIndex]);
+            } else if (hdfsOffset <= currentOffset) {
 
-                        temp.setOffset(currentOffset);
-                        temp.setLength(temp.getLength() - (currentOffset - hdfsOffset));
+                if (hdfsOffset + hdfsBlockLocations[hdfsIndex].getLength() > currentOffset) {
+                    // copy block location data. keep no changes to hdfsBlockLocations[hdfsIndex]
+                    BlockLocation temp = new BlockLocation(hdfsBlockLocations[hdfsIndex]);
 
-                        if (temp.getOffset() + temp.getLength() > pmemOffset) {
+                    temp.setOffset(currentOffset);
+                    temp.setLength(Math.min(
+                            hdfsOffset + temp.getLength() - currentOffset,
+                            pmemOffset - currentOffset
+                    ));
 
-                            temp.setLength(pmemOffset - temp.getOffset());
-                        }
-
-                        result.add(temp);
-                        currentOffset = temp.getOffset() + temp.getLength();
-                    } else {
-                        hdfsIndex ++;
-                    }
-
+                    result.add(temp);
+                    currentOffset = temp.getOffset() + temp.getLength();
                 } else {
-                    break;
+                    hdfsIndex ++;
                 }
-            }
 
+            } else {
+                break;
+            }
         }
 
         return result;
