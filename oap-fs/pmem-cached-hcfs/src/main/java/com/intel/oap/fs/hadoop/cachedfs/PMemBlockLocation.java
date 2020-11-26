@@ -20,4 +20,5 @@ public class PMemBlockLocation extends BlockLocation {
     public void setCachedBlock(PMemBlock cachedBlock) {
         this.cachedBlock = cachedBlock;
     }
+
 }
