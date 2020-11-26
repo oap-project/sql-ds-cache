@@ -81,7 +81,7 @@ public class CachedInputStream extends FSInputStream {
     this.statisticsStore = new RedisGlobalPMemCacheStatisticsStore(conf);
     this.ids = new ObjectId[(int)((contentLength + pmemCachedBlockSize - 1) / pmemCachedBlockSize)];
 
-    LOG.info("Opening file: {} for reading.", path);
+    LOG.debug("Opening file: {} for reading.", path);
   }
 
   private void advanceCachePosition(long pos) {
@@ -112,7 +112,7 @@ public class CachedInputStream extends FSInputStream {
 
     advanceCachePosition(pos);
 
-    LOG.info("Seeking file: {} to pos: {}.", path, pos);
+    LOG.debug("Seeking file: {} to pos: {}.", path, pos);
   }
 
   @Override
@@ -218,7 +218,7 @@ public class CachedInputStream extends FSInputStream {
         host = InetAddress.getLocalHost().getHostName();
 
         this.locationStore.addBlockLocation(currentBlock, host);
-        LOG.info("block location saved for block: {}, host: {}", currentBlock, host);
+        LOG.debug("block location saved for block: {}, host: {}", currentBlock, host);
       } catch (Exception ex) {
         // ignore
       }
