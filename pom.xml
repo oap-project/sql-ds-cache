@@ -48,6 +48,7 @@
 <!--        <module>oap-shuffle/RPMem-shuffle</module>-->
 
         <module>oap-fs/pmem-cached-hcfs</module>
+        <module>oap-ape/ape-java</module>
     </modules>
 
 </project>
