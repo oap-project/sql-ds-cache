@@ -26,7 +26,7 @@ build/
 Testing/
 cmake-build-debug/
 cmake-build-release/
-
+.vscode/
 #########################################
 # Editor temporary/working/backup files #
 .#*
