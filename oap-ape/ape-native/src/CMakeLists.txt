@@ -24,6 +24,11 @@ set(CMAKE_CXX_STANDARD 11)
 find_library(ARROW_LIB arrow)
 find_library(PARQUET_LIB parquet)
 
+find_package(JNI REQUIRED)
+# add jni support
+include_directories(${JAVA_INCLUDE_PATH})
+include_directories(${JAVA_INCLUDE_PATH2})
+
 if(NOT ARROW_LIB)
   message(FATAL_ERROR "Arrow library not found")
 endif()
@@ -35,5 +40,14 @@ endif()
 set(APE_SRCS
     main.cc)
 
+set(PARQUET_DEMO
+    parquet-hdfs-test.cc)
+
 add_executable(ape ${APE_SRCS})
+add_executable(parquet_test ${PARQUET_DEMO})
+
+add_compile_options("-I$ENV{JAVA_HOME}/include/")
+add_compile_options("-I$ENV{JAVA_HOME}/include/linux")
+
 target_link_libraries(ape ${ARROW_LIB})
+target_link_libraries(parquet_test ${ARROW_LIB} ${PARQUET_LIB})
