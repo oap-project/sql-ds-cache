@@ -4,6 +4,8 @@ java build
 ```
 cd $OAP_ROOT_DIR/oap-ape/ape-java
 mvn clean package -am
+# test jni: you may need to change params in test code.
+java -cp ape-jni/target/ape-jni-0.0.1-SNAPSHOT-jar-with-dependencies.jar com.intel.ape.ParquetReaderTest
 ```
 
 cpp build
@@ -46,4 +48,19 @@ please execute commands(see [link](https://stackoverflow.com/questions/21064140/
 ```
 export CLASSPATH=${HADOOP_HOME}/etc/hadoop:`find ${HADOOP_HOME}/share/hadoop/ | awk '{path=path":"$0}END{print path}'`
 export LD_LIBRARY_PATH="${HADOOP_HOME}/lib/native":$LD_LIBRARY_PATH
+```
+## use libhdfs3.so to replace libhdfs.so
+We found that java side call ParquetReaderJNI will throw some error, haven't found root cause yet. But a guess is that libhdfs will call java code in the end, call stack is like 
+ ``` 
+ java(test code) -> jni(reader JNI) -> native(Reader ) -> jni (libhdfs ) -> java(hadoop) .
+``` 
+
+An option is to replace libhdfs.so with [libhdfs3.so](https://github.com/erikmuttersbach/libhdfs3) which is a pure native impl, and get rid of drawbacks of JNI.
+ 
+you can refer this [link](https://github.com/Intel-bigdata/OAP/blob/master/oap-data-source/arrow/README.md#use-libhdfs3-library-for-better-performanceoptional) to install libhdfs3
+
+when run test code, add below environment variable:
+```
+export LD_LIBRARY_PATH="${HADOOP_HOME}/lib/native":$LD_LIBRARY_PATH
+export LIBHDFS3_CONF=/path/to/your/hdfs-site.xml
 ```
