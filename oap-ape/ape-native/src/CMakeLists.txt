@@ -28,6 +28,7 @@ find_package(JNI REQUIRED)
 # add jni support
 include_directories(${JAVA_INCLUDE_PATH})
 include_directories(${JAVA_INCLUDE_PATH2})
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 if(NOT ARROW_LIB)
   message(FATAL_ERROR "Arrow library not found")
@@ -43,11 +44,21 @@ set(APE_SRCS
 set(PARQUET_DEMO
     parquet-hdfs-test.cc)
 
+file(GLOB JNI_LIB_SRC
+    com_intel_ape_ParquetReaderJNI.cc reader.cc)
+# set(PARQUET_NATIVE_SRC reader.cc)
+
 add_executable(ape ${APE_SRCS})
 add_executable(parquet_test ${PARQUET_DEMO})
+# add_library(parquet_native SHARED ${PARQUET_NATIVE_SRC})
+add_library(parquet_jni SHARED ${JNI_LIB_SRC})
 
 add_compile_options("-I$ENV{JAVA_HOME}/include/")
 add_compile_options("-I$ENV{JAVA_HOME}/include/linux")
 
-target_link_libraries(ape ${ARROW_LIB})
+set(CMAKE_CXX_FLAGS "-g")
+
 target_link_libraries(parquet_test ${ARROW_LIB} ${PARQUET_LIB})
+# target_link_libraries(parquet_native ${ARROW_LIB} ${PARQUET_LIB} ${JNI} )
+target_link_libraries(parquet_jni ${ARROW_LIB} ${PARQUET_LIB} ${JNI} )
+target_link_libraries(ape ${ARROW_LIB} ${PARQUET_LIB} parquet_jni)

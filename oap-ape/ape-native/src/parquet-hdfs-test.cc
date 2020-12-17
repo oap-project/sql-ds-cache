@@ -60,6 +60,14 @@ int main() {
   std::cout << "schema is: " << std::endl
             << file_metadata->schema()->ToString() << std::endl;
 
+  int index = file_metadata->schema()->ColumnIndex("ss_item_sk");
+  std::cout << "ss_item_sk index is " << index << std::endl;
+  // now we know index is 2
+  auto col = file_metadata->schema()->Column(index);
+  std::cout << "name " << col->name() << std::endl
+            << "path" << col->path() << std::endl
+            << "toString " << col->ToString() << std::endl;
+
   std::shared_ptr<parquet::RowGroupReader> row_group_reader = parquet_reader->RowGroup(0);
   std::shared_ptr<parquet::ColumnReader> column_reader;
   column_reader = row_group_reader->Column(1);
