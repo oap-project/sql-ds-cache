@@ -35,7 +35,7 @@ class Reader {
   void init(std::string fileName, std::string hdfsHost, int hdfsPort,
             std::string requiredSchema);
 
-  void readBatch(int batchSize);
+  int readBatch(int batchSize, long* buffersPtr, long* nullsPtr);
 
   bool hasNext();
 
@@ -46,14 +46,29 @@ class Reader {
  private:
   void convertSchema(std::string requiredColumnName);
 
-  HdfsOptions *options;
+  void checkEndOfRowGroup();
+  
+  void getRequiredRowGroupId();
+
+  HdfsOptions* options;
   std::shared_ptr<FileSystem> fs;
   std::shared_ptr<arrow::io::RandomAccessFile> file;
   std::unique_ptr<parquet::ParquetFileReader> parquetReader;
   std::shared_ptr<parquet::FileMetaData> fileMetaData;
-  std::vector<int> requiredColumnIndex;
 
-  int totalRowGroups;
-  int totalColumns;
+  std::vector<int> requiredRowGroupId;
+  std::vector<std::shared_ptr<parquet::RowGroupReader>> rowGroupReaders;
+  std::shared_ptr<parquet::RowGroupReader> rowGroupReader;
+
+  std::vector<int> requiredColumnIndex;
+  std::vector<std::shared_ptr<parquet::ColumnReader>> columnReaders;
+
+  int totalRowGroups = 0;
+  int totalColumns = 0;
+  int64_t totalRows = 0;
+
   int currentRowGroup = 0;
+  int64_t totalRowsRead = 0;
+  int64_t totalRowsLoadedSoFar = 0;
+
 };
