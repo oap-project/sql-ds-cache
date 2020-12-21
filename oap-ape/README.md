@@ -1,3 +1,20 @@
+#Dependency
+[comment]: <>(TODO: can use some easier way?)
+APE is using [nlohmann/json](https://github.com/nlohmann/json) lib to parse json between java and native. This is a
+ header-only json lib. You need to pre-install this library on your work nodes.
+ 
+ build and install commands:
+ ```
+git clone https://github.com/nlohmann/json
+cd json
+mkdir build
+cd build
+cmake .. -DCMAKE_INSTALL_PREFIX=/your/library/path/
+make -j
+make install
+```
+
+
 # How to build
 
 java build
