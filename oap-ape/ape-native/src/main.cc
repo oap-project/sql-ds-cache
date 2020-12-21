@@ -12,19 +12,33 @@ int main() {
   Reader reader;
   // just test hdfs connection.
   std::string file_name =
-      "/tpcds_10g/store_sales/"
-      "part-00000-74feb3b4-1954-4be7-802d-a50912793bea-c000.snappy.parquet";
-  reader.init(file_name, "sr585", 9000, "");
+      "/tpcds_10g/catalog_sales/"
+      "part-00000-be30656b-ae02-4015-a9be-b9f62c2d9159-c000.snappy.parquet";
+  std::string schema =
+      "{\"type\":\"struct\",\"fields\":[{\"name\":\"cs_sold_date_sk\",\"type\":"
+      "\"integer\",\"nullable\":true,\"metadata\":{}},{\"name\":\"cs_bill_cdemo_sk\","
+      "\"type\":\"integer\",\"nullable\":true,\"metadata\":{}},{\"name\":\"cs_item_sk\","
+      "\"type\":\"integer\",\"nullable\":true,\"metadata\":{}},{\"name\":\"cs_promo_sk\","
+      "\"type\":\"integer\",\"nullable\":true,\"metadata\":{}},{\"name\":\"cs_quantity\","
+      "\"type\":\"integer\",\"nullable\":true,\"metadata\":{}},{\"name\":\"cs_list_"
+      "price\",\"type\":\"decimal(7,2)\",\"nullable\":true,\"metadata\":{}},{\"name\":"
+      "\"cs_sales_price\",\"type\":\"decimal(7,2)\",\"nullable\":true,\"metadata\":{}},{"
+      "\"name\":\"cs_coupon_amt\",\"type\":\"decimal(7,2)\",\"nullable\":true,"
+      "\"metadata\":{}}]}";
+  reader.init(file_name, "sr585", 9000, schema);
   int batchSize = 1024;
 
-  long* buffers = new long[3];
-  long* nulls = new long[3];
+  int columnNum = 8;
 
-  for (int i = 0; i < 3; i++) {
+  long* buffers = new long[columnNum];
+  long* nulls = new long[columnNum];
+
+  for (int i = 0; i < columnNum; i++) {
+    // TODO: some columns may be not long type, but doesn't matter for test
     buffers[i] = (int64_t)(std::malloc(sizeof(long) * batchSize));
     nulls[i] = (int64_t)(std::malloc(sizeof(uint8_t) * batchSize));
-    std::cout << "buffer addr is: " << buffers[i] << " null addr is " << nulls[i]
-              << std::endl;
+    // std::cout << "buffer addr is: " << buffers[i] << " null addr is " << nulls[i]
+    // << std::endl;
   }
   int rowsRead = reader.readBatch(batchSize, buffers, nulls);
   std::cout << "read rows: " << rowsRead << std::endl;
@@ -39,16 +53,13 @@ int main() {
     std::cout << ptr1[i] << "\t" << ptr2[i] << "\t" << ptr3[i] << std::endl;
   }
 
-  long nullAddr1 = nulls[0];
-  long nullAddr2 = nulls[1];
-  long nullAddr3 = nulls[2];
-  uint8_t* nullPtr1 = (uint8_t*)nullAddr1;
-  uint8_t* nullPtr2 = (uint8_t*)nullAddr2;
-  uint8_t* nullPtr3 = (uint8_t*)nullAddr3;
-  // for (int i = 0; i < 10; i++) {
-  //   std::cout << std::to_string(nullPtr1[i]) << "\t" << std::to_string(nullPtr2[i])
-  //             << "\t" << std::to_string(nullPtr3[i]) << std::endl;
-  // }
+  for (int i = 0; i < columnNum; i++) {
+    std::free((char*)buffers[i]);
+    std::free((char*)nulls[i]);
+  }
+
+  delete buffers;
+  delete nulls;
 
   reader.close();
 

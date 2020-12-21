@@ -17,6 +17,7 @@
 
 #include "reader.h"
 #include <algorithm>
+#include <nlohmann/json.hpp>
 
 using namespace arrow::fs;
 
@@ -53,14 +54,14 @@ void Reader::init(std::string fileName, std::string hdfsHost, int hdfsPort,
 
   totalColumns = fileMetaData->num_columns();
 
-  fileMetaData->schema();
-  convertSchema("");
+  ARROW_LOG(DEBUG) << "schema is " << fileMetaData->schema()->ToString();
+  convertSchema(requiredSchema);
 
   getRequiredRowGroupId();
   currentRowGroup = *requiredRowGroupId.begin();
 
   totalRowGroups = requiredRowGroupId.size();
-  rowGroupReaders.reserve(totalRowGroups);
+  rowGroupReaders.resize(totalRowGroups);
   for (int i = 0; i < totalRowGroups; i++) {
     rowGroupReaders[i] = parquetReader->RowGroup(requiredRowGroupId[i]);
     totalRows += rowGroupReaders[i]->metadata()->num_rows();
@@ -79,13 +80,19 @@ void Reader::getRequiredRowGroupId() {
   std::iota(requiredRowGroupId.begin(), requiredRowGroupId.end(), 0);
 }
 
+// TODO: for now we can convert spark schema which is a json string, need to add Flink
+// support. We could have a light schema conversion in wrapper layer.
+// TODO: need consider column sequence?
 void Reader::convertSchema(std::string requiredColumnName) {
-  // std::string to std::vector<string> col_names
-  // std::vector<string> to std::vector<int>
-  // by call fileMetaData->schema()->ColumnIndex("col_name")
-
-  // let's build a fake index vector for test.
-  requiredColumnIndex = {1, 3, 5};
+  auto j = nlohmann::json::parse(requiredColumnName);
+  int filedsNum = j["fields"].size();
+  ARROW_LOG(INFO) << "fields size: " << filedsNum;
+  for (int i = 0; i < filedsNum; i++) {
+    std::string columnName = j["fields"][i]["name"];
+    int columnIndex = fileMetaData->schema()->ColumnIndex(columnName);
+    ARROW_LOG(DEBUG) << "name is: " << columnName << " index is: " << columnIndex;
+    requiredColumnIndex.push_back(columnIndex);
+  }
 }
 
 int Reader::readBatch(int batchSize, long* buffersPtr, long* nullsPtr) {
@@ -118,16 +125,16 @@ int Reader::readBatch(int batchSize, long* buffersPtr, long* nullsPtr) {
         parquet::Int32Reader* int32_reader =
             static_cast<parquet::Int32Reader*>(columnReaders[i].get());
         rows = int32_reader->ReadBatchSpaced(
-            rowsToRead, defLevel, repLevel, (int32_t*)buffersPtr[i], (uint8_t*)nullsPtr[i], 0,
-            &levels_read, &values_read, &null_count);
+            rowsToRead, defLevel, repLevel, (int32_t*)buffersPtr[i],
+            (uint8_t*)nullsPtr[i], 0, &levels_read, &values_read, &null_count);
         break;
       }
       case parquet::Type::INT64: {
         parquet::Int64Reader* int64_reader =
             static_cast<parquet::Int64Reader*>(columnReaders[i].get());
         rows = int64_reader->ReadBatchSpaced(
-            rowsToRead, defLevel, repLevel, (int64_t*)buffersPtr[i], (uint8_t*)nullsPtr[i], 0,
-            &levels_read, &values_read, &null_count);
+            rowsToRead, defLevel, repLevel, (int64_t*)buffersPtr[i],
+            (uint8_t*)nullsPtr[i], 0, &levels_read, &values_read, &null_count);
         break;
       }
       case parquet::Type::INT96: {
@@ -150,8 +157,8 @@ int Reader::readBatch(int batchSize, long* buffersPtr, long* nullsPtr) {
         parquet::DoubleReader* double_reader =
             static_cast<parquet::DoubleReader*>(columnReaders[i].get());
         rows = double_reader->ReadBatchSpaced(
-            rowsToRead, defLevel, repLevel, (double*)buffersPtr[i], (uint8_t*)nullsPtr[i], 0,
-            &levels_read, &values_read, &null_count);
+            rowsToRead, defLevel, repLevel, (double*)buffersPtr[i], (uint8_t*)nullsPtr[i],
+            0, &levels_read, &values_read, &null_count);
         break;
       }
       default:

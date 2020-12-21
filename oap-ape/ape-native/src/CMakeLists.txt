@@ -24,6 +24,8 @@ set(CMAKE_CXX_STANDARD 11)
 find_library(ARROW_LIB arrow)
 find_library(PARQUET_LIB parquet)
 
+find_package(nlohmann_json 3.2.0 REQUIRED)
+
 find_package(JNI REQUIRED)
 # add jni support
 include_directories(${JAVA_INCLUDE_PATH})
@@ -60,5 +62,5 @@ set(CMAKE_CXX_FLAGS "-g")
 
 target_link_libraries(parquet_test ${ARROW_LIB} ${PARQUET_LIB})
 # target_link_libraries(parquet_native ${ARROW_LIB} ${PARQUET_LIB} ${JNI} )
-target_link_libraries(parquet_jni ${ARROW_LIB} ${PARQUET_LIB} ${JNI} )
+target_link_libraries(parquet_jni ${ARROW_LIB} ${PARQUET_LIB} ${JNI} nlohmann_json::nlohmann_json )
 target_link_libraries(ape ${ARROW_LIB} ${PARQUET_LIB} parquet_jni)
