@@ -108,57 +108,73 @@ int Reader::readBatch(int batchSize, long* buffersPtr, long* nullsPtr) {
   int16_t* repLevel = new int16_t[rowsToRead];
   ARROW_LOG(INFO) << "will read " << rowsToRead << " rows";
   for (int i = 0; i < columnReaders.size(); i++) {
-    int64_t levels_read = 0, values_read = 0, null_count = 0;
+    int64_t levelsRead = 0, valuesRead = 0, nullCount = 0;
     int rows = 0;
     // TODO: refactor. it's ugly, but didn't find some better way.
     switch (fileMetaData->schema()->Column(requiredColumnIndex[i])->physical_type()) {
       case parquet::Type::BOOLEAN: {
-        parquet::BoolReader* bool_reader =
+        parquet::BoolReader* boolReader =
             static_cast<parquet::BoolReader*>(columnReaders[i].get());
-        rows = bool_reader->ReadBatchSpaced(rowsToRead, defLevel, repLevel,
+        rows = boolReader->ReadBatchSpaced(rowsToRead, defLevel, repLevel,
                                             (bool*)buffersPtr[i], (uint8_t*)nullsPtr[i],
-                                            0, &levels_read, &values_read, &null_count);
+                                            0, &levelsRead, &valuesRead, &nullCount);
         break;
       }
 
       case parquet::Type::INT32: {
-        parquet::Int32Reader* int32_reader =
+        parquet::Int32Reader* int32Reader =
             static_cast<parquet::Int32Reader*>(columnReaders[i].get());
-        rows = int32_reader->ReadBatchSpaced(
+        rows = int32Reader->ReadBatchSpaced(
             rowsToRead, defLevel, repLevel, (int32_t*)buffersPtr[i],
-            (uint8_t*)nullsPtr[i], 0, &levels_read, &values_read, &null_count);
+            (uint8_t*)nullsPtr[i], 0, &levelsRead, &valuesRead, &nullCount);
         break;
       }
       case parquet::Type::INT64: {
-        parquet::Int64Reader* int64_reader =
+        parquet::Int64Reader* int64Reader =
             static_cast<parquet::Int64Reader*>(columnReaders[i].get());
-        rows = int64_reader->ReadBatchSpaced(
+        rows = int64Reader->ReadBatchSpaced(
             rowsToRead, defLevel, repLevel, (int64_t*)buffersPtr[i],
-            (uint8_t*)nullsPtr[i], 0, &levels_read, &values_read, &null_count);
+            (uint8_t*)nullsPtr[i], 0, &levelsRead, &valuesRead, &nullCount);
         break;
       }
       case parquet::Type::INT96: {
-        parquet::Int96Reader* int96_reader =
+        parquet::Int96Reader* int96Reader =
             static_cast<parquet::Int96Reader*>(columnReaders[i].get());
-        rows = int96_reader->ReadBatchSpaced(
+        rows = int96Reader->ReadBatchSpaced(
             rowsToRead, defLevel, repLevel, (parquet::Int96*)buffersPtr[i],
-            (uint8_t*)nullsPtr[i], 0, &levels_read, &values_read, &null_count);
+            (uint8_t*)nullsPtr[i], 0, &levelsRead, &valuesRead, &nullCount);
         break;
       }
       case parquet::Type::FLOAT: {
-        parquet::FloatReader* float_reader =
+        parquet::FloatReader* floatReader =
             static_cast<parquet::FloatReader*>(columnReaders[i].get());
-        rows = float_reader->ReadBatchSpaced(rowsToRead, defLevel, repLevel,
+        rows = floatReader->ReadBatchSpaced(rowsToRead, defLevel, repLevel,
                                              (float*)buffersPtr[i], (uint8_t*)nullsPtr[i],
-                                             0, &levels_read, &values_read, &null_count);
+                                             0, &levelsRead, &valuesRead, &nullCount);
         break;
       }
       case parquet::Type::DOUBLE: {
-        parquet::DoubleReader* double_reader =
+        parquet::DoubleReader* doubleReader =
             static_cast<parquet::DoubleReader*>(columnReaders[i].get());
-        rows = double_reader->ReadBatchSpaced(
+        rows = doubleReader->ReadBatchSpaced(
             rowsToRead, defLevel, repLevel, (double*)buffersPtr[i], (uint8_t*)nullsPtr[i],
-            0, &levels_read, &values_read, &null_count);
+            0, &levelsRead, &valuesRead, &nullCount);
+        break;
+      }
+      case parquet::Type::BYTE_ARRAY: {
+        parquet::ByteArrayReader* byteArrayReader =
+            static_cast<parquet::ByteArrayReader*>(columnReaders[i].get());
+        rows = byteArrayReader->ReadBatchSpaced(
+            rowsToRead, defLevel, repLevel, (parquet::ByteArray*)buffersPtr[i],
+            (uint8_t*)nullsPtr[i], 0, &levelsRead, &valuesRead, &nullCount);
+        break;
+      }
+      case parquet::Type::FIXED_LEN_BYTE_ARRAY: {
+        parquet::FixedLenByteArrayReader* fixedLenByteArrayReader =
+            static_cast<parquet::FixedLenByteArrayReader*>(columnReaders[i].get());
+        rows = fixedLenByteArrayReader->ReadBatchSpaced(
+            rowsToRead, defLevel, repLevel, (parquet::FixedLenByteArray*)buffersPtr[i],
+            (uint8_t*)nullsPtr[i], 0, &levelsRead, &valuesRead, &nullCount);
         break;
       }
       default:
