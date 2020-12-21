@@ -27,9 +27,9 @@ public class ParquetReaderJNI {
   }
 
   // return a reader pointer
-  public static native long init(String fileName, String hdfsNN, int hdfsPort, String requiredSchema);
+  public static native long init(String fileName, String hdfsHost, int hdfsPort, String requiredSchema);
 
-  public static native int readBatch(long reader, int batchSize);
+  public static native int readBatch(long reader, int batchSize, long[] buffers, long[] nulls);
 
   public static native boolean hasNext(long reader);
 
