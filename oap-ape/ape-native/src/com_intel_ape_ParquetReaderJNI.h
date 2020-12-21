@@ -35,10 +35,10 @@ JNIEXPORT jlong JNICALL Java_com_intel_ape_ParquetReaderJNI_init
 /*
  * Class:     com_intel_ape_ParquetReaderJNI
  * Method:    readBatch
- * Signature: (JI)I
+ * Signature: (JI[J[J)I
  */
 JNIEXPORT jint JNICALL Java_com_intel_ape_ParquetReaderJNI_readBatch
-  (JNIEnv *, jclass, jlong, jint);
+  (JNIEnv *, jclass, jlong, jint, jlongArray, jlongArray);
 
 /*
  * Class:     com_intel_ape_ParquetReaderJNI

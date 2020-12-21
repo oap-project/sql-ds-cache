@@ -43,13 +43,22 @@ JNIEXPORT jboolean JNICALL Java_com_intel_ape_ParquetReaderJNI_hasNext(JNIEnv* e
   return reader->hasNext();
 }
 
-JNIEXPORT jint JNICALL Java_com_intel_ape_ParquetReaderJNI_readBatch(JNIEnv* env,
-                                                                     jclass cls,
-                                                                     jlong readerPtr,
-                                                                     jint batchSize) {
+JNIEXPORT jint JNICALL Java_com_intel_ape_ParquetReaderJNI_readBatch(
+    JNIEnv* env, jclass cls, jlong readerPtr, jint batchSize, jlongArray buffers,
+    jlongArray nulls) {
   Reader* reader = reinterpret_cast<Reader*>(readerPtr);
-  reader->readBatch(batchSize);
-  return 0;
+  jsize buffersLen = env->GetArrayLength(buffers);
+  jsize nullsLen = env->GetArrayLength(nulls);
+  assert(buffersLen == nullsLen);
+
+  jlong* buffersPtr = env->GetLongArrayElements(buffers, 0);
+  jlong* nullsPtr = env->GetLongArrayElements(nulls, 0);
+
+  int ret = reader->readBatch(batchSize, buffersPtr, nullsPtr);
+
+  env->ReleaseLongArrayElements(buffers, buffersPtr, 0);
+  env->ReleaseLongArrayElements(nulls, nullsPtr, 0);
+  return ret;
 }
 
 JNIEXPORT jboolean JNICALL Java_com_intel_ape_ParquetReaderJNI_skipNextRowGroup(
