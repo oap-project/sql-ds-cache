@@ -191,7 +191,9 @@ int Reader::readBatch(int batchSize, long* buffersPtr, long* nullsPtr) {
   return rowsToRead;
 }
 
-bool Reader::hasNext() { return false; }
+bool Reader::hasNext() { 
+  return columnReaders[0]->HasNext();
+}
 
 void Reader::skipNextRowGroup() { return; }
 
