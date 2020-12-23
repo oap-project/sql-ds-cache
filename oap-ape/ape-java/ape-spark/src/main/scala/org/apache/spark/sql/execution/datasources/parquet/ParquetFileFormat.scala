@@ -23,7 +23,6 @@ import java.net.URI
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.util.{Failure, Try}
-
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileStatus, Path}
 import org.apache.hadoop.mapreduce._
@@ -36,7 +35,6 @@ import org.apache.parquet.hadoop.ParquetOutputFormat.JobSummaryLevel
 import org.apache.parquet.hadoop.codec.CodecConfig
 import org.apache.parquet.hadoop.util.ContextUtil
 import org.apache.parquet.schema.MessageType
-
 import org.apache.spark.{SparkException, TaskContext}
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql._
@@ -46,7 +44,7 @@ import org.apache.spark.sql.catalyst.expressions.codegen.GenerateUnsafeProjectio
 import org.apache.spark.sql.catalyst.parser.LegacyTypeStringParser
 import org.apache.spark.sql.catalyst.util.DateTimeUtils
 import org.apache.spark.sql.execution.datasources._
-import org.apache.spark.sql.execution.vectorized.{OffHeapColumnVector, OnHeapColumnVector}
+import org.apache.spark.sql.execution.vectorized.{NativeColumnVector, OffHeapColumnVector, OnHeapColumnVector}
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types._
@@ -72,10 +70,10 @@ class ParquetFileFormat
   override def equals(other: Any): Boolean = other.isInstanceOf[ParquetFileFormat]
 
   override def prepareWrite(
-                             sparkSession: SparkSession,
-                             job: Job,
-                             options: Map[String, String],
-                             dataSchema: StructType): OutputWriterFactory = {
+      sparkSession: SparkSession,
+      job: Job,
+      options: Map[String, String],
+      dataSchema: StructType): OutputWriterFactory = {
     val parquetOptions = new ParquetOptions(options, sparkSession.sessionState.conf)
 
     val conf = ContextUtil.getConfiguration(job)
@@ -144,9 +142,9 @@ class ParquetFileFormat
       private val parquetLogRedirector = ParquetLogRedirector.INSTANCE
 
       override def newInstance(
-                                path: String,
-                                dataSchema: StructType,
-                                context: TaskAttemptContext): OutputWriter = {
+          path: String,
+          dataSchema: StructType,
+          context: TaskAttemptContext): OutputWriter = {
         new ParquetOutputWriter(path, context)
       }
 
@@ -157,9 +155,9 @@ class ParquetFileFormat
   }
 
   override def inferSchema(
-                            sparkSession: SparkSession,
-                            parameters: Map[String, String],
-                            files: Seq[FileStatus]): Option[StructType] = {
+      sparkSession: SparkSession,
+      parameters: Map[String, String],
+      files: Seq[FileStatus]): Option[StructType] = {
     ParquetUtils.inferSchema(sparkSession, parameters, files)
   }
 
@@ -174,33 +172,30 @@ class ParquetFileFormat
   }
 
   override def vectorTypes(
-                            requiredSchema: StructType,
-                            partitionSchema: StructType,
-                            sqlConf: SQLConf): Option[Seq[String]] = {
+      requiredSchema: StructType,
+      partitionSchema: StructType,
+      sqlConf: SQLConf): Option[Seq[String]] = {
     Option(Seq.fill(requiredSchema.fields.length + partitionSchema.fields.length)(
-      if (!sqlConf.offHeapColumnVectorEnabled) {
-        classOf[OnHeapColumnVector].getName
-      } else {
-        classOf[OffHeapColumnVector].getName
-      }
+      classOf[NativeColumnVector].getName
     ))
   }
 
   override def isSplitable(
-                            sparkSession: SparkSession,
-                            options: Map[String, String],
-                            path: Path): Boolean = {
-    true
+      sparkSession: SparkSession,
+      options: Map[String, String],
+      path: Path): Boolean = {
+    // For now, we don't support splitable
+    false
   }
 
   override def buildReaderWithPartitionValues(
-                                               sparkSession: SparkSession,
-                                               dataSchema: StructType,
-                                               partitionSchema: StructType,
-                                               requiredSchema: StructType,
-                                               filters: Seq[Filter],
-                                               options: Map[String, String],
-                                               hadoopConf: Configuration): (PartitionedFile) => Iterator[InternalRow] = {
+      sparkSession: SparkSession,
+      dataSchema: StructType,
+      partitionSchema: StructType,
+      requiredSchema: StructType,
+      filters: Seq[Filter],
+      options: Map[String, String],
+      hadoopConf: Configuration): (PartitionedFile) => Iterator[InternalRow] = {
     hadoopConf.set(ParquetInputFormat.READ_SUPPORT_CLASS, classOf[ParquetReadSupport].getName)
     hadoopConf.set(
       ParquetReadSupport.SPARK_ROW_REQUESTED_SCHEMA,
@@ -315,49 +310,17 @@ class ParquetFileFormat
       }
       val taskContext = Option(TaskContext.get())
       if (enableVectorizedReader) {
-        val vectorizedReader = new VectorizedParquetRecordReader(
-          convertTz.orNull,
-          datetimeRebaseMode.toString,
-          enableOffHeapColumnVector && taskContext.isDefined,
-          capacity)
-        val iter = new RecordReaderIterator(vectorizedReader)
-        // SPARK-23457 Register a task completion listener before `initialization`.
-        taskContext.foreach(_.addTaskCompletionListener[Unit](_ => iter.close()))
-        vectorizedReader.initialize(split, hadoopAttemptContext)
-        logDebug(s"Appending $partitionSchema ${file.partitionValues}")
-        vectorizedReader.initBatch(partitionSchema, file.partitionValues)
-        if (returningBatch) {
-          vectorizedReader.enableReturningBatches()
-        }
-
-        // UnsafeRowParquetRecordReader appends the columns internally to avoid another copy.
-        iter.asInstanceOf[Iterator[InternalRow]]
-      } else {
-        logDebug(s"Falling back to parquet-mr")
-        // ParquetRecordReader returns InternalRow
-        val readSupport = new ParquetReadSupport(
-          convertTz, enableVectorizedReader = false, datetimeRebaseMode)
-        val reader = if (pushed.isDefined && enableRecordFilter) {
-          val parquetFilter = FilterCompat.get(pushed.get, null)
-          new ParquetRecordReader[InternalRow](readSupport, parquetFilter)
-        } else {
-          new ParquetRecordReader[InternalRow](readSupport)
-        }
-        val iter = new RecordReaderIterator[InternalRow](reader)
+        logInfo("using ape")
+        val reader = new ParquetNativeRecordReaderWrapper(capacity)
+        val iter = new RecordReaderIterator(reader)
         // SPARK-23457 Register a task completion listener before `initialization`.
         taskContext.foreach(_.addTaskCompletionListener[Unit](_ => iter.close()))
         reader.initialize(split, hadoopAttemptContext)
 
-        val fullSchema = requiredSchema.toAttributes ++ partitionSchema.toAttributes
-        val unsafeProjection = GenerateUnsafeProjection.generate(fullSchema, fullSchema)
-
-        if (partitionSchema.length == 0) {
-          // There is no partition columns
-          iter.map(unsafeProjection)
-        } else {
-          val joinedRow = new JoinedRow()
-          iter.map(d => unsafeProjection(joinedRow(d, file.partitionValues)))
-        }
+        // UnsafeRowParquetRecordReader appends the columns internally to avoid another copy.
+        iter.asInstanceOf[Iterator[InternalRow]]
+      } else {
+        null
       }
     }
   }
@@ -380,7 +343,7 @@ class ParquetFileFormat
 
 object ParquetFileFormat extends Logging {
   private[parquet] def readSchema(
-                                   footers: Seq[Footer], sparkSession: SparkSession): Option[StructType] = {
+      footers: Seq[Footer], sparkSession: SparkSession): Option[StructType] = {
 
     val converter = new ParquetToSparkSchemaConverter(
       sparkSession.sessionState.conf.isParquetBinaryAsString,
@@ -438,9 +401,9 @@ object ParquetFileFormat extends Logging {
    * files when reading footers.
    */
   private[parquet] def readParquetFootersInParallel(
-                                                     conf: Configuration,
-                                                     partFiles: Seq[FileStatus],
-                                                     ignoreCorruptFiles: Boolean): Seq[Footer] = {
+      conf: Configuration,
+      partFiles: Seq[FileStatus],
+      ignoreCorruptFiles: Boolean): Seq[Footer] = {
     ThreadUtils.parmap(partFiles, "readingParquetFooters", 8) { currentFile =>
       try {
         // Skips row group information since we only need the schema.
@@ -475,8 +438,8 @@ object ParquetFileFormat extends Logging {
    *     S3 nodes).
    */
   def mergeSchemasInParallel(
-                              filesToTouch: Seq[FileStatus],
-                              sparkSession: SparkSession): Option[StructType] = {
+      filesToTouch: Seq[FileStatus],
+      sparkSession: SparkSession): Option[StructType] = {
     val assumeBinaryIsString = sparkSession.sessionState.conf.isParquetBinaryAsString
     val assumeInt96IsTimestamp = sparkSession.sessionState.conf.isParquetINT96AsTimestamp
 
@@ -499,7 +462,7 @@ object ParquetFileFormat extends Logging {
    * a [[StructType]] converted from the [[MessageType]] stored in this footer.
    */
   def readSchemaFromFooter(
-                            footer: Footer, converter: ParquetToSparkSchemaConverter): StructType = {
+      footer: Footer, converter: ParquetToSparkSchemaConverter): StructType = {
     val fileMetaData = footer.getParquetMetadata.getFileMetaData
     fileMetaData
       .getKeyValueMetaData

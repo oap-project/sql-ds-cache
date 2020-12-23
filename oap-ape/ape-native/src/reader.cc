@@ -54,7 +54,7 @@ void Reader::init(std::string fileName, std::string hdfsHost, int hdfsPort,
 
   totalColumns = fileMetaData->num_columns();
 
-  ARROW_LOG(DEBUG) << "schema is " << fileMetaData->schema()->ToString();
+  ARROW_LOG(INFO) << "schema is " << fileMetaData->schema()->ToString();
   convertSchema(requiredSchema);
 
   getRequiredRowGroupId();
@@ -96,7 +96,7 @@ void Reader::convertSchema(std::string requiredColumnName) {
 }
 
 int Reader::readBatch(int batchSize, long* buffersPtr, long* nullsPtr) {
-  ARROW_LOG(INFO) << "read batch size: " << batchSize;
+  // ARROW_LOG(INFO) << "read batch size: " << batchSize;
   // this reader have read all rows
   if (totalRowsRead >= totalRows) {
     return -1;
@@ -116,8 +116,8 @@ int Reader::readBatch(int batchSize, long* buffersPtr, long* nullsPtr) {
         parquet::BoolReader* boolReader =
             static_cast<parquet::BoolReader*>(columnReaders[i].get());
         rows = boolReader->ReadBatchSpaced(rowsToRead, defLevel, repLevel,
-                                            (bool*)buffersPtr[i], (uint8_t*)nullsPtr[i],
-                                            0, &levelsRead, &valuesRead, &nullCount);
+                                           (bool*)buffersPtr[i], (uint8_t*)nullsPtr[i], 0,
+                                           &levelsRead, &valuesRead, &nullCount);
         break;
       }
 
@@ -149,8 +149,8 @@ int Reader::readBatch(int batchSize, long* buffersPtr, long* nullsPtr) {
         parquet::FloatReader* floatReader =
             static_cast<parquet::FloatReader*>(columnReaders[i].get());
         rows = floatReader->ReadBatchSpaced(rowsToRead, defLevel, repLevel,
-                                             (float*)buffersPtr[i], (uint8_t*)nullsPtr[i],
-                                             0, &levelsRead, &valuesRead, &nullCount);
+                                            (float*)buffersPtr[i], (uint8_t*)nullsPtr[i],
+                                            0, &levelsRead, &valuesRead, &nullCount);
         break;
       }
       case parquet::Type::DOUBLE: {
@@ -184,6 +184,8 @@ int Reader::readBatch(int batchSize, long* buffersPtr, long* nullsPtr) {
 
     assert(rowsToRead == rows);
   }
+  totalRowsRead += rowsToRead;
+  ARROW_LOG(INFO) << "total rows read yet: " << totalRowsRead;
 
   delete defLevel;
   delete repLevel;
