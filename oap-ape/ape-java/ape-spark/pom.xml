@@ -38,6 +38,11 @@
       <artifactId>spark-sql_${scala.binary.version}</artifactId>
       <version>${spark.internal.version}</version>
     </dependency>
+    <dependency>
+      <groupId>com.intel.oap</groupId>
+      <artifactId>ape-jni</artifactId>
+      <version>0.0.1-SNAPSHOT</version>
+    </dependency>
   </dependencies>
 
   <build>
