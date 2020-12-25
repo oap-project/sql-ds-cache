@@ -31,11 +31,26 @@ sudo make install
 # install libhdfs3.so
 # it's easier to use conda to install.
 # If you don't want to use conda, you can build it manually, it's much more complex.
-conda install -c conda-forge libhdfs3
-ls -l ~/miniconda/envs/$(YOUR_ENV_NAME)/lib/libhdfs3.so/lib/libhdfs3.so
 
+#install manually
+# you need install these libs in all nodes in your cluster.
+cd $TMP_DIR
+yum install -y libxml2-devel libgsasl-devel libuuid-devel krb5-devel # maybe need boost-devel, protobuf-devel
+git clone https://github.com/erikmuttersbach/libhdfs3
+cd libhdfs3
+mkdir build
+cd build
+../bootstrap
+make -j
+ll src/libhdfs3.so.2.2.30
+
+#install via conda
+#conda install -c conda-forge libhdfs3
+#ls -l ~/miniconda/envs/$(YOUR_ENV_NAME)/lib/libhdfs3.so/lib/libhdfs3.so
+
+# replace lib in all nodes in cluster.
 rm $HADOOP_HOME/lib/native/libhdfs.so
-ln -f -s ~/miniconda/envs/$(YOUR_ENV_NAME)/lib/libhdfs3.so/lib/libhdfs3.so $HADOOP_HOME/lib/native/libhdfs.so
+ln -f -s $TMP_DIR/libhdfs3/build/src/libhdfs3.so.2.2.30 $HADOOP_HOME/lib/native/libhdfs.so
 
 #build native
 cd $PROJECT_ROOT/oap-ape/ape-native
