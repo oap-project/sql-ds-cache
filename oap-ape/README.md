@@ -81,3 +81,18 @@ when run test code, add below environment variable:
 export LD_LIBRARY_PATH="${HADOOP_HOME}/lib/native":$LD_LIBRARY_PATH
 export LIBHDFS3_CONF=/path/to/your/hdfs-site.xml
 ```
+
+### hdfs extra configuration for shortcircurt read
+add following configuration to `hdfs-site.xml` file, and make sure the access permission of `/var/lib/hadoop-hdfs` is 755.
+```
+    <property>
+      <name>dfs.client.read.shortcircuit</name>
+      <value>true</value>
+    </property>
+    <property>
+      <name>dfs.domain.socket.path</name>
+      <value>/var/lib/hadoop-hdfs/dn_socket</value>
+    </property>
+```
+
+
