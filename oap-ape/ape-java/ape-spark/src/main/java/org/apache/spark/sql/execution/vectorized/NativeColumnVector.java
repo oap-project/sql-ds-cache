@@ -51,8 +51,8 @@ public class NativeColumnVector extends ColumnVector {
 
   @Override
   public boolean isNullAt(int rowId) {
-    byte b = Platform.getByte(null, nullPtr + rowId / 8);
-    return ((b & (1 << (rowId % 8))) == 0);
+    byte b = Platform.getByte(null, nullPtr + rowId);
+    return (b == 0);
   }
 
   @Override
@@ -120,7 +120,7 @@ public class NativeColumnVector extends ColumnVector {
   public UTF8String getUTF8String(int rowId) {
     int size = Platform.getInt(null, bufferPtr + rowId * 16);
     byte[] str = new byte[size];
-    long addr = Platform.getLong(null, bufferPtr + rowId * 16 + 8 );
+    long addr = Platform.getLong(null, bufferPtr + rowId * 16 + 8);
     Platform.copyMemory(null, addr, str, Platform.BYTE_ARRAY_OFFSET, size);
     return UTF8String.fromBytes(str);
     // is it possible?
