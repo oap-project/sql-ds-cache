@@ -47,7 +47,7 @@ class Reader {
   void convertSchema(std::string requiredColumnName);
 
   void checkEndOfRowGroup();
-  
+
   void getRequiredRowGroupId();
 
   HdfsOptions* options;
@@ -70,5 +70,4 @@ class Reader {
   int currentRowGroup = 0;
   int64_t totalRowsRead = 0;
   int64_t totalRowsLoadedSoFar = 0;
-
 };

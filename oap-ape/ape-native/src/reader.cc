@@ -15,11 +15,13 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#include "reader.h"
 #include <algorithm>
 #include <nlohmann/json.hpp>
+
 #undef NDEBUG
 #include <assert.h>
+
+#include "reader.h"
 
 using namespace arrow::fs;
 
@@ -217,6 +219,7 @@ int Reader::readBatch(int batchSize, long* buffersPtr, long* nullsPtr) {
 
   delete defLevel;
   delete repLevel;
+  delete nullBitMap;
 
   return rowsToRead;
 }
