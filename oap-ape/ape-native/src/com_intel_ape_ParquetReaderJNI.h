@@ -27,10 +27,10 @@ extern "C" {
 /*
  * Class:     com_intel_ape_ParquetReaderJNI
  * Method:    init
- * Signature: (Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;)J
+ * Signature: (Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;JJ)J
  */
 JNIEXPORT jlong JNICALL Java_com_intel_ape_ParquetReaderJNI_init
-  (JNIEnv *, jclass, jstring, jstring, jint, jstring);
+  (JNIEnv *, jclass, jstring, jstring, jint, jstring, jlong, jlong);
 
 /*
  * Class:     com_intel_ape_ParquetReaderJNI

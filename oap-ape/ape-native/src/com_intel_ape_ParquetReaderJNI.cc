@@ -23,7 +23,9 @@ JNIEXPORT jlong JNICALL Java_com_intel_ape_ParquetReaderJNI_init(JNIEnv* env, jc
                                                                  jstring fileName,
                                                                  jstring hdfsHost,
                                                                  jint hdfsPort,
-                                                                 jstring requiredSchema) {
+                                                                 jstring requiredSchema,
+                                                                 jlong splitStart,
+                                                                 jlong splitSize) {
   int i = 0;
   Reader* reader = new Reader();
   // const char* requiredSchema_ = env->GetStringUTFChars(requiredSchema, nullptr);
@@ -32,7 +34,7 @@ JNIEXPORT jlong JNICALL Java_com_intel_ape_ParquetReaderJNI_init(JNIEnv* env, jc
   std::string fileName_ = env->GetStringUTFChars(fileName, nullptr);
   std::string hdfsHost_ = env->GetStringUTFChars(hdfsHost, nullptr);
 
-  reader->init(fileName_, hdfsHost_, hdfsPort, schema_);
+  reader->init(fileName_, hdfsHost_, hdfsPort, schema_, splitStart, splitSize);
   return reinterpret_cast<int64_t>(reader);
 }
 

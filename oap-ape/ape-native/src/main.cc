@@ -25,7 +25,7 @@ int main() {
       "\"cs_sales_price\",\"type\":\"decimal(7,2)\",\"nullable\":true,\"metadata\":{}},{"
       "\"name\":\"cs_coupon_amt\",\"type\":\"decimal(7,2)\",\"nullable\":true,"
       "\"metadata\":{}}]}";
-  reader.init(file_name, "sr585", 9000, schema);
+  reader.init(file_name, "sr585", 9000, schema, 0 ,1);
   int batchSize = 1024;
 
   int columnNum = 8;
