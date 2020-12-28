@@ -28,7 +28,7 @@ java -cp ape-jni/target/ape-jni-0.0.1-SNAPSHOT-jar-with-dependencies.jar com.int
 cpp build
 ```
 cd $OAP_ROOT_DIR/oap-ape/ape-native/
-mdkir build
+mkdir build
 cd build
 cmake ..
 make
@@ -42,7 +42,7 @@ mkdir -p cpp/release-build
 cd cpp/release-build
 ARROW_INSTALL_DIR=/usr # it's better to install to a user private dir and manually add path to LD_LIBRARY_PATH
 , CPLUS_INCLUDE_PATH
-cmake -DCMAKE_INSTALL_PREFIX=$ARROW_INSTALL_DIR -DARROW_PARQUET=ON -DARROW_HDFS=ON -DARROW_JNI=ON -DARROW_FILESYSTEM
+cmake -DCMAKE_INSTALL_PREFIX=$ARROW_INSTALL_DIR -DARROW_PARQUET=ON -DARROW_HDFS=ON -DARROW_JNI=ON -DARROW_FILESYSTEM -DARROW_ORC=ON
 =ON -DARROW_DEPENDENCY_SOURCE=BUNDLED ..
 make -j 
 make install
