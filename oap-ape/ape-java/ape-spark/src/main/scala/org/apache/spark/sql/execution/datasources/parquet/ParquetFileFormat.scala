@@ -185,7 +185,7 @@ class ParquetFileFormat
       options: Map[String, String],
       path: Path): Boolean = {
     // For now, we don't support splitable
-    false
+    true
   }
 
   override def buildReaderWithPartitionValues(

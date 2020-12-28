@@ -29,9 +29,12 @@ namespace ape {
 Reader::Reader() {}
 
 void Reader::init(std::string fileName, std::string hdfsHost, int hdfsPort,
-                  std::string requiredSchema) {
+                  std::string requiredSchema,
+                  long splitStart,
+                  long splitSize) {
   options = new HdfsOptions();
   ARROW_LOG(DEBUG) << "hdfsHost " << hdfsHost << " port " << hdfsPort;
+
   options->ConfigureEndPoint(hdfsHost, hdfsPort);
   // todo: if we delete `options`, it will core dump, seems like free twice.
   auto result = HadoopFileSystem::Make(*options);
@@ -55,20 +58,20 @@ void Reader::init(std::string fileName, std::string hdfsHost, int hdfsPort,
 
   parquet::ReaderProperties properties;
   parquetReader = parquet::ParquetFileReader::Open(file, properties, NULLPTR);
-  fileMetaData = parquetReader->metadata();
 
+  fileMetaData = parquetReader->metadata();
+  getRequiredRowGroup(splitStart, splitSize, fileMetaData);
   totalColumns = fileMetaData->num_columns();
 
   ARROW_LOG(INFO) << "schema is " << fileMetaData->schema()->ToString();
   convertSchema(requiredSchema);
 
-  getRequiredRowGroupId();
-  currentRowGroup = *requiredRowGroupId.begin();
+  currentRowGroup = firstRowGroupIndex;
 
-  totalRowGroups = requiredRowGroupId.size();
+  totalRowGroups = requiredRowGroupSize;
   rowGroupReaders.resize(totalRowGroups);
   for (int i = 0; i < totalRowGroups; i++) {
-    rowGroupReaders[i] = parquetReader->RowGroup(requiredRowGroupId[i]);
+    rowGroupReaders[i] = parquetReader->RowGroup(firstRowGroupIndex + i);
     totalRows += rowGroupReaders[i]->metadata()->num_rows();
     ARROW_LOG(DEBUG) << "this rg have rows: "
                      << rowGroupReaders[i]->metadata()->num_rows();
@@ -78,11 +81,32 @@ void Reader::init(std::string fileName, std::string hdfsHost, int hdfsPort,
   ARROW_LOG(INFO) << "init done, totalRows " << totalRows;
 }
 
-// TODO: impl this method for file plit. For now it will return all row group ids
-void Reader::getRequiredRowGroupId() {
-  int totalRowGroupsInFile = fileMetaData->num_row_groups();
-  requiredRowGroupId = std::vector<int>(totalRowGroupsInFile);
-  std::iota(requiredRowGroupId.begin(), requiredRowGroupId.end(), 0);
+void Reader::getRequiredRowGroup(long splitStart, long splitSize, std::shared_ptr<parquet::FileMetaData> fileMetaData) {
+  bool flag = false;
+  long currentOffSet = 0;
+  int PARQUET_MAGIC_NUMBER = 4;
+  currentOffSet += PARQUET_MAGIC_NUMBER;
+  int index = 0;
+  for (int i = 0; i < fileMetaData->num_row_groups(); i++) {
+    ARROW_LOG(INFO) << i << " : " << currentOffSet;  
+    ARROW_LOG(INFO) << "rowgroup size " << i << " : " << parquetReader->RowGroup(i)->metadata()->total_byte_size();  
+    if (splitStart <= currentOffSet && splitStart + splitSize >= currentOffSet) {
+      ARROW_LOG(INFO) << "Required ++";  
+      this->requiredRowGroupSize ++;
+      if (flag == false) {
+        flag = true;
+        this->firstRowGroupIndex = index;
+      }
+    }
+
+    index ++;
+    currentOffSet += parquetReader->RowGroup(i)->metadata()->total_byte_size();
+  }
+
+  ARROW_LOG(INFO) << "This splitStart is  " << splitStart 
+                  << " splitSize is " << splitSize 
+                  << " firstRowGroupIndex is " << this->firstRowGroupIndex
+                  << " requiredRowGroupSize is " << this->requiredRowGroupSize;
 }
 
 // TODO: for now we can convert spark schema which is a json string, need to add Flink
@@ -238,9 +262,10 @@ void Reader::close() {
 
 void Reader::checkEndOfRowGroup() {
   if (totalRowsRead != totalRowsLoadedSoFar) return;
-  rowGroupReader = rowGroupReaders[currentRowGroup];
-  currentRowGroup++;
-
+  // if a splitFile contains rowGroup [2,5], currentRowGroup is 2
+  // rowGroupReaders index starts from 0
+  rowGroupReader = rowGroupReaders[currentRowGroup - firstRowGroupIndex];
+  currentRowGroup++;  
   for (int i = 0; i < requiredColumnIndex.size(); i++) {
     // TODO: need to convert to type reader
     columnReaders[i] = rowGroupReader->Column(requiredColumnIndex[i]);

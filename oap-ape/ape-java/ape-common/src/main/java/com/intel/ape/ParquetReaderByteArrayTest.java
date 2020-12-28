@@ -31,7 +31,7 @@ class ParquetReaderByteArrayTest {
     String schema = "{\"type\":\"struct\",\"fields\":[{\"name\":\"i_item_id\",\"type\":" +
             "\"string\",\"nullable\":true,\"metadata\":{}}]}";
 
-    long reader = ParquetReaderJNI.init(fileName, hdfsHost, hdfsPort, schema);
+    long reader = ParquetReaderJNI.init(fileName, hdfsHost, hdfsPort, schema, 0, 1);
     if (reader == 0) {
       System.out.println("reader init failed");
       return;

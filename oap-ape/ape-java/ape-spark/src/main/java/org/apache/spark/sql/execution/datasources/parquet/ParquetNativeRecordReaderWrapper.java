@@ -18,6 +18,7 @@
 package org.apache.spark.sql.execution.datasources.parquet;
 
 import com.intel.ape.ParquetReaderJNI;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.RecordReader;
@@ -58,6 +59,9 @@ public class ParquetNativeRecordReaderWrapper extends RecordReader<Void, Object>
     String reqSchema = configuration.get(ParquetReadSupport$.MODULE$.SPARK_ROW_REQUESTED_SCHEMA());
     sparkSchema = StructType$.MODULE$.fromString(reqSchema);
     ParquetInputSplit split = (ParquetInputSplit) inputSplit;
+    long splitStart = split.getStart();
+    long splitSize = split.getLength();
+
     String fileName = split.getPath().toUri().getRawPath();
     String hdfs = configuration.get("fs.defaultFS"); // this string is like hdfs://host:port
     String[] res = hdfs.split(":");
@@ -65,7 +69,7 @@ public class ParquetNativeRecordReaderWrapper extends RecordReader<Void, Object>
     int hdfsPort = Integer.parseInt(res[2]);
     LOG.info("filename is " + fileName + " hdfs is " + hdfsHost + " " + hdfsPort);
     LOG.info("schema is " + sparkSchema.json());
-    reader = ParquetReaderJNI.init(fileName, hdfsHost, hdfsPort, sparkSchema.json());
+    reader = ParquetReaderJNI.init(fileName, hdfsHost, hdfsPort, sparkSchema.json(), splitStart, splitSize);
   }
 
   @Override

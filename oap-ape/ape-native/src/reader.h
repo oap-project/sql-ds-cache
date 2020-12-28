@@ -34,7 +34,9 @@ class Reader {
   Reader();
 
   void init(std::string fileName, std::string hdfsHost, int hdfsPort,
-            std::string requiredSchema);
+            std::string requiredSchema,
+            long splitStart,
+            long splitSize);
 
   int readBatch(int batchSize, long* buffersPtr, long* nullsPtr);
 
@@ -49,7 +51,7 @@ class Reader {
 
   void checkEndOfRowGroup();
 
-  void getRequiredRowGroupId();
+  void getRequiredRowGroup(long splitStart, long splitSize, std::shared_ptr<parquet::FileMetaData> fileMetaData);
 
   HdfsOptions* options;
   std::shared_ptr<FileSystem> fs;
@@ -57,7 +59,6 @@ class Reader {
   std::unique_ptr<parquet::ParquetFileReader> parquetReader;
   std::shared_ptr<parquet::FileMetaData> fileMetaData;
 
-  std::vector<int> requiredRowGroupId;
   std::vector<std::shared_ptr<parquet::RowGroupReader>> rowGroupReaders;
   std::shared_ptr<parquet::RowGroupReader> rowGroupReader;
 
@@ -67,6 +68,8 @@ class Reader {
   int totalRowGroups = 0;
   int totalColumns = 0;
   int64_t totalRows = 0;
+  int firstRowGroupIndex = 0;
+  int requiredRowGroupSize = 0;
 
   int currentRowGroup = 0;
   int64_t totalRowsRead = 0;
