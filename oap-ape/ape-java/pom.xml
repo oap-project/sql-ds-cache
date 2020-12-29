@@ -40,6 +40,6 @@
   <modules>
     <module>ape-spark</module>
     <module>ape-flink</module>
-    <module>ape-jni</module>
+    <module>ape-common</module>
   </modules>
 </project>
