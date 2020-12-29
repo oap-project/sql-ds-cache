@@ -15,17 +15,11 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <parent>
-    <groupId>com.intel.oap</groupId>
-    <artifactId>oap-parent</artifactId>
-    <version>0.9.0</version>
-    <relativePath>../../pom.xml</relativePath>
-  </parent>
-
-  <artifactId>oap-cache</artifactId>
+  <groupId>com.intel.oap</groupId>
+  <artifactId>sql-ds-cache</artifactId>
+  <version>1.1.0</version>
+  <name>OAP Project SQL DS Cache</name>
   <packaging>jar</packaging>
-
-  <name>OAP Project Cache</name>
 
 
 
@@ -125,7 +119,7 @@
     </dependency>
     <dependency>
       <groupId>com.intel.oap</groupId>
-      <artifactId>oap-common</artifactId>
+      <artifactId>pmem-common</artifactId>
       <version>${project.version}</version>
       <exclusions>
         <exclusion>
@@ -428,7 +422,7 @@
             <includes>
               <include>redis.clients:*</include>
               <include>org.apache.commons:commons-pool2</include>
-              <include>com.intel:oap-common</include>
+              <include>com.intel:pmem-common</include>
               <include>org.spark-project.spark:unused</include>
               <include>com.google.guava:guava</include>
               <include>org.apache.parquet:*</include>
@@ -483,7 +477,6 @@
           <includeTestSourceDirectory>true</includeTestSourceDirectory>
           <sourceDirectories>
             <directory>src/main/scala</directory>
-            <directory>src/main/spark3.0.0/scala</directory>
           </sourceDirectories>
           <testSourceDirectories>
             <directory>src/test/scala</directory>
@@ -660,11 +653,9 @@
           <includeTestSourceDirectory>true</includeTestSourceDirectory>
           <sourceDirectories>
             <directory>src/main/java</directory>
-            <directory>src/spark3.0.0/scala</directory>
           </sourceDirectories>
           <testSourceDirectories>
             <directory>src/test/java</directory>
-            <directory>src/test/spark3.0.0/java</directory>
           </testSourceDirectories>
           <configLocation>${basedir}/checkstyle.xml</configLocation>
           <outputFile>${basedir}/target/checkstyle-output.xml</outputFile>
@@ -709,8 +700,6 @@
             </goals>
             <configuration>
               <sources>
-                <source>src/main/spark3.0.0/java</source>
-                <source>src/main/spark3.0.0/scala</source>
                 <source>src/main/parquet1.10.1/java</source>
                 <source>src/main/orc-1.5.10/java</source>
               </sources>
