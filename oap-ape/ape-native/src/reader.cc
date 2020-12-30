@@ -24,6 +24,7 @@
 #include "reader.h"
 
 using namespace arrow::fs;
+namespace ape {
 
 Reader::Reader() {}
 
@@ -272,3 +273,4 @@ void Reader::checkEndOfRowGroup() {
 
   totalRowsLoadedSoFar += rowGroupReader->metadata()->num_rows();
 }
+}  // namespace ape

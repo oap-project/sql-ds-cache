@@ -4,6 +4,8 @@
 
 #include "reader.h"
 
+using namespace ape;
+
 int main() {
   std::cout << "hello ape" << std::endl;
 
