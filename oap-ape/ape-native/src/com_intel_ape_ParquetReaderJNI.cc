@@ -19,6 +19,8 @@
 
 #include "reader.h"
 
+using namespace ape;
+
 JNIEXPORT jlong JNICALL Java_com_intel_ape_ParquetReaderJNI_init(JNIEnv* env, jclass cls,
                                                                  jstring fileName,
                                                                  jstring hdfsHost,
