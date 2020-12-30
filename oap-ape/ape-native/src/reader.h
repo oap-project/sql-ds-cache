@@ -28,6 +28,7 @@
 
 using namespace arrow::fs;
 
+namespace ape {
 class Reader {
  public:
   Reader();
@@ -71,3 +72,4 @@ class Reader {
   int64_t totalRowsRead = 0;
   int64_t totalRowsLoadedSoFar = 0;
 };
+}  // namespace ape
