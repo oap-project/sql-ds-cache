@@ -64,6 +64,14 @@ JNIEXPORT jboolean JNICALL Java_com_intel_ape_ParquetReaderJNI_skipNextRowGroup
 JNIEXPORT void JNICALL Java_com_intel_ape_ParquetReaderJNI_close
   (JNIEnv *, jclass, jlong);
 
+/*
+ * Class:     com_intel_ape_ParquetReaderJNI
+ * Method:    setFilterStr
+ * Signature: (JLjava/lang/String;)V
+ */
+JNIEXPORT void JNICALL Java_com_intel_ape_ParquetReaderJNI_setFilterStr
+  (JNIEnv *, jclass, jlong, jstring);
+
 #ifdef __cplusplus
 }
 #endif

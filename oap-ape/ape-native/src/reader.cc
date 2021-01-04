@@ -273,4 +273,9 @@ void Reader::checkEndOfRowGroup() {
 
   totalRowsLoadedSoFar += rowGroupReader->metadata()->num_rows();
 }
+
+void Reader::setFilter(std::string filterJsonStr) {
+  filterExpression = JsonConvertor::parseToFilterExpression(filterJsonStr);
+}
+
 }  // namespace ape
