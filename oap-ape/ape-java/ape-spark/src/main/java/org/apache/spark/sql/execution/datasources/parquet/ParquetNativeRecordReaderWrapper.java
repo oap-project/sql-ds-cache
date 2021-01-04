@@ -18,11 +18,13 @@
 package org.apache.spark.sql.execution.datasources.parquet;
 
 import com.intel.ape.ParquetReaderJNI;
+import com.intel.ape.util.ParquetFilterPredicateConvertor;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
+import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.hadoop.ParquetInputSplit;
 import org.apache.spark.sql.execution.vectorized.NativeColumnVector;
 import org.apache.spark.sql.types.*;
@@ -70,6 +72,11 @@ public class ParquetNativeRecordReaderWrapper extends RecordReader<Void, Object>
     LOG.info("filename is " + fileName + " hdfs is " + hdfsHost + " " + hdfsPort);
     LOG.info("schema is " + sparkSchema.json());
     reader = ParquetReaderJNI.init(fileName, hdfsHost, hdfsPort, sparkSchema.json(), splitStart, splitSize);
+  }
+
+  public void setFilter(FilterPredicate predicate) {
+    String predicateStr = ParquetFilterPredicateConvertor.toJsonString(predicate);
+    ParquetReaderJNI.setFilterStr(reader, predicateStr);
   }
 
   @Override

@@ -23,7 +23,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 
-class ParquetFilterPredicateConvertor {
+public class ParquetFilterPredicateConvertor {
   public static String toJsonString(FilterPredicate predicate) {
     return constructTree(predicate).toString();
   }

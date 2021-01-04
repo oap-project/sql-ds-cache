@@ -21,13 +21,9 @@
 
 using namespace ape;
 
-JNIEXPORT jlong JNICALL Java_com_intel_ape_ParquetReaderJNI_init(JNIEnv* env, jclass cls,
-                                                                 jstring fileName,
-                                                                 jstring hdfsHost,
-                                                                 jint hdfsPort,
-                                                                 jstring requiredSchema,
-                                                                 jlong splitStart,
-                                                                 jlong splitSize) {
+JNIEXPORT jlong JNICALL Java_com_intel_ape_ParquetReaderJNI_init(
+    JNIEnv* env, jclass cls, jstring fileName, jstring hdfsHost, jint hdfsPort,
+    jstring requiredSchema, jlong splitStart, jlong splitSize) {
   int i = 0;
   Reader* reader = new Reader();
   // const char* requiredSchema_ = env->GetStringUTFChars(requiredSchema, nullptr);
@@ -76,4 +72,11 @@ JNIEXPORT void JNICALL Java_com_intel_ape_ParquetReaderJNI_close(JNIEnv* env, jc
   Reader* reader = reinterpret_cast<Reader*>(readerPtr);
   reader->close();
   delete reader;
+}
+
+JNIEXPORT void JNICALL Java_com_intel_ape_ParquetReaderJNI_setFilterStr(
+    JNIEnv* env, jclass cls, jlong readerPtr, jstring filterJsonStr) {
+  Reader* reader = reinterpret_cast<Reader*>(readerPtr);
+  std::string filterJsonStr_ = env->GetStringUTFChars(filterJsonStr, nullptr);
+  reader->setFilter(filterJsonStr_);
 }
