@@ -26,6 +26,9 @@
 #include <arrow/util/logging.h>
 #include <parquet/api/reader.h>
 
+#include "utils/jsonConvertor.h"
+#include "utils/FilterExpression.h"
+
 using namespace arrow::fs;
 
 namespace ape {
@@ -45,6 +48,8 @@ class Reader {
   void skipNextRowGroup();
 
   void close();
+
+  void setFilter(std::string filterJsonStr);
 
  private:
   void convertSchema(std::string requiredColumnName);
@@ -74,5 +79,7 @@ class Reader {
   int currentRowGroup = 0;
   int64_t totalRowsRead = 0;
   int64_t totalRowsLoadedSoFar = 0;
+
+  std::shared_ptr<Expression> filterExpression;
 };
 }  // namespace ape

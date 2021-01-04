@@ -56,7 +56,7 @@ file(GLOB JNI_LIB_SRC
 add_executable(ape ${APE_SRCS})
 add_executable(parquet_test ${PARQUET_DEMO})
 # add_library(parquet_native SHARED ${PARQUET_NATIVE_SRC})
-add_library(parquet_jni SHARED ${JNI_LIB_SRC})
+add_library(parquet_jni SHARED ${JNI_LIB_SRC} ${PARSE_SRC})
 add_library(parse SHARED ${PARSE_SRC})
 add_executable(parse_test ${PARSE_SRC} ${PARSE_TEST})
 
