@@ -95,4 +95,10 @@ add following configuration to `hdfs-site.xml` file, and make sure the access pe
     </property>
 ```
 
+### Native Parquet Reader Configuration
+##### columnarReaderBatchSize
+Currently we reuse spark's original configuration ```spark.sql.parquet.columnarReaderBatchSize``` to avoid additional code dependency.
+Default batchSize is 4096, but according to our test result, set batchSize to a larger num can improve performance.
+Set batchSize to 20480 is recommended, can tune this num according to real work load.
+
 
