@@ -70,7 +70,7 @@ mvn clean install -pl oap-common -am -fn
 cd $PROJECT_ROOT/oap-ape/ape-java
 mvn clean package -am -fn
 
-#copy $PROJECT_ROOT/oap-ape/ape-java/ape-jni/target/ape-jni-0.0.1-SNAPSHOT-jar-with-dependencies.jar
+#copy $PROJECT_ROOT/oap-ape/ape-java/ape-common/target/ape-common-0.0.1-SNAPSHOT-jar-with-dependencies.jar
 # and $PROJECT_ROOT/oap-ape/ape-java/ape-spark/target/ape-spark-0.0.1-SNAPSHOT.jar.
 # Add them to spark-defaults.conf
 # And remember to. Suggest to add to your ~/.bashrc profile, and restart hadoop.
