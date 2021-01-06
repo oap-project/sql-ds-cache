@@ -25,14 +25,32 @@ namespace ape {
 class FilterExpression : public Expression {
  public:
   FilterExpression(std::string type_);
-  virtual void Execute() {};
+  virtual void Execute(){};
+  virtual int ExecuteWithParam(int batchSize, long* dataBuffers, long* nullBuffers,
+                               std::vector<Schema>& schema, char* outBuffers) {
+    return 0;
+  };
   ~FilterExpression();
+};
+
+class RootFilterExpression : public FilterExpression {
+ public:
+  RootFilterExpression(std::string type_, std::shared_ptr<FilterExpression> child_);
+  void Execute(){};
+  int ExecuteWithParam(int batchSize, long* dataBuffers, long* nullBuffers,
+                       std::vector<Schema>& schema, char* outBuffers);
+  ~RootFilterExpression();
+
+ private:
+  std::shared_ptr<Expression> child;
 };
 
 class NotFilterExpression : public FilterExpression {
  public:
   NotFilterExpression(std::string type_, std::shared_ptr<Expression> child_);
   void Execute(){};
+  int ExecuteWithParam(int batchSize, long* dataBuffers, long* nullBuffers,
+                       std::vector<Schema>& schema, char* outBuffers);
   ~NotFilterExpression();
 
  private:
@@ -44,6 +62,8 @@ class BinaryFilterExpression : public FilterExpression {
   BinaryFilterExpression(std::string type_, std::shared_ptr<Expression> left_,
                          std::shared_ptr<Expression> right_);
   void Execute(){};
+  int ExecuteWithParam(int batchSize, long* dataBuffers, long* nullBuffers,
+                       std::vector<Schema>& schema, char* outBuffers);
   ~BinaryFilterExpression();
 
  private:
@@ -56,6 +76,8 @@ class TypedUnaryFilterExpression : public FilterExpression {
  public:
   TypedUnaryFilterExpression(std::string type_, std::string columnName_, T value_);
   void Execute(){};
+  int ExecuteWithParam(int batchSize, long* dataBuffers, long* nullBuffers,
+                       std::vector<Schema>& schema, char* outBuffers);
   ~TypedUnaryFilterExpression();
 
  private:

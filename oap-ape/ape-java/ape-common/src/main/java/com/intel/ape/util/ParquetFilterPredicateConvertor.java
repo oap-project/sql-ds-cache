@@ -64,14 +64,26 @@ public class ParquetFilterPredicateConvertor {
       ((ObjectNode) rootNode).put("FilterTypeName", predicate.getClass().getSimpleName().toLowerCase());
       ((ObjectNode) rootNode).put("ColumnName",
               ((Operators.Eq) predicate).getColumn().getColumnPath().toDotString());
-      ((ObjectNode) rootNode).put("ColumnType", ((Operators.Eq) predicate).getValue().getClass().getSimpleName());
-      ((ObjectNode) rootNode).put("Value", ((Operators.Eq) predicate).getValue().toString());
+      Object v = ((Operators.Eq) predicate).getValue();
+      if (v == null) {
+        ((ObjectNode) rootNode).put("ColumnType", "Null");
+        ((ObjectNode) rootNode).put("Value", "null");
+      } else {
+        ((ObjectNode) rootNode).put("ColumnType", ((Operators.Eq) predicate).getValue().getClass().getSimpleName());
+        ((ObjectNode) rootNode).put("Value", ((Operators.Eq) predicate).getValue().toString());
+      }
     } else if (predicate instanceof Operators.NotEq) {
       ((ObjectNode) rootNode).put("FilterTypeName", predicate.getClass().getSimpleName().toLowerCase());
       ((ObjectNode) rootNode).put("ColumnName",
               ((Operators.NotEq) predicate).getColumn().getColumnPath().toDotString());
-      ((ObjectNode) rootNode).put("ColumnType", ((Operators.NotEq) predicate).getValue().getClass().getSimpleName());
-      ((ObjectNode) rootNode).put("Value", ((Operators.NotEq) predicate).getValue().toString());
+      Object v = ((Operators.NotEq) predicate).getValue();
+      if (v == null) {
+        ((ObjectNode) rootNode).put("ColumnType", "Null");
+        ((ObjectNode) rootNode).put("Value", "null");
+      } else {
+        ((ObjectNode) rootNode).put("ColumnType", ((Operators.NotEq) predicate).getValue().getClass().getSimpleName());
+        ((ObjectNode) rootNode).put("Value", ((Operators.NotEq) predicate).getValue().toString());
+      }
     } else if (predicate instanceof Operators.Gt) {
       ((ObjectNode) rootNode).put("FilterTypeName", predicate.getClass().getSimpleName().toLowerCase());
       ((ObjectNode) rootNode).put("ColumnName",
