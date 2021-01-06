@@ -91,7 +91,6 @@ void Reader::getRequiredRowGroup(long splitStart, long splitSize,
     ARROW_LOG(INFO) << "rowgroup size " << i << " : "
                     << parquetReader->RowGroup(i)->metadata()->total_byte_size();
     if (splitStart <= currentOffSet && splitStart + splitSize >= currentOffSet) {
-      ARROW_LOG(INFO) << "Required ++";
       this->requiredRowGroupSize++;
       if (flag == false) {
         flag = true;
@@ -146,6 +145,9 @@ int Reader::readBatch(int batchSize, long* buffersPtr, long* nullsPtr) {
     return -1;
   }
   checkEndOfRowGroup();
+
+  ARROW_LOG(INFO) << "CurrentRowGroup is " << currentRowGroup << " totalRowGroup is "
+                  << totalRowGroups;
 
   int rowsToRead = std::min((int64_t)batchSize, totalRowsLoadedSoFar - totalRowsRead);
   int16_t* defLevel = new int16_t[rowsToRead];
@@ -250,7 +252,15 @@ int Reader::readBatch(int batchSize, long* buffersPtr, long* nullsPtr) {
 
 bool Reader::hasNext() { return columnReaders[0]->HasNext(); }
 
-void Reader::skipNextRowGroup() { return; }
+bool Reader::skipNextRowGroup() {
+  if (totalRowGroupsRead == totalRowGroups) {
+    return false;
+  }
+  ARROW_LOG(INFO) << "skipNextRowgroup";
+  currentRowGroup++;
+  totalRowGroupsRead++;
+  return true;
+}
 
 void Reader::close() {
   ARROW_LOG(INFO) << "close reader.";
@@ -265,6 +275,7 @@ void Reader::checkEndOfRowGroup() {
   // rowGroupReaders index starts from 0
   rowGroupReader = rowGroupReaders[currentRowGroup - firstRowGroupIndex];
   currentRowGroup++;
+  totalRowGroupsRead++;
   for (int i = 0; i < requiredColumnIndex.size(); i++) {
     // TODO: need to convert to type reader
     columnReaders[i] = rowGroupReader->Column(requiredColumnIndex[i]);
