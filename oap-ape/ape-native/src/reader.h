@@ -45,7 +45,7 @@ class Reader {
 
   bool hasNext();
 
-  void skipNextRowGroup();
+  bool skipNextRowGroup();
 
   void close();
 
@@ -71,6 +71,7 @@ class Reader {
   std::vector<std::shared_ptr<parquet::ColumnReader>> columnReaders;
 
   int totalRowGroups = 0;
+  int totalRowGroupsRead = 0;
   int totalColumns = 0;
   int64_t totalRows = 0;
   int firstRowGroupIndex = 0;

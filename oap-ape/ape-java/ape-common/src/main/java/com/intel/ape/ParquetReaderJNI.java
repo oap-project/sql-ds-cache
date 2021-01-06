@@ -33,6 +33,8 @@ public class ParquetReaderJNI {
 
   public static native boolean hasNext(long reader);
 
+  // This is for flink seek()
+  // Do not support usage like reader.readBatch(4096); reader.skipNextRowGroup(); reader.readBatch(4096)
   public static native boolean skipNextRowGroup(long reader);
 
   public static native void close(long reader);
