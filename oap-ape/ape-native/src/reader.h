@@ -26,8 +26,9 @@
 #include <arrow/util/logging.h>
 #include <parquet/api/reader.h>
 
-#include "utils/jsonConvertor.h"
 #include "utils/FilterExpression.h"
+#include "utils/jsonConvertor.h"
+#include "utils/type.h"
 
 using namespace arrow::fs;
 
@@ -37,9 +38,7 @@ class Reader {
   Reader();
 
   void init(std::string fileName, std::string hdfsHost, int hdfsPort,
-            std::string requiredSchema,
-            long splitStart,
-            long splitSize);
+            std::string requiredSchema, long splitStart, long splitSize);
 
   int readBatch(int batchSize, long* buffersPtr, long* nullsPtr);
 
@@ -56,7 +55,8 @@ class Reader {
 
   void checkEndOfRowGroup();
 
-  void getRequiredRowGroup(long splitStart, long splitSize, std::shared_ptr<parquet::FileMetaData> fileMetaData);
+  void getRequiredRowGroup(long splitStart, long splitSize,
+                           std::shared_ptr<parquet::FileMetaData> fileMetaData);
 
   HdfsOptions* options;
   std::shared_ptr<FileSystem> fs;
@@ -68,6 +68,8 @@ class Reader {
   std::shared_ptr<parquet::RowGroupReader> rowGroupReader;
 
   std::vector<int> requiredColumnIndex;
+  std::vector<std::string> requiredColumnNames;
+  std::vector<Schema> schema;
   std::vector<std::shared_ptr<parquet::ColumnReader>> columnReaders;
 
   int totalRowGroups = 0;
@@ -81,6 +83,6 @@ class Reader {
   int64_t totalRowsRead = 0;
   int64_t totalRowsLoadedSoFar = 0;
 
-  std::shared_ptr<Expression> filterExpression;
+  std::shared_ptr<RootFilterExpression> filterExpression;
 };
 }  // namespace ape

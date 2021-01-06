@@ -312,11 +312,12 @@ class ParquetFileFormat
       if (enableVectorizedReader) {
         logInfo("using ape")
         val reader = new ParquetNativeRecordReaderWrapper(capacity)
-        reader.setFilter(pushed.get)
         val iter = new RecordReaderIterator(reader)
         // SPARK-23457 Register a task completion listener before `initialization`.
         taskContext.foreach(_.addTaskCompletionListener[Unit](_ => iter.close()))
         reader.initialize(split, hadoopAttemptContext)
+        if(pushed.isDefined)
+          reader.setFilter(pushed.get)
 
         // UnsafeRowParquetRecordReader appends the columns internally to avoid another copy.
         iter.asInstanceOf[Iterator[InternalRow]]
