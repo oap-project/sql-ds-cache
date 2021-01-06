@@ -179,7 +179,6 @@ int TypedUnaryFilterExpression<NullStruct>::ExecuteWithParam(int batchSize,
       schema.begin(), std::find_if(schema.begin(), schema.end(), finder(columnName)));
   long nullPtr = *(nullBuffers + pos);
   char* ptr = (char*)nullPtr;
-  // todo: eq / noteq???
   if (type.compare("noteq") == 0) {  // not equal to null, we can return buffer directly.
     std::memcpy(outBuffers, ptr, batchSize);
     for (int i = 0; i < batchSize; i++) {
