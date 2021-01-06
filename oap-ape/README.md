@@ -101,4 +101,5 @@ Currently we reuse spark's original configuration ```spark.sql.parquet.columnarR
 Default batchSize is 4096, but according to our test result, set batchSize to a larger num can improve performance.
 Set batchSize to 20480 is recommended, can tune this num according to real work load.
 
-
+##### Disable Parquet Filter in Spark
+If you are testing Spark With TPC-H or TPC-DS, please set 'spark.sql.parquet.filterPushdown' to false in spark-defaults.conf since String type filter is not supported for now. 
