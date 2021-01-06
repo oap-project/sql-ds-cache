@@ -316,7 +316,7 @@ class ParquetFileFormat
         // SPARK-23457 Register a task completion listener before `initialization`.
         taskContext.foreach(_.addTaskCompletionListener[Unit](_ => iter.close()))
         reader.initialize(split, hadoopAttemptContext)
-        if(pushed.isDefined)
+        if(enableParquetFilterPushDown && pushed.isDefined)
           reader.setFilter(pushed.get)
 
         // UnsafeRowParquetRecordReader appends the columns internally to avoid another copy.
