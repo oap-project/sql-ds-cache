@@ -41,7 +41,7 @@ void Reader::init(std::string fileName, std::string hdfsHost, int hdfsPort,
                        << result.status().ToString();
     exit(-1);
   }
-  ARROW_LOG(INFO) << "HadoopFileSystem Make succeed. ";
+  ARROW_LOG(DEBUG) << "HadoopFileSystem Make succeed. ";
 
   std::shared_ptr<FileSystem> fs = std::make_shared<SubTreeFileSystem>("", *result);
   auto fileResult = fs->OpenInputFile(fileName);
@@ -50,7 +50,7 @@ void Reader::init(std::string fileName, std::string hdfsHost, int hdfsPort,
                        << fileResult.status().ToString();
     exit(-1);
   }
-  ARROW_LOG(INFO) << "Open hdfs file succeed. ";
+  ARROW_LOG(DEBUG) << "Open hdfs file succeed. ";
 
   file = fileResult.ValueOrDie();
 
@@ -61,7 +61,7 @@ void Reader::init(std::string fileName, std::string hdfsHost, int hdfsPort,
   getRequiredRowGroup(splitStart, splitSize, fileMetaData);
   totalColumns = fileMetaData->num_columns();
 
-  ARROW_LOG(INFO) << "schema is " << fileMetaData->schema()->ToString();
+  ARROW_LOG(DEBUG) << "schema is " << fileMetaData->schema()->ToString();
   convertSchema(requiredSchema);
 
   currentRowGroup = firstRowGroupIndex;
@@ -87,8 +87,7 @@ void Reader::getRequiredRowGroup(long splitStart, long splitSize,
   currentOffSet += PARQUET_MAGIC_NUMBER;
   int index = 0;
   for (int i = 0; i < fileMetaData->num_row_groups(); i++) {
-    ARROW_LOG(INFO) << i << " : " << currentOffSet;
-    ARROW_LOG(INFO) << "rowgroup size " << i << " : "
+    ARROW_LOG(DEBUG) << "rowgroup size " << i << " : "
                     << parquetReader->RowGroup(i)->metadata()->total_byte_size();
     if (splitStart <= currentOffSet && splitStart + splitSize >= currentOffSet) {
       this->requiredRowGroupSize++;
@@ -256,7 +255,6 @@ bool Reader::skipNextRowGroup() {
   if (totalRowGroupsRead == totalRowGroups) {
     return false;
   }
-  ARROW_LOG(INFO) << "skipNextRowgroup";
   currentRowGroup++;
   totalRowGroupsRead++;
   return true;
