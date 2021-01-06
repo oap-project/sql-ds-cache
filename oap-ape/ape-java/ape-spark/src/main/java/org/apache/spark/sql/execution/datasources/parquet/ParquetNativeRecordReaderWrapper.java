@@ -56,7 +56,6 @@ public class ParquetNativeRecordReaderWrapper extends RecordReader<Void, Object>
 
   @Override
   public void initialize(InputSplit inputSplit, TaskAttemptContext taskAttemptContext) throws IOException, InterruptedException {
-    // todo: get hdfs and schema info
     Configuration configuration = taskAttemptContext.getConfiguration();
     String reqSchema = configuration.get(ParquetReadSupport$.MODULE$.SPARK_ROW_REQUESTED_SCHEMA());
     sparkSchema = StructType$.MODULE$.fromString(reqSchema);
@@ -103,8 +102,6 @@ public class ParquetNativeRecordReaderWrapper extends RecordReader<Void, Object>
 
   @Override
   public void close() throws IOException {
-    // free buffers
-
     // close columnBatch
     if (columnarBatch != null) {
       columnarBatch.close();
@@ -115,9 +112,14 @@ public class ParquetNativeRecordReaderWrapper extends RecordReader<Void, Object>
     if (reader != 0) {
       ParquetReaderJNI.close(reader);
     }
+
+    // free buffers
+    for (int i = 0; i < columnVectors.length; i++) {
+      Platform.freeMemory(nullPtrs[i]);
+      Platform.freeMemory(bufferPtrs[i]);
+    }
   }
 
-  // todo: impl
   private boolean nextBatch() {
     if (reader == 0) {
       return false;
@@ -137,7 +139,6 @@ public class ParquetNativeRecordReaderWrapper extends RecordReader<Void, Object>
     return true;
   }
 
-  // todo: impl
   private void initBatch() {
     // allocate buffers here according schema
     StructField[] fileds = sparkSchema.fields();
@@ -148,7 +149,6 @@ public class ParquetNativeRecordReaderWrapper extends RecordReader<Void, Object>
       DataType type = fileds[i].dataType();
       columnVectors[i] = new NativeColumnVector(type);
 
-      // TODO: in fact we don't need a batchSize buffer to store nulls since it uses bitmap
       long nullPtr = Platform.allocateMemory(batchSize);
       long bufferPtr = 0;
       if (type instanceof BooleanType || type instanceof IntegerType || type instanceof LongType

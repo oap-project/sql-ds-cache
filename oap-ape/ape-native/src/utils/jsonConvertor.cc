@@ -43,8 +43,8 @@ std::shared_ptr<Expression> JsonConvertor::parseToFilterExpression(nlohmann::jso
              type.compare("eq") == 0 || type.compare("noteq") == 0) {
     std::string colType = root["ColumnType"];
     std::string columnName = root["ColumnName"];
-    std::string valueString = root["Value"];  // TODO: what if is 'null' ???
-    if (valueString.compare("null") == 0) {   // this will only match 'eq', 'noteq' type.
+    std::string valueString = root["Value"];
+    if (valueString.compare("null") == 0) {  // this will only match 'eq', 'noteq' type.
       NullStruct nullStruct;
       ex = std::make_shared<NullUnaryFilterExpression>(type, columnName, nullStruct);
     } else if (colType.compare("Boolean") == 0) {

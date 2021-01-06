@@ -26,7 +26,6 @@ JNIEXPORT jlong JNICALL Java_com_intel_ape_ParquetReaderJNI_init(
     jstring requiredSchema, jlong splitStart, jlong splitSize) {
   int i = 0;
   Reader* reader = new Reader();
-  // const char* requiredSchema_ = env->GetStringUTFChars(requiredSchema, nullptr);
 
   std::string schema_ = env->GetStringUTFChars(requiredSchema, nullptr);
   std::string fileName_ = env->GetStringUTFChars(fileName, nullptr);

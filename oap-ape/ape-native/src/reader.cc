@@ -88,7 +88,7 @@ void Reader::getRequiredRowGroup(long splitStart, long splitSize,
   int index = 0;
   for (int i = 0; i < fileMetaData->num_row_groups(); i++) {
     ARROW_LOG(DEBUG) << "rowgroup size " << i << " : "
-                    << parquetReader->RowGroup(i)->metadata()->total_byte_size();
+                     << parquetReader->RowGroup(i)->metadata()->total_byte_size();
     if (splitStart <= currentOffSet && splitStart + splitSize >= currentOffSet) {
       this->requiredRowGroupSize++;
       if (flag == false) {
@@ -106,17 +106,13 @@ void Reader::getRequiredRowGroup(long splitStart, long splitSize,
                   << " requiredRowGroupSize is " << this->requiredRowGroupSize;
 }
 
-// TODO: for now we can convert spark schema which is a json string, need to add Flink
-// support. We could have a light schema conversion in wrapper layer.
 // TODO: need consider column sequence?
 void Reader::convertSchema(std::string requiredColumnName) {
   auto j = nlohmann::json::parse(requiredColumnName);
   int filedsNum = j["fields"].size();
-  ARROW_LOG(INFO) << "fields size: " << filedsNum;
   for (int i = 0; i < filedsNum; i++) {
     std::string columnName = j["fields"][i]["name"];
     int columnIndex = fileMetaData->schema()->ColumnIndex(columnName);
-    ARROW_LOG(DEBUG) << "name is: " << columnName << " index is: " << columnIndex;
     requiredColumnIndex.push_back(columnIndex);
     schema.push_back(
         Schema(columnName, fileMetaData->schema()->Column(columnIndex)->physical_type()));
@@ -141,21 +137,17 @@ void convertBitMap(uint8_t* srcBitMap, uint8_t* dstByteMap, int len) {
 }
 
 int Reader::readBatch(int batchSize, long* buffersPtr, long* nullsPtr) {
-  // ARROW_LOG(INFO) << "read batch size: " << batchSize;
   // this reader have read all rows
   if (totalRowsRead >= totalRows) {
     return -1;
   }
   checkEndOfRowGroup();
 
-  ARROW_LOG(INFO) << "CurrentRowGroup is " << currentRowGroup << " totalRowGroup is "
-                  << totalRowGroups;
-
   int rowsToRead = std::min((int64_t)batchSize, totalRowsLoadedSoFar - totalRowsRead);
   int16_t* defLevel = new int16_t[rowsToRead];
   int16_t* repLevel = new int16_t[rowsToRead];
   uint8_t* nullBitMap = new uint8_t[rowsToRead];
-  ARROW_LOG(INFO) << "will read " << rowsToRead << " rows";
+  ARROW_LOG(DEBUG) << "will read " << rowsToRead << " rows";
   for (int i = 0; i < columnReaders.size(); i++) {
     int64_t levelsRead = 0, valuesRead = 0, nullCount = 0;
     int rows = 0;
@@ -243,7 +235,7 @@ int Reader::readBatch(int batchSize, long* buffersPtr, long* nullsPtr) {
     ARROW_LOG(DEBUG) << "columnReader read rows: " << rows;
   }
   totalRowsRead += rowsToRead;
-  ARROW_LOG(INFO) << "total rows read yet: " << totalRowsRead;
+  ARROW_LOG(DEBUG) << "total rows read yet: " << totalRowsRead;
 
   int rowsRet = rowsToRead;
   if (filterExpression) {
@@ -255,7 +247,7 @@ int Reader::readBatch(int batchSize, long* buffersPtr, long* nullsPtr) {
   delete[] repLevel;
   delete[] nullBitMap;
 
-  ARROW_LOG(INFO) << "ret rows " << rowsRet;
+  ARROW_LOG(DEBUG) << "ret rows " << rowsRet;
   return rowsRet;
 }
 
@@ -285,7 +277,6 @@ void Reader::checkEndOfRowGroup() {
   currentRowGroup++;
   totalRowGroupsRead++;
   for (int i = 0; i < requiredColumnIndex.size(); i++) {
-    // TODO: need to convert to type reader
     columnReaders[i] = rowGroupReader->Column(requiredColumnIndex[i]);
   }
 
