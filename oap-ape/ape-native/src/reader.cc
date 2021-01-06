@@ -119,6 +119,9 @@ void Reader::convertSchema(std::string requiredColumnName) {
     int columnIndex = fileMetaData->schema()->ColumnIndex(columnName);
     ARROW_LOG(DEBUG) << "name is: " << columnName << " index is: " << columnIndex;
     requiredColumnIndex.push_back(columnIndex);
+    schema.push_back(
+        Schema(columnName, fileMetaData->schema()->Column(columnIndex)->physical_type()));
+    requiredColumnNames.push_back(columnName);
   }
 }
 
@@ -238,16 +241,23 @@ int Reader::readBatch(int batchSize, long* buffersPtr, long* nullsPtr) {
       rows += tmpRows;
     }
     assert(rowsToRead == rows);
-    ARROW_LOG(INFO) << "columnReader read rows: " << rows;
+    ARROW_LOG(DEBUG) << "columnReader read rows: " << rows;
   }
   totalRowsRead += rowsToRead;
   ARROW_LOG(INFO) << "total rows read yet: " << totalRowsRead;
 
-  delete defLevel;
-  delete repLevel;
-  delete nullBitMap;
+  int rowsRet = rowsToRead;
+  if (filterExpression) {
+    rowsRet = filterExpression->ExecuteWithParam(rowsToRead, buffersPtr, nullsPtr, schema,
+                                                 nullptr);
+  }
 
-  return rowsToRead;
+  delete[] defLevel;
+  delete[] repLevel;
+  delete[] nullBitMap;
+
+  ARROW_LOG(INFO) << "ret rows " << rowsRet;
+  return rowsRet;
 }
 
 bool Reader::hasNext() { return columnReaders[0]->HasNext(); }
@@ -285,7 +295,11 @@ void Reader::checkEndOfRowGroup() {
 }
 
 void Reader::setFilter(std::string filterJsonStr) {
-  filterExpression = JsonConvertor::parseToFilterExpression(filterJsonStr);
+  std::shared_ptr<Expression> tmpExpression =
+      JsonConvertor::parseToFilterExpression(filterJsonStr);
+
+  filterExpression = std::make_shared<RootFilterExpression>(
+      "root", std::dynamic_pointer_cast<FilterExpression>(tmpExpression));
 }
 
 }  // namespace ape

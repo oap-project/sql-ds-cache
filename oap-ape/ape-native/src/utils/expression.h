@@ -19,6 +19,9 @@
 
 #include <memory>
 #include <string>
+#include <vector>
+
+#include "type.h"
 
 namespace ape {
 
@@ -28,7 +31,10 @@ class Expression {
   std::string type;
 
  public:
+  std::string getType() { return type; };
   virtual void Execute() = 0;
+  virtual int ExecuteWithParam(int batchSize, long* dataBuffers, long* nullBuffers,
+                               std::vector<Schema>& schema, char* outBuffers) = 0;
   // void Execute(data, schema); // this will be real method to execute
   Expression(){};
   virtual ~Expression() = default;

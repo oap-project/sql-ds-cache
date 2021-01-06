@@ -119,11 +119,15 @@ public class ParquetNativeRecordReaderWrapper extends RecordReader<Void, Object>
 
   // todo: impl
   private boolean nextBatch() {
-    if (reader == 0 ) {
+    if (reader == 0) {
       return false;
     }
-    int rowsRead = ParquetReaderJNI.readBatch(reader, batchSize, bufferPtrs, nullPtrs);
-    if (rowsRead <= 0) {
+    int rowsRead = 0;
+    while (rowsRead == 0) {
+      rowsRead = ParquetReaderJNI.readBatch(reader, batchSize, bufferPtrs, nullPtrs);
+    }
+
+    if (rowsRead < 0) {
       return false;
     }
     // build columnVectors by buffers and nulls

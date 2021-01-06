@@ -63,7 +63,7 @@ add_executable(parse_test ${PARSE_SRC} ${PARSE_TEST})
 add_compile_options("-I$ENV{JAVA_HOME}/include/")
 add_compile_options("-I$ENV{JAVA_HOME}/include/linux")
 
-set(CMAKE_CXX_FLAGS "-g")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O3")
 
 target_link_libraries(parquet_test ${ARROW_LIB} ${PARQUET_LIB})
 # target_link_libraries(parquet_native ${ARROW_LIB} ${PARQUET_LIB} ${JNI} )
