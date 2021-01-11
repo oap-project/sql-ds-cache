@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include "UnaryFilter.h"
 #include "expression.h"
 #include "type.h"
 
@@ -27,9 +28,10 @@ class FilterExpression : public Expression {
   FilterExpression(std::string type_);
   virtual void Execute(){};
   virtual int ExecuteWithParam(int batchSize, long* dataBuffers, long* nullBuffers,
-                               std::vector<Schema>& schema, char* outBuffers) {
+                               char* outBuffers) {
     return 0;
   };
+  void setSchema(std::vector<Schema> schema_){};
   ~FilterExpression();
 };
 
@@ -38,8 +40,12 @@ class RootFilterExpression : public FilterExpression {
   RootFilterExpression(std::string type_, std::shared_ptr<FilterExpression> child_);
   void Execute(){};
   int ExecuteWithParam(int batchSize, long* dataBuffers, long* nullBuffers,
-                       std::vector<Schema>& schema, char* outBuffers);
+                       char* outBuffers);
   ~RootFilterExpression();
+  void setSchema(std::vector<Schema> schema_) {
+    schema = schema_;
+    child->setSchema(schema);
+  }
 
  private:
   std::shared_ptr<Expression> child;
@@ -50,8 +56,12 @@ class NotFilterExpression : public FilterExpression {
   NotFilterExpression(std::string type_, std::shared_ptr<Expression> child_);
   void Execute(){};
   int ExecuteWithParam(int batchSize, long* dataBuffers, long* nullBuffers,
-                       std::vector<Schema>& schema, char* outBuffers);
+                       char* outBuffers);
   ~NotFilterExpression();
+  void setSchema(std::vector<Schema> schema_) {
+    schema = schema_;
+    child->setSchema(schema);
+  }
 
  private:
   std::shared_ptr<Expression> child;
@@ -63,8 +73,13 @@ class BinaryFilterExpression : public FilterExpression {
                          std::shared_ptr<Expression> right_);
   void Execute(){};
   int ExecuteWithParam(int batchSize, long* dataBuffers, long* nullBuffers,
-                       std::vector<Schema>& schema, char* outBuffers);
+                       char* outBuffers);
   ~BinaryFilterExpression();
+  void setSchema(std::vector<Schema> schema_) {
+    schema = schema_;
+    left->setSchema(schema);
+    right->setSchema(schema);
+  }
 
  private:
   std::shared_ptr<Expression> left;
@@ -77,12 +92,15 @@ class TypedUnaryFilterExpression : public FilterExpression {
   TypedUnaryFilterExpression(std::string type_, std::string columnName_, T value_);
   void Execute(){};
   int ExecuteWithParam(int batchSize, long* dataBuffers, long* nullBuffers,
-                       std::vector<Schema>& schema, char* outBuffers);
+                       char* outBuffers);
   ~TypedUnaryFilterExpression();
+  void setSchema(std::vector<Schema> schema_);
 
  private:
+  std::shared_ptr<UnaryFilter<T>> filter;
   std::string columnName;
   T value;
+  int columnIndex;
 };
 
 using BoolUnaryFilterExpression = TypedUnaryFilterExpression<bool>;

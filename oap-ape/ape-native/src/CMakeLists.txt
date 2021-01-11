@@ -46,7 +46,7 @@ set(APE_SRCS
 set(PARQUET_DEMO
     parquet-hdfs-test.cc)
 
-set(PARSE_SRC utils/FilterExpression.cc utils/jsonConvertor.cc utils/type.cc)
+set(PARSE_SRC utils/FilterExpression.cc utils/jsonConvertor.cc utils/type.cc utils/UnaryFilter.cc)
 set(PARSE_TEST utils/convertorTest.cc)
 
 file(GLOB JNI_LIB_SRC
