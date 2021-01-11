@@ -152,7 +152,7 @@ spark.driver.extraClassPath       $HOME/miniconda2/envs/oapenv/oap_jars/oap-cach
 
 ### Vmemcache 
 
-- Make sure [Vmemcache](https://github.com/pmem/vmemcache) library has been installed on every cluster worker node if vmemcache strategy is chosen for PMem cache. If you have finished [OAP-Installation-Guide](../../docs/OAP-Installation-Guide.md), vmemcache library will be automatically installed by Conda.
+- Make sure [Vmemcache](https://github.com/pmem/vmemcache) library has been installed on every cluster worker node if vmemcache strategy is chosen for PMem cache. If you have finished [OAP-Installation-Guide](OAP-Installation-Guide.md), vmemcache library will be automatically installed by Conda.
   
   Or you can follow the [build/install](./Developer-Guide.md#build-and-install-vmemcache) steps and make sure `libvmemcache.so` exist in `/lib64` directory on each worker node.
 - To use it in your workload, follow [prerequisites](#prerequisites) to set up PMem hardware correctly.

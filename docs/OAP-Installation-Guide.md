@@ -45,7 +45,7 @@ Once finished steps above, you have completed OAP dependencies installation and 
 
 #### Extra Steps for Shuffle Remote PMem Extension
 
-If you use one of OAP features -- [Shuffle Remote PMem Extension](../oap-shuffle/RPMem-shuffle/README.md) with **RDMA**, you need to configure and validate RDMA, please refer to [Shuffle Remote PMem Extension Guide](../oap-shuffle/RPMem-shuffle/README.md#4-configure-and-validate-rdma) for the details.
+If you use one of OAP features -- [PMmem Shuffle](https://github.com/oap-project/pmem-shuffle) with **RDMA**, you need to configure and validate RDMA, please refer to [PMem Shuffle](https://github.com/oap-project/pmem-shuffle#4-configure-and-validate-rdma) for the details.
 
 
 ##  Configuration

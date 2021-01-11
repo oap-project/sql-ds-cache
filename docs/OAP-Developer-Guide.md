@@ -27,7 +27,7 @@ OAP is built with [Apache Maven](http://maven.apache.org/) and Oracle Java 8, an
 - [Arrow](https://github.com/Intel-bigdata/arrow)
 
 - **Requirements for Shuffle Remote PMem Extension**  
-If enable Shuffle Remote PMem extension with RDMA, you can refer to [Shuffle Remote PMem Extension Guide](../oap-shuffle/RPMem-shuffle/README.md) to configure and validate RDMA in advance.
+If enable Shuffle Remote PMem extension with RDMA, you can refer to [PMem Shuffle](https://github.com/oap-project/pmem-shuffle) to configure and validate RDMA in advance.
 
 We provide scripts below to help automatically install dependencies above **except RDMA**, need change to **root** account, run:
 
@@ -93,7 +93,7 @@ $ mvn clean -pl com.intel.oap:oap-cache -am test
 
 #### Prerequisites for building with PMem support
 
-When using SQL Index and Data Source Cache with PMem, finish steps of [Prerequisites for building](#Prerequisites-for-building) to ensure needed dependencies have been installed.
+When using SQL Index and Data Source Cache with PMem, finish steps of [Prerequisites for building](#prerequisites-for-building) to ensure needed dependencies have been installed.
 
 #### Building package
 
