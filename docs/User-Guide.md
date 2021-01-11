@@ -1,23 +1,23 @@
 # User Guide
 
-* [Prerequisites](#Prerequisites)
-* [Getting Started](#Getting-Started)
-* [Configuration for YARN Cluster Mode](#Configuration-for-YARN-Cluster-Mode)
-* [Configuration for Spark Standalone Mode](#Configuration-for-Spark-Standalone-Mode)
-* [Working with SQL Index](#Working-with-SQL-Index)
-* [Working with SQL Data Source Cache](#Working-with-SQL-Data-Source-Cache)
-* [Run TPC-DS Benchmark](#Run-TPC-DS-Benchmark)
-* [Advanced Configuration](#Advanced-Configuration)
+* [Prerequisites](#prerequisites)
+* [Getting Started](#getting-started)
+* [Configuration for YARN Cluster Mode](#configuration-for-yarn-cluster-mode)
+* [Configuration for Spark Standalone Mode](#configuration-for-spark-standalone-mode)
+* [Working with SQL Index](#working-with-sql-index)
+* [Working with SQL Data Source Cache](#working-with-sql-data-source-cache)
+* [Run TPC-DS Benchmark](#run-tpc-ds-benchmark)
+* [Advanced Configuration](#advanced-configuration)
 
 
 ## Prerequisites
 
-SQL Index and Data Source Cache on Spark requires a working Hadoop cluster with YARN and Spark. Running Spark on YARN requires a binary distribution of Spark, which is built with YARN support. We provide pre-built [Spark-3.0.0](https://github.com/Intel-bigdata/spark/releases/download/v3.0.0-intel-oap-0.9.0/spark-3.0.0-bin-hadoop2.7-intel-oap-0.9.0.tgz) based on hadoop-2.7 with numa patch applied to accelerate performance. If you use a different hadoop version, you should build it from source [here](https://github.com/Intel-bigdata/spark/releases/tag/v3.0.0-intel-oap-0.9.0).
+SQL Index and Data Source Cache on Spark 3.0.0 requires a working Hadoop cluster with YARN and Spark. Running Spark on YARN requires a binary distribution of Spark, which is built with YARN support.
 
 ## Getting Started
 
 ### Building
-We have provided a Conda package which will automatically install dependencies and build OAP jars, please follow [OAP-Installation-Guide](../../../docs/OAP-Installation-Guide.md) and you can find compiled OAP jars under
+We have provided a Conda package which will automatically install dependencies and build OAP jars, please follow [OAP-Installation-Guide](OAP-Installation-Guide.md) and you can find compiled OAP jars under
  `$HOME/miniconda2/envs/oapenv/oap_jars` once finished the installation.
 
 If you’d like to build from source code, please refer to [Developer Guide](Developer-Guide.md) for the detailed steps.
@@ -28,11 +28,11 @@ Users usually test and run Spark SQL or Scala scripts in Spark Shell,  which lau
 
 Before you run `$SPARK_HOME/bin/spark-shell `, you need to configure Spark for integration. You need to add or update the following configurations in the Spark configuration file `$SPARK_HOME/conf/spark-defaults.conf` on your working node.
 
-```
+```bash
 spark.sql.extensions              org.apache.spark.sql.OapExtensions
 # absolute path of the jar on your working node
 spark.files                       $HOME/miniconda2/envs/oapenv/oap_jars/oap-cache-<version>-with-spark-<version>.jar,$HOME/miniconda2/envs/oapenv/oap_jars/oap-common-<version>-with-spark-<version>.jar
-# relative path of the jar
+# relative path to spark.files, just specify jar name in current dir
 spark.executor.extraClassPath     ./oap-cache-<version>-with-spark-<version>.jar:./oap-common-<version>-with-spark-<version>.jar
 # absolute path of the jar on your working node
 spark.driver.extraClassPath       $HOME/miniconda2/envs/oapenv/oap_jars/oap-cache-<version>-with-spark-<version>.jar:$HOME/miniconda2/envs/oapenv/oap_jars/oap-common-<version>-with-spark-<version>.jar
@@ -42,25 +42,29 @@ spark.driver.extraClassPath       $HOME/miniconda2/envs/oapenv/oap_jars/oap-cach
 After configuration, you can follow these steps to verify the OAP integration is working using Spark Shell.
 
 1. Create a test data path on your HDFS. `hdfs:///user/oap/` for example.
-   ```
+
+```
    hadoop fs -mkdir /user/oap/
-   
-   ```
+```
+
 2. Launch Spark Shell using the following command on your working node.
-   ``` 
+
+```
    $SPARK_HOME/bin/spark-shell
-   ```
+```
 
 3. Execute the following commands in Spark Shell to test OAP integration. 
-   ```
-   > spark.sql(s"""CREATE TABLE oap_test (a INT, b STRING)
+
+```
+   
+    > spark.sql(s"""CREATE TABLE oap_test (a INT, b STRING)
           USING parquet
           OPTIONS (path 'hdfs:///user/oap/')""".stripMargin)
-   > val data = (1 to 30000).map { i => (i, s"this is test $i") }.toDF().createOrReplaceTempView("t")
-   > spark.sql("insert overwrite table oap_test select * from t")
-   > spark.sql("create oindex index1 on oap_test (a)")
-   > spark.sql("show oindex from oap_test").show()
-   ```
+    > val data = (1 to 30000).map { i => (i, s"this is test $i") }.toDF().createOrReplaceTempView("t")
+    > spark.sql("insert overwrite table oap_test select * from t")
+    > spark.sql("create oindex index1 on oap_test (a)")
+    > spark.sql("show oindex from oap_test").show()
+```
 
 This test creates an index for a table and then shows it. If there are no errors, the OAP `.jar` is working with the configuration. The picture below is an example of a successfully run.
 
@@ -75,9 +79,9 @@ Add the following OAP configuration settings to `$SPARK_HOME/conf/spark-defaults
 spark.sql.extensions              org.apache.spark.sql.OapExtensions
 # absolute path on your working node
 spark.files                       $HOME/miniconda2/envs/oapenv/oap_jars/oap-cache-<version>-with-spark-<version>.jar,$HOME/miniconda2/envs/oapenv/oap_jars/oap-common-<version>-with-spark-<version>.jar
-# relative path    
+# relative path to spark.files, just specify jar name in current dir   
 spark.executor.extraClassPath     ./oap-cache-<version>-with-spark-<version>.jar:./oap-common-<version>-with-spark-<version>.jar
-# relative path 
+# relative path to spark.files, just specify jar name in current dir
 spark.driver.extraClassPath       ./oap-cache-<version>-with-spark-<version>.jar:./oap-common-<version>-with-spark-<version>.jar
 ```
 
@@ -85,8 +89,8 @@ spark.driver.extraClassPath       ./oap-cache-<version>-with-spark-<version>.jar
 
 In addition to running on the YARN cluster manager, Spark also provides a simple standalone deploy mode. If you are using Spark in Spark Standalone mode:
 
-1. Copy the OAP `.jar` to **all** the worker nodes. 
-2. Add the following configuration settings to `$SPARK_HOME/conf/spark-defaults.conf` to the working node.
+1. Make sure the OAP `.jar` at the same path of **all** the worker nodes.
+2. Add the following configuration settings to `$SPARK_HOME/conf/spark-defaults.conf` on the working node.
 ```
 spark.sql.extensions               org.apache.spark.sql.OapExtensions
 # absolute path on worker nodes
@@ -142,7 +146,7 @@ Data Source Cache can provide input data cache functionality to the executor. Wh
 
 1. Make the following configuration changes in Spark configuration file `$SPARK_HOME/conf/spark-defaults.conf`. 
 
-   ```
+```
    spark.memory.offHeap.enabled                      false
    spark.oap.cache.strategy                          guava
    spark.sql.oap.cache.memory.manager                offheap
@@ -154,7 +158,7 @@ Data Source Cache can provide input data cache functionality to the executor. Wh
    spark.sql.oap.parquet.binary.cache.enabled        true
    # for orc fileformat, enable binary cache
    spark.sql.oap.orc.binary.cache.enabled            true
-   ```
+```
 
    ***NOTE***: Change `spark.executor.sql.oap.cache.offheap.memory.size` based on the availability of DRAM capacity to cache data, and its size is equal to `spark.executor.memoryOverhead`
 
@@ -166,32 +170,32 @@ Data Source Cache can provide input data cache functionality to the executor. Wh
 
    When you run ```spark-shell``` to create the `oap_test` table, `metastore_db` will be created in the directory where you ran '$SPARK_HOME/bin/spark-shell'. ***Go to that directory*** and execute the following command to launch Thrift JDBC server and run queries.
 
-   ```
-   . $SPARK_HOME/sbin/start-thriftserver.sh
-   ```
+```
+   $SPARK_HOME/sbin/start-thriftserver.sh
+```
 
 3. Use Beeline and connect to the Thrift JDBC server, replacing the hostname (mythriftserver) with your own Thrift Server hostname.
 
-   ```
+```
    . $SPARK_HOME/bin/beeline -u jdbc:hive2://<mythriftserver>:10000       
-   ```
+```
 
    After the connection is established, execute the following commands to check the metastore is initialized correctly.
 
-   ```
+```
    > SHOW databases;
    > USE default;
    > SHOW tables;
-   ```
+```
  
 4. Run queries on the table that will use the cache automatically. For example,
 
-   ```
+```
    > SELECT * FROM oap_test WHERE a = 1;
    > SELECT * FROM oap_test WHERE a = 2;
    > SELECT * FROM oap_test WHERE a = 3;
    ...
-   ```
+```
 
 5. Open the Spark History Web UI and go to the OAP tab page to verify the cache metrics. The following picture is an example.
 
@@ -201,13 +205,22 @@ Data Source Cache can provide input data cache functionality to the executor. Wh
 ### Use PMem Cache 
 
 #### Prerequisites
-The following are required to configure OAP to use PMem cache.
+
+The following steps are required to configure OAP to use PMem cache with `external` cache strategy.
 
 - PMem hardware is successfully deployed on each node in cluster.
 
-- Directories exposing PMem hardware on each socket. For example, on a two socket system the mounted PMem directories should appear as `/mnt/pmem0` and `/mnt/pmem1`. Correctly installed PMem must be formatted and mounted on every cluster worker node.
+- Besides, when enabling SQL Data Source Cache with external cache using Plasma, PMem could get noticeable performance gain with BIOS configuration settings below, especially on cross socket write path.
 
-   ```
+```
+Socket Configuration -> Memory Configuration -> NGN Configuration -> Snoopy mode for AD : Enabled
+Socket Configuration -> Intel UPI General Configuration -> Stale AtoS :  Disabled
+``` 
+
+- It's strongly advised to use [Linux device mapper](https://pmem.io/2018/05/15/using_persistent_memory_devices_with_the_linux_device_mapper.html) to interleave PMem across sockets and get maximum size for Plasma.
+
+
+```
    // use ipmctl command to show topology and dimm info of PMem
    ipmctl show -topology
    ipmctl show -dimm
@@ -225,66 +238,44 @@ The following are required to configure OAP to use PMem cache.
    // show the created namespaces
    fdisk -l
    // create and mount file system
-   echo y | mkfs.ext4 /dev/pmem0
-   echo y | mkfs.ext4 /dev/pmem1
-   mkdir -p /mnt/pmem0
-   mkdir -p /mnt/pmem1 
-   mount -o dax /dev/pmem0 /mnt/pmem0
-   mount -o dax /dev/pmem1 /mnt/pmem1
-   ```
-
-   In this case file systems are generated for 2 numa nodes, which can be checked by "numactl --hardware". For a different number of numa nodes, a corresponding number of namespaces should be created to assure correct file system paths mapping to numa nodes.
+   sudo dmsetup create striped-pmem
+   mkfs.ext4 -b 4096 -E stride=512 -F /dev/mapper/striped-pmem
+   mkdir -p /mnt/pmem
+   mount -o dax /dev/mapper/striped-pmem /mnt/pmem
+```
    
    For more information you can refer to [Quick Start Guide: Provision Intel® Optane™ DC Persistent Memory](https://software.intel.com/content/www/us/en/develop/articles/quick-start-guide-configure-intel-optane-dc-persistent-memory-on-linux.html)
 
-- Make sure [Vmemcache](https://github.com/pmem/vmemcache) library has been installed on every cluster worker node if vmemcache strategy is chosen for PMem cache. If you have finished [OAP-Installation-Guide](../../docs/OAP-Installation-Guide.md), vmemcache library will be automatically installed by Conda.
-  
-  Or you can follow the [build/install](./Developer-Guide.md#build-and-install-vmemcache) steps and make sure `libvmemcache.so` exist in `/lib64` directory in each worker node.
+- SQL Data Source Cache uses Plasma as a node-level external cache service, the benefit of using external cache is data could be shared across process boundaries.  [Plasma](http://arrow.apache.org/blog/2017/08/08/plasma-in-memory-object-store/) is a high-performance shared-memory object store and a component of [Apache Arrow](https://github.com/apache/arrow). We have modified Plasma to support PMem, and make it open source on [Intel-bigdata Arrow](https://github.com/Intel-bigdata/arrow/tree/branch-0.17.0-oap-1.0) repo. If you have finished [OAP Installation Guide](OAP-Installation-Guide.md), Plasma will be automatically installed and then you just need copy `arrow-plasma-0.17.0.jar` to `$SPARK_HOME/jars`. For manual building and installation steps you can refer to [Plasma installation](./Developer-Guide.md#Plasma-installation).
 
-- Currently, using Community Spark occasionally has the problem of two executors being bound to the same PMem path, so we recommend you use our pre-built numa-patched [Spark-3.0.0](https://github.com/Intel-bigdata/spark/releases/download/v3.0.0-intel-oap-0.9.0/spark-3.0.0-bin-hadoop2.7-intel-oap-0.9.0.tgz), which can not only improve performance, but also solve this problem.
 
-#### Configure for NUMA
+- Refer to configuration below to apply external cache strategy and start Plasma service on each node and start your workload.
 
-1. Install `numactl` to bind the executor to the PMem device on the same NUMA node. 
 
-   ```yum install numactl -y ```
+#### Configuration for NUMA
 
-2. We strongly recommend you use numa-patched Spark to achieve better performance gain.
-   
-   Build Spark from source to enable numa-binding support, refer to [enable-numa-binding-for-PMem-in-spark](./Developer-Guide.md#Enabling-NUMA-binding-for-PMem-in-Spark). Or you can just download our pre-built numa-patched [Spark-3.0.0](https://github.com/Intel-bigdata/spark/releases/download/v3.0.0-intel-oap-0.9.0/spark-3.0.0-bin-hadoop2.7-intel-oap-0.9.0.tgz).
+Install `numactl` to bind the executor to the PMem device on the same NUMA node. 
 
-#### Configure for PMem 
+```yum install numactl -y ```
 
-Create `persistent-memory.xml` in `$SPARK_HOME/conf/` if it doesn't exist. Use the following template and change the `initialPath` to your mounted paths for PMem devices. 
+We recommend you use NUMA-patched Spark to achieve better performance gain for the `external` strategy compared with Community Spark.  
+Build Spark from source to enable NUMA-binding support, refer to [Enabling-NUMA-binding-for-PMem-in-Spark](./Developer-Guide.md#Enabling-NUMA-binding-for-PMem-in-Spark). 
 
-```
-<persistentMemoryPool>
-  <!--The numa id-->
-  <numanode id="0">
-    <!--The initial path for Intel Optane DC persistent memory-->
-    <initialPath>/mnt/pmem0</initialPath>
-  </numanode>
-  <numanode id="1">
-    <initialPath>/mnt/pmem1</initialPath>
-  </numanode>
-</persistentMemoryPool>
-```
+#### Configuration for enabling PMem cache
 
-#### Configure to enable PMem cache
-
-Make the following configuration changes in `$SPARK_HOME/conf/spark-defaults.conf`.
+Add the following configuration to `$SPARK_HOME/conf/spark-defaults.conf`.
 
 ```
 # 2x number of your worker nodes
 spark.executor.instances          6
 # enable numa
 spark.yarn.numa.enabled           true
-# Enable OAP jar in Spark
+# enable SQL Index and Data Source Cache extension in Spark
 spark.sql.extensions              org.apache.spark.sql.OapExtensions
 
 # absolute path of the jar on your working node, when in Yarn client mode
 spark.files                       $HOME/miniconda2/envs/oapenv/oap_jars/oap-cache-<version>-with-spark-<version>.jar,$HOME/miniconda2/envs/oapenv/oap_jars/oap-common-<version>-with-spark-<version>.jar
-# relative path of the jar, when in Yarn client mode
+# relative path to spark.files, just specify jar name in current dir, when in Yarn client mode
 spark.executor.extraClassPath     ./oap-cache-<version>-with-spark-<version>.jar:./oap-common-<version>-with-spark-<version>.jar
 # absolute path of the jar on your working node,when in Yarn client mode
 spark.driver.extraClassPath       $HOME/miniconda2/envs/oapenv/oap_jars/oap-cache-<version>-with-spark-<version>.jar:$HOME/miniconda2/envs/oapenv/oap_jars/oap-common-<version>-with-spark-<version>.jar
@@ -293,25 +284,61 @@ spark.driver.extraClassPath       $HOME/miniconda2/envs/oapenv/oap_jars/oap-cach
 spark.sql.oap.parquet.binary.cache.enabled                   true
 # for ORC file format, enable binary cache
 spark.sql.oap.orc.binary.cache.enabled                       true
-spark.oap.cache.strategy                                     vmem 
-spark.executor.sql.oap.cache.persistent.memory.initial.size  256g 
-# according to your cluster
-spark.executor.sql.oap.cache.guardian.memory.size            10g
+# enable external cache strategy 
+spark.oap.cache.strategy                                     external 
+spark.sql.oap.dcpmm.free.wait.threshold                      50000000000
+# according to your executor core number
+spark.executor.sql.oap.cache.external.client.pool.size       10
 ```
-The `vmem` cache strategy is based on libvmemcache (buffer based LRU cache), which provides a key-value store API. Follow these steps to enable vmemcache support in Data Source Cache.
+Start Plasma service manually
 
-- `spark.executor.instances`: We suggest setting the value to 2X the number of worker nodes when NUMA binding is enabled. Each worker node runs two executors, each executor is bound to one of the two sockets, and accesses the corresponding PMem device on that socket.
-- `spark.executor.sql.oap.cache.persistent.memory.initial.size`: It is configured to the available PMem capacity to be used as data cache per exectutor.
- 
-**NOTE**: If "PendingFiber Size" (on spark web-UI OAP page) is large, or some tasks fail with "cache guardian use too much memory" error, set `spark.executor.sql.oap.cache.guardian.memory.size ` to a larger number as the default size is 10GB. The user could also increase `spark.sql.oap.cache.guardian.free.thread.nums` or decrease `spark.sql.oap.cache.dispose.timeout.ms` to free memory more quickly.
+Plasma config parameters:  
+
+```
+ -m  how much Bytes share memory Plasma will use
+ -s  Unix Domain sockcet path
+ -d  PMem directory
+```
+
+Start Plasma service on each node with following command, then run your workload. If you install OAP by Conda, you can find `plasma-store-server` in the path **$HOME/miniconda2/envs/oapenv/bin/**.
+
+```
+./plasma-store-server -m 15000000000 -s /tmp/plasmaStore -d /mnt/pmem  
+```
+
+Remember to kill `plasma-store-server` process if you no longer need cache, and you should delete `/tmp/plasmaStore` which is a Unix domain socket.  
+  
+- Use Yarn to start Plamsa service  
+When using Yarn(Hadoop version >= 3.1) to start Plasma service, you should provide a json file as below.
+```
+{
+  "name": "plasma-store-service",
+  "version": 1,
+  "components" :
+  [
+   {
+     "name": "plasma-store-service",
+     "number_of_containers": 3,
+     "launch_command": "plasma-store-server -m 15000000000 -s /tmp/plasmaStore -d /mnt/pmem",
+     "resource": {
+       "cpus": 1,
+       "memory": 512
+     }
+   }
+  ]
+}
+```
+
+Run command  ```yarn app -launch plasma-store-service /tmp/plasmaLaunch.json``` to start Plasma server.  
+Run ```yarn app -stop plasma-store-service``` to stop it.  
+Run ```yarn app -destroy plasma-store-service```to destroy it.
+
 
 ### Verify PMem cache functionality
 
 - After finishing configuration, restart Spark Thrift Server for the configuration changes to take effect. Start at step 2 of the [Use DRAM Cache](#use-dram-cache) guide to verify that cache is working correctly.
 
-- Verify NUMA binding status by confirming keywords like `numactl --cpubind=1 --membind=1` contained in executor launch command.
-
-- Check PMem cache size by checking disk space with `df -h`.For `vmemcache` strategy, disk usage will reach the initial cache size once the PMem cache is initialized and will not change during workload execution. For `Guava/Noevict` strategies, the command will show disk space usage increases along with workload execution. 
+- Check PMem cache size by checking disk space with `df -h`.
 
 
 ## Run TPC-DS Benchmark
@@ -326,7 +353,7 @@ We created some tool scripts [oap-benchmark-tool.zip](https://github.com/Intel-b
 
 ### Prepare the Tool
 
-1. Download [oap-benchmark-tool.zip](https://github.com/Intel-bigdata/OAP/releases/download/v0.9.0-spark-3.0.0/oap-benchmark-tool.zip) and unzip to a folder (for example, `oap-benchmark-tool` folder) on your working node. 
+1. Download [oap-benchmark-tool.zip](https://github.com/Intel-bigdata/OAP/releases/download/v1.0.0-spark-3.0.0/oap-benchmark-tool.zip) and unzip to a folder (for example, `oap-benchmark-tool` folder) on your working node. 
 2. Copy `oap-benchmark-tool/tools/tpcds-kits` to ***ALL*** worker nodes under the same folder (for example, `/home/oap/tpcds-kits`).
 
 ### Generate TPC-DS Data
@@ -360,7 +387,7 @@ cd oap-benchmark-tool
 sh ./scripts/run_gen_data.sh
 ```
 
-   Once finished, the `$scale` data will be generated in the HDFS folder `genData$scale`. And a database called `tpcds$scale` will contain the TPC-DS tables.
+   Once finished, the `$scale` data will be generated in the HDFS folder `genData$scale`. And a database called `tpcds_$format$scale` will contain the TPC-DS tables.
 
 ### Start Spark Thrift Server
 
@@ -371,12 +398,13 @@ Start the Thrift Server in the tool root folder, which is the same folder you ru
 Update the configuration values in `scripts/spark_thrift_server_yarn_with_PMem.sh` to reflect your environment. 
 Normally, you need to update the following configuration values to cache to PMem.
 
+- --num-executors
 - --driver-memory
 - --executor-memory
 - --executor-cores
 - --conf spark.oap.cache.strategy
-- --conf spark.executor.sql.oap.cache.guardian.memory.size
-- --conf spark.executor.sql.oap.cache.persistent.memory.initial.size
+- --conf spark.sql.oap.dcpmm.free.wait.threshold
+- --conf spark.executor.sql.oap.cache.external.client.pool.size
 
 These settings will override the values specified in Spark configuration file ( `spark-defaults.conf`). After the configuration is done, you can execute the following command to start Thrift Server.
 
@@ -384,12 +412,13 @@ These settings will override the values specified in Spark configuration file ( 
 cd oap-benchmark-tool
 sh ./scripts/spark_thrift_server_yarn_with_PMem.sh start
 ```
-In this script, we use `vmem` as cache strategy for Parquet Binary data cache. 
+In this script, we use `external` as cache strategy for Parquet Binary data cache. 
 
 #### Use DRAM as Cache Media 
 
 Update the configuration values in `scripts/spark_thrift_server_yarn_with_DRAM.sh` to reflect your environment. Normally, you need to update the following configuration values to cache to DRAM.
 
+- --num-executors
 - --driver-memory
 - --executor-memory
 - --executor-cores
@@ -405,20 +434,21 @@ sh ./scripts/spark_thrift_server_yarn_with_DRAM.sh  start
 
 ### Run Queries
 
-Execute the following command to start to run queries.
+Execute the following command to start to run queries. If you use `external` cache strategy, also need start plasma service manually as above.
 
 ```
 cd oap-benchmark-tool
 sh ./scripts/run_tpcds.sh
 ```
 
-When all the queries are done, you will see the `result.json` file in the current directory.
+When all the queries are done, you will see the `result.json` file in the current directory. You will find in the 2nd and 3rd round, cache feature takes effect and query time becomes less.
+And the Spark webUI OAP tab has more specific OAP cache metrics just as [section](#use-dram-cache) step 5.
 
 ## Advanced Configuration
 
 - [Additional Cache Strategies](./Advanced-Configuration.md#Additional-Cache-Strategies)  
 
-  In addition to **vmem** cache strategy, SQL Data Source Cache also supports 3 other cache strategies: **guava**, **noevict**  and **external cache**.
+  In addition to **external** cache strategy, SQL Data Source Cache also supports 3 other cache strategies: **guava**, **noevict**  and **vmemcache**.
 - [Index and Data Cache Separation](./Advanced-Configuration.md#Index-and-Data-Cache-Separation) 
 
   To optimize the cache media utilization, SQL Data Source Cache supports cache separation of data and index, by using same or different cache media with DRAM and PMem.
@@ -427,8 +457,8 @@ When all the queries are done, you will see the `result.json` file in the curren
   Data Source Cache also supports caching specific tables according to actual situations, these tables are usually hot tables.
 - [Column Vector Cache](./Advanced-Configuration.md#Column-Vector-Cache) 
 
-  This document above use **binary** cache as example for Parquet file format, if your cluster memory resources is abundant enough, you can choose ColumnVector data cache instead of binary cache for Parquet to spare computation time.
-- - [Large Scale and Heterogeneous Cluster Support](#Large-Scale-and-Heterogeneous-Cluster-Support) 
+  This document above uses **binary** cache as example for Parquet file format, if your cluster memory resources is abundant enough, you can choose ColumnVector data cache instead of binary cache for Parquet to spare computation time.
+- [Large Scale and Heterogeneous Cluster Support](./Advanced-Configuration.md#Large-Scale-and-Heterogeneous-Cluster-Support) 
   
   Introduce an external database to store cache locality info to support large-scale and heterogeneous clusters.
 
