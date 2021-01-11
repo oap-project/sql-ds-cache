@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  
+  
+  <link rel="shortcut icon" href="../img/favicon.ico">
+  <title>Developer Guide - SQL DS Cache - 1.1.0</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700" />
+
+  <link rel="stylesheet" href="../css/theme.css" />
+  <link rel="stylesheet" href="../css/theme_extra.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" />
+  
+  <script>
+    // Current page data
+    var mkdocs_page_name = "Developer Guide";
+    var mkdocs_page_input_path = "Developer-Guide.md";
+    var mkdocs_page_url = null;
+  </script>
+  
+  <script src="../js/jquery-2.1.1.min.js" defer></script>
+  <script src="../js/modernizr-2.8.3.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script> 
+  
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+        <a href=".." class="icon icon-home"> SQL DS Cache - 1.1.0</a>
+        <div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../User-Guide/">User Guide</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../Advanced-Configuration/">Advanced Configuration</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../OAP-Installation-Guide/">OAP Installation Guide</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../OAP-Developer-Guide/">OAP Developer Guide</a>
+                    </li>
+                </ul>
+                <ul class="current">
+                    <li class="toctree-l1 current"><a class="reference internal current" href="./">Developer Guide</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#building">Building</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#building-sql-index-and-data-source-cache">Building SQL Index and  Data Source Cache</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#running-tests">Running Tests</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#building-with-intel-optanetm-dc-persistent-memory-module">Building with Intel® Optane™ DC Persistent Memory Module</a>
+        <ul>
+    <li class="toctree-l4"><a class="reference internal" href="#prerequisites-for-building-with-pmem-support">Prerequisites for building with PMem support</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#memkind-installation">memkind installation</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#vmemcache-installation">vmemcache installation</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#plasma-installation">Plasma installation</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#building-the-package">Building the package</a>
+    </li>
+        </ul>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#enabling-numa-binding-for-pmem-in-spark">Enabling NUMA binding for PMem in Spark</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#rebuilding-spark-packages-with-numa-binding-patch">Rebuilding Spark packages with NUMA binding patch</a>
+        <ul>
+    <li class="toctree-l4"><a class="reference internal" href="#other-names-and-brands-may-be-claimed-as-the-property-of-others">*Other names and brands may be claimed as the property of others.</a>
+    </li>
+        </ul>
+    </li>
+        </ul>
+    </li>
+    </ul>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="" href="../../">Version Selector</a>
+                    </li>
+                </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="..">SQL DS Cache - 1.1.0</a>
+      </nav>
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="..">Docs</a> &raquo;</li>
+    
+      
+    
+    <li>Developer Guide</li>
+    <li class="wy-breadcrumbs-aside">
+      
+    </li>
+  </ul>
+  
+  <hr/>
+</div>
+          <div role="main">
+            <div class="section">
+              
+                <h1 id="developer-guide">Developer Guide</h1>
+<p>This document is a supplement to the whole <a href="../OAP-Developer-Guide/">OAP Developer Guide</a> for SQL Index and Data Source Cache.
+After following that document, you can continue more details for SQL Index and Data Source Cache.</p>
+<ul>
+<li><a href="#Building">Building</a></li>
+<li><a href="#enabling-numa-binding-for-pmem-in-spark">Enabling NUMA binding for Intel® Optane™ DC Persistent Memory in Spark</a></li>
+</ul>
+<h2 id="building">Building</h2>
+<h3 id="building-sql-index-and-data-source-cache">Building SQL Index and  Data Source Cache</h3>
+<p>Building with <a href="http://maven.apache.org/">Apache Maven*</a>.</p>
+<p>Clone the OAP project:</p>
+<pre><code>git clone -b &lt;tag-version&gt;  https://github.com/Intel-bigdata/OAP.git
+cd OAP
+</code></pre>
+<p>Build the <code>oap-cache</code> package:</p>
+<pre><code>mvn clean -pl com.intel.oap:oap-cache -am package
+</code></pre>
+<h3 id="running-tests">Running Tests</h3>
+<p>Run all the tests:</p>
+<pre><code>mvn clean -pl com.intel.oap:oap-cache -am test
+</code></pre>
+<p>Run a specific test suite, for example <code>OapDDLSuite</code>:</p>
+<pre><code>mvn -pl com.intel.oap:oap-cache -am -DwildcardSuites=org.apache.spark.sql.execution.datasources.oap.OapDDLSuite test
+</code></pre>
+<p><strong>NOTE</strong>: Log level of unit tests currently default to ERROR, please override oap-cache/oap/src/test/resources/log4j.properties if needed.</p>
+<h3 id="building-with-intel-optanetm-dc-persistent-memory-module">Building with Intel® Optane™ DC Persistent Memory Module</h3>
+<h4 id="prerequisites-for-building-with-pmem-support">Prerequisites for building with PMem support</h4>
+<p>Install the required packages on the build system:</p>
+<ul>
+<li><a href="https://help.directadmin.com/item.php?id=494">cmake</a></li>
+<li><a href="https://github.com/memkind/memkind/tree/v1.10.1">memkind</a></li>
+<li><a href="https://github.com/pmem/vmemcache">vmemcache</a></li>
+<li><a href="http://arrow.apache.org/blog/2017/08/08/plasma-in-memory-object-store/">Plasma</a></li>
+</ul>
+<h4 id="memkind-installation">memkind installation</h4>
+<p>The memkind library depends on <code>libnuma</code> at the runtime, so it must already exist in the worker node system. Build the latest memkind lib from source:</p>
+<pre><code>git clone -b v1.10.1 https://github.com/memkind/memkind
+cd memkind
+./autogen.sh
+./configure
+make
+make install
+</code></pre>
+<h4 id="vmemcache-installation">vmemcache installation</h4>
+<p>To build vmemcache library from source, you can (for RPM-based linux as example):</p>
+<pre><code>git clone https://github.com/pmem/vmemcache
+cd vmemcache
+mkdir build
+cd build
+cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DCPACK_GENERATOR=rpm
+make package
+sudo rpm -i libvmemcache*.rpm
+</code></pre>
+<h4 id="plasma-installation">Plasma installation</h4>
+<p>To use optimized Plasma cache with OAP, you need following components:  </p>
+<p>(1) <code>libarrow.so</code>, <code>libplasma.so</code>, <code>libplasma_java.so</code>: dynamic libraries, will be used in Plasma client. <br />
+   (2) <code>plasma-store-server</code>: executable file, Plasma cache service.<br />
+   (3) <code>arrow-plasma-0.17.0.jar</code>: will be used when compile oap and spark runtime also need it. </p>
+<ul>
+<li><code>.so</code> file and binary file<br />
+  Clone code from Intel-arrow repo and run following commands, this will install <code>libplasma.so</code>, <code>libarrow.so</code>, <code>libplasma_java.so</code> and <code>plasma-store-server</code> to your system path(<code>/usr/lib64</code> by default). And if you are using Spark in a cluster environment, you can copy these files to all nodes in your cluster if the OS or distribution are same, otherwise, you need compile it on each node.</li>
+</ul>
+<pre><code>cd /tmp
+git clone https://github.com/Intel-bigdata/arrow.git
+cd arrow &amp;&amp; git checkout branch-0.17.0-oap-1.0
+cd cpp
+mkdir release
+cd release
+#build libarrow, libplasma, libplasma_java
+cmake -DCMAKE_INSTALL_PREFIX=/usr/ -DCMAKE_BUILD_TYPE=Release -DARROW_BUILD_TESTS=on -DARROW_PLASMA_JAVA_CLIENT=on -DARROW_PLASMA=on -DARROW_DEPENDENCY_SOURCE=BUNDLED  ..
+make -j$(nproc)
+sudo make install -j$(nproc)
+</code></pre>
+<ul>
+<li>arrow-plasma-0.17.0.jar<br />
+<code>arrow-plasma-0.17.0.jar</code> is provided in Maven central repo, you can download <a href="https://repo1.maven.org/maven2/com/intel/arrow/arrow-plasma/0.17.0/arrow-plasma-0.17.0.jar">it</a> and copy to <code>$SPARK_HOME/jars</code> dir.</li>
+</ul>
+<p>Or you can manually install it, run following command, this will install arrow jars to your local maven repo. Besides, you need copy arrow-plasma-0.17.0.jar to <code>$SPARK_HOME/jars/</code> dir, cause this jar is needed when using external cache.</p>
+<pre><code>cd /tmp/arrow/java
+mvn clean -q -pl plasma -DskipTests install
+</code></pre>
+<h4 id="building-the-package">Building the package</h4>
+<p>You need to add <code>-Ppersistent-memory</code> to build with PMem support. For <code>noevict</code> cache strategy, you also need to build with <code>-Ppersistent-memory</code> parameter.</p>
+<pre><code>mvn clean -q -pl com.intel.oap:oap-cache -am  -Ppersistent-memory -DskipTests package
+</code></pre>
+<p>For vmemcache cache strategy, please build with command:</p>
+<pre><code>mvn clean -q -pl com.intel.oap:oap-cache -am -Pvmemcache -DskipTests package
+</code></pre>
+<p>Build with this command to use all of them:</p>
+<pre><code>mvn clean -q -pl com.intel.oap:oap-cache -am  -Ppersistent-memory -Pvmemcache -DskipTests package
+</code></pre>
+<h2 id="enabling-numa-binding-for-pmem-in-spark">Enabling NUMA binding for PMem in Spark</h2>
+<h3 id="rebuilding-spark-packages-with-numa-binding-patch">Rebuilding Spark packages with NUMA binding patch</h3>
+<p>When using PMem as a cache medium apply the <a href="https://www.kernel.org/doc/html/v4.18/vm/numa.html">NUMA</a> binding patch <a href="../numa-binding-spark-3.0.0.patch">numa-binding-spark-3.0.0.patch</a> to Spark source code for best performance.</p>
+<ol>
+<li>
+<p>Download src for <a href="https://archive.apache.org/dist/spark/spark-3.0.0/spark-3.0.0.tgz">Spark-3.0.0</a> and clone the src from github.</p>
+</li>
+<li>
+<p>Apply this patch and <a href="https://spark.apache.org/docs/latest/building-spark.html">rebuild</a> the Spark package.</p>
+</li>
+</ol>
+<pre><code>git apply  numa-binding-spark-3.0.0.patch
+</code></pre>
+<ol>
+<li>Add these configuration items to the Spark configuration file $SPARK_HOME/conf/spark-defaults.conf to enable NUMA binding.</li>
+</ol>
+<pre><code>spark.yarn.numa.enabled true 
+</code></pre>
+<p><strong>NOTE</strong>: If you are using a customized Spark, you will need to manually resolve the conflicts.</p>
+<h6 id="other-names-and-brands-may-be-claimed-as-the-property-of-others">*Other names and brands may be claimed as the property of others.</h6>
+              
+            </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+      
+        <a href="../OAP-Developer-Guide/" class="btn btn-neutral" title="OAP Developer Guide"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+    
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+      
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="versions">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      
+      
+        <span><a href="../OAP-Developer-Guide/" style="color: #fcfcfc;">&laquo; Previous</a></span>
+      
+      
+    </span>
+</div>
+    <script>var base_url = '..';</script>
+    <script src="../js/theme.js" defer></script>
+      <script src="../search/main.js" defer></script>
+    <script defer>
+        window.onload = function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        };
+    </script>
+
+</body>
+</html>

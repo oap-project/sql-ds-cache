@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  
+  
+  <link rel="shortcut icon" href="../img/favicon.ico">
+  <title>User Guide - SQL DS Cache - master</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700" />
+
+  <link rel="stylesheet" href="../css/theme.css" />
+  <link rel="stylesheet" href="../css/theme_extra.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" />
+  
+  <script>
+    // Current page data
+    var mkdocs_page_name = "User Guide";
+    var mkdocs_page_input_path = "User-Guide.md";
+    var mkdocs_page_url = null;
+  </script>
+  
+  <script src="../js/jquery-2.1.1.min.js" defer></script>
+  <script src="../js/modernizr-2.8.3.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script> 
+  
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+        <a href=".." class="icon icon-home"> SQL DS Cache - master</a>
+        <div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+                <ul class="current">
+                    <li class="toctree-l1 current"><a class="reference internal current" href="./">User Guide</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#prerequisites">Prerequisites</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#getting-started">Getting Started</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#building">Building</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#spark-configurations">Spark Configurations</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#verify-integration">Verify Integration</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#configuration-for-yarn-cluster-mode">Configuration for YARN Cluster Mode</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#configuration-for-spark-standalone-mode">Configuration for Spark Standalone Mode</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#working-with-sql-index">Working with SQL Index</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#index-creation">Index Creation</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#use-index">Use Index</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#drop-index">Drop index</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#working-with-sql-data-source-cache">Working with SQL Data Source Cache</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#use-dram-cache">Use DRAM Cache</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#use-pmem-cache">Use PMem Cache</a>
+        <ul>
+    <li class="toctree-l4"><a class="reference internal" href="#prerequisites_1">Prerequisites</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#configuration-for-numa">Configuration for NUMA</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#configuration-for-enabling-pmem-cache">Configuration for enabling PMem cache</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#verify-pmem-cache-functionality">Verify PMem cache functionality</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#run-tpc-ds-benchmark">Run TPC-DS Benchmark</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#prerequisites_2">Prerequisites</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#prepare-the-tool">Prepare the Tool</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#generate-tpc-ds-data">Generate TPC-DS Data</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#start-spark-thrift-server">Start Spark Thrift Server</a>
+        <ul>
+    <li class="toctree-l4"><a class="reference internal" href="#use-pmem-as-cache-media">Use PMem as Cache Media</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#use-dram-as-cache-media">Use DRAM as Cache Media</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#run-queries">Run Queries</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#advanced-configuration">Advanced Configuration</a>
+    </li>
+    </ul>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../Advanced-Configuration/">Advanced Configuration</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../OAP-Installation-Guide/">OAP Installation Guide</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../OAP-Developer-Guide/">OAP Developer Guide</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../Developer-Guide/">Developer Guide</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="" href="../../">Version Selector</a>
+                    </li>
+                </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="..">SQL DS Cache - master</a>
+      </nav>
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="..">Docs</a> &raquo;</li>
+    
+      
+    
+    <li>User Guide</li>
+    <li class="wy-breadcrumbs-aside">
+      
+    </li>
+  </ul>
+  
+  <hr/>
+</div>
+          <div role="main">
+            <div class="section">
+              
+                <h1 id="user-guide">User Guide</h1>
+<ul>
+<li><a href="#prerequisites">Prerequisites</a></li>
+<li><a href="#getting-started">Getting Started</a></li>
+<li><a href="#configuration-for-yarn-cluster-mode">Configuration for YARN Cluster Mode</a></li>
+<li><a href="#configuration-for-spark-standalone-mode">Configuration for Spark Standalone Mode</a></li>
+<li><a href="#working-with-sql-index">Working with SQL Index</a></li>
+<li><a href="#working-with-sql-data-source-cache">Working with SQL Data Source Cache</a></li>
+<li><a href="#run-tpc-ds-benchmark">Run TPC-DS Benchmark</a></li>
+<li><a href="#advanced-configuration">Advanced Configuration</a></li>
+</ul>
+<h2 id="prerequisites">Prerequisites</h2>
+<p>SQL Index and Data Source Cache on Spark 3.0.0 requires a working Hadoop cluster with YARN and Spark. Running Spark on YARN requires a binary distribution of Spark, which is built with YARN support.</p>
+<h2 id="getting-started">Getting Started</h2>
+<h3 id="building">Building</h3>
+<p>We have provided a Conda package which will automatically install dependencies and build OAP jars, please follow <a href="../OAP-Installation-Guide/">OAP-Installation-Guide</a> and you can find compiled OAP jars under
+ <code>$HOME/miniconda2/envs/oapenv/oap_jars</code> once finished the installation.</p>
+<p>If you’d like to build from source code, please refer to <a href="../Developer-Guide/">Developer Guide</a> for the detailed steps.</p>
+<h3 id="spark-configurations">Spark Configurations</h3>
+<p>Users usually test and run Spark SQL or Scala scripts in Spark Shell,  which launches Spark applications on YRAN with <strong><em>client</em></strong> mode. In this section, we will start with Spark Shell then introduce other use scenarios. </p>
+<p>Before you run <code>$SPARK_HOME/bin/spark-shell</code>, you need to configure Spark for integration. You need to add or update the following configurations in the Spark configuration file <code>$SPARK_HOME/conf/spark-defaults.conf</code> on your working node.</p>
+<pre><code class="language-bash">spark.sql.extensions              org.apache.spark.sql.OapExtensions
+# absolute path of the jar on your working node
+spark.files                       $HOME/miniconda2/envs/oapenv/oap_jars/oap-cache-&lt;version&gt;-with-spark-&lt;version&gt;.jar,$HOME/miniconda2/envs/oapenv/oap_jars/oap-common-&lt;version&gt;-with-spark-&lt;version&gt;.jar
+# relative path to spark.files, just specify jar name in current dir
+spark.executor.extraClassPath     ./oap-cache-&lt;version&gt;-with-spark-&lt;version&gt;.jar:./oap-common-&lt;version&gt;-with-spark-&lt;version&gt;.jar
+# absolute path of the jar on your working node
+spark.driver.extraClassPath       $HOME/miniconda2/envs/oapenv/oap_jars/oap-cache-&lt;version&gt;-with-spark-&lt;version&gt;.jar:$HOME/miniconda2/envs/oapenv/oap_jars/oap-common-&lt;version&gt;-with-spark-&lt;version&gt;.jar
+</code></pre>
+<h3 id="verify-integration">Verify Integration</h3>
+<p>After configuration, you can follow these steps to verify the OAP integration is working using Spark Shell.</p>
+<ol>
+<li>Create a test data path on your HDFS. <code>hdfs:///user/oap/</code> for example.</li>
+</ol>
+<pre><code>   hadoop fs -mkdir /user/oap/
+</code></pre>
+<ol>
+<li>Launch Spark Shell using the following command on your working node.</li>
+</ol>
+<pre><code>   $SPARK_HOME/bin/spark-shell
+</code></pre>
+<ol>
+<li>Execute the following commands in Spark Shell to test OAP integration. </li>
+</ol>
+<pre><code>
+    &gt; spark.sql(s&quot;&quot;&quot;CREATE TABLE oap_test (a INT, b STRING)
+          USING parquet
+          OPTIONS (path 'hdfs:///user/oap/')&quot;&quot;&quot;.stripMargin)
+    &gt; val data = (1 to 30000).map { i =&gt; (i, s&quot;this is test $i&quot;) }.toDF().createOrReplaceTempView(&quot;t&quot;)
+    &gt; spark.sql(&quot;insert overwrite table oap_test select * from t&quot;)
+    &gt; spark.sql(&quot;create oindex index1 on oap_test (a)&quot;)
+    &gt; spark.sql(&quot;show oindex from oap_test&quot;).show()
+</code></pre>
+<p>This test creates an index for a table and then shows it. If there are no errors, the OAP <code>.jar</code> is working with the configuration. The picture below is an example of a successfully run.</p>
+<p><img alt="Spark_shell_running_results" src="../image/spark_shell_oap.png" /></p>
+<h2 id="configuration-for-yarn-cluster-mode">Configuration for YARN Cluster Mode</h2>
+<p>Spark Shell, Spark SQL CLI and Thrift Sever run Spark application in <strong><em>client</em></strong> mode. While Spark Submit tool can run Spark application in <strong><em>client</em></strong> or <strong><em>cluster</em></strong> mode, which is decided by <code>--deploy-mode</code> parameter. <a href="#Getting-Started">Getting Started</a> session has shown the configurations needed for <strong><em>client</em></strong> mode. If you are running Spark Submit tool in <strong><em>cluster</em></strong> mode, you need to follow the below configuration steps instead.</p>
+<p>Add the following OAP configuration settings to <code>$SPARK_HOME/conf/spark-defaults.conf</code> on your working node before running <code>spark-submit</code> in <strong><em>cluster</em></strong> mode.</p>
+<pre><code>spark.sql.extensions              org.apache.spark.sql.OapExtensions
+# absolute path on your working node
+spark.files                       $HOME/miniconda2/envs/oapenv/oap_jars/oap-cache-&lt;version&gt;-with-spark-&lt;version&gt;.jar,$HOME/miniconda2/envs/oapenv/oap_jars/oap-common-&lt;version&gt;-with-spark-&lt;version&gt;.jar
+# relative path to spark.files, just specify jar name in current dir   
+spark.executor.extraClassPath     ./oap-cache-&lt;version&gt;-with-spark-&lt;version&gt;.jar:./oap-common-&lt;version&gt;-with-spark-&lt;version&gt;.jar
+# relative path to spark.files, just specify jar name in current dir
+spark.driver.extraClassPath       ./oap-cache-&lt;version&gt;-with-spark-&lt;version&gt;.jar:./oap-common-&lt;version&gt;-with-spark-&lt;version&gt;.jar
+</code></pre>
+<h2 id="configuration-for-spark-standalone-mode">Configuration for Spark Standalone Mode</h2>
+<p>In addition to running on the YARN cluster manager, Spark also provides a simple standalone deploy mode. If you are using Spark in Spark Standalone mode:</p>
+<ol>
+<li>Make sure the OAP <code>.jar</code> at the same path of <strong>all</strong> the worker nodes.</li>
+<li>Add the following configuration settings to <code>$SPARK_HOME/conf/spark-defaults.conf</code> on the working node.</li>
+</ol>
+<pre><code>spark.sql.extensions               org.apache.spark.sql.OapExtensions
+# absolute path on worker nodes
+spark.executor.extraClassPath      $HOME/miniconda2/envs/oapenv/oap_jars/oap-cache-&lt;version&gt;-with-spark-&lt;version&gt;.jar:$HOME/miniconda2/envs/oapenv/oap_jars/oap-common-&lt;version&gt;-with-spark-&lt;version&gt;.jar
+# absolute path on worker nodes
+spark.driver.extraClassPath        $HOME/miniconda2/envs/oapenv/oap_jars/oap-cache-&lt;version&gt;-with-spark-&lt;version&gt;.jar:$HOME/miniconda2/envs/oapenv/oap_jars/oap-common-&lt;version&gt;-with-spark-&lt;version&gt;.jar
+</code></pre>
+<h2 id="working-with-sql-index">Working with SQL Index</h2>
+<p>After a successful OAP integration, you can use OAP SQL DDL to manage table indexes. The DDL operations include <code>index create</code>, <code>drop</code>, <code>refresh</code>, and <code>show</code>. Test these functions using the following examples in Spark Shell.</p>
+<pre><code>&gt; spark.sql(s&quot;&quot;&quot;CREATE TABLE oap_test (a INT, b STRING)
+       USING parquet
+       OPTIONS (path 'hdfs:///user/oap/')&quot;&quot;&quot;.stripMargin)
+&gt; val data = (1 to 30000).map { i =&gt; (i, s&quot;this is test $i&quot;) }.toDF().createOrReplaceTempView(&quot;t&quot;)
+&gt; spark.sql(&quot;insert overwrite table oap_test select * from t&quot;)       
+</code></pre>
+<h3 id="index-creation">Index Creation</h3>
+<p>Use the CREATE OINDEX DDL command to create a B+ Tree index or bitmap index. </p>
+<pre><code>CREATE OINDEX index_name ON table_name (column_name) USING [BTREE, BITMAP]
+</code></pre>
+<p>The following example creates a B+ Tree index on column "a" of the <code>oap_test</code> table.</p>
+<pre><code>&gt; spark.sql(&quot;create oindex index1 on oap_test (a)&quot;)
+</code></pre>
+<p>Use SHOW OINDEX command to show all the created indexes on a specified table.</p>
+<pre><code>&gt; spark.sql(&quot;show oindex from oap_test&quot;).show()
+</code></pre>
+<h3 id="use-index">Use Index</h3>
+<p>Using index in a query is transparent. When SQL queries have filter conditions on the column(s) which can take advantage of the index to filter the data scan, the index will automatically be applied to the execution of Spark SQL. The following example will automatically use the underlayer index created on column "a".</p>
+<pre><code>&gt; spark.sql(&quot;SELECT * FROM oap_test WHERE a = 1&quot;).show()
+</code></pre>
+<h3 id="drop-index">Drop index</h3>
+<p>Use DROP OINDEX command to drop a named index.</p>
+<pre><code>&gt; spark.sql(&quot;drop oindex index1 on oap_test&quot;)
+</code></pre>
+<h2 id="working-with-sql-data-source-cache">Working with SQL Data Source Cache</h2>
+<p>Data Source Cache can provide input data cache functionality to the executor. When using the cache data among different SQL queries, configure cache to allow different SQL queries to use the same executor process. Do this by running your queries through the Spark ThriftServer as shown below. For cache media, we support both DRAM and Intel PMem which means you can choose to cache data in DRAM or Intel PMem if you have PMem configured in hardware.</p>
+<h3 id="use-dram-cache">Use DRAM Cache</h3>
+<ol>
+<li>Make the following configuration changes in Spark configuration file <code>$SPARK_HOME/conf/spark-defaults.conf</code>. </li>
+</ol>
+<pre><code>   spark.memory.offHeap.enabled                      false
+   spark.oap.cache.strategy                          guava
+   spark.sql.oap.cache.memory.manager                offheap
+   # according to the resource of cluster
+   spark.executor.memoryOverhead                     50g
+   # equal to the size of executor.memoryOverhead
+   spark.executor.sql.oap.cache.offheap.memory.size  50g
+   # for parquet fileformat, enable binary cache
+   spark.sql.oap.parquet.binary.cache.enabled        true
+   # for orc fileformat, enable binary cache
+   spark.sql.oap.orc.binary.cache.enabled            true
+</code></pre>
+<p><strong><em>NOTE</em></strong>: Change <code>spark.executor.sql.oap.cache.offheap.memory.size</code> based on the availability of DRAM capacity to cache data, and its size is equal to <code>spark.executor.memoryOverhead</code></p>
+<ol>
+<li>Launch Spark <strong><em>ThriftServer</em></strong></li>
+</ol>
+<p>Launch Spark Thrift Server, and use the Beeline command line tool to connect to the Thrift Server to execute DDL or DML operations. The data cache will automatically take effect for Parquet or ORC file sources. </p>
+<p>The rest of this section will show you how to do a quick verification of cache functionality. It will reuse the database metastore created in the <a href="#Working-with-SQL-Index">Working with SQL Index</a> section, which creates the <code>oap_test</code> table definition. In production, Spark Thrift Server will have its own metastore database directory or metastore service and use DDL's through Beeline for creating your tables.</p>
+<p>When you run <code>spark-shell</code> to create the <code>oap_test</code> table, <code>metastore_db</code> will be created in the directory where you ran '$SPARK_HOME/bin/spark-shell'. <strong><em>Go to that directory</em></strong> and execute the following command to launch Thrift JDBC server and run queries.</p>
+<pre><code>   $SPARK_HOME/sbin/start-thriftserver.sh
+</code></pre>
+<ol>
+<li>Use Beeline and connect to the Thrift JDBC server, replacing the hostname (mythriftserver) with your own Thrift Server hostname.</li>
+</ol>
+<pre><code>   . $SPARK_HOME/bin/beeline -u jdbc:hive2://&lt;mythriftserver&gt;:10000       
+</code></pre>
+<p>After the connection is established, execute the following commands to check the metastore is initialized correctly.</p>
+<pre><code>   &gt; SHOW databases;
+   &gt; USE default;
+   &gt; SHOW tables;
+</code></pre>
+<ol>
+<li>Run queries on the table that will use the cache automatically. For example,</li>
+</ol>
+<pre><code>   &gt; SELECT * FROM oap_test WHERE a = 1;
+   &gt; SELECT * FROM oap_test WHERE a = 2;
+   &gt; SELECT * FROM oap_test WHERE a = 3;
+   ...
+</code></pre>
+<ol>
+<li>Open the Spark History Web UI and go to the OAP tab page to verify the cache metrics. The following picture is an example.</li>
+</ol>
+<p><img alt="webUI" src="../image/webUI.png" /></p>
+<h3 id="use-pmem-cache">Use PMem Cache</h3>
+<h4 id="prerequisites_1">Prerequisites</h4>
+<p>The following steps are required to configure OAP to use PMem cache with <code>external</code> cache strategy.</p>
+<ul>
+<li>
+<p>PMem hardware is successfully deployed on each node in cluster.</p>
+</li>
+<li>
+<p>Besides, when enabling SQL Data Source Cache with external cache using Plasma, PMem could get noticeable performance gain with BIOS configuration settings below, especially on cross socket write path.</p>
+</li>
+</ul>
+<pre><code>Socket Configuration -&gt; Memory Configuration -&gt; NGN Configuration -&gt; Snoopy mode for AD : Enabled
+Socket Configuration -&gt; Intel UPI General Configuration -&gt; Stale AtoS :  Disabled
+</code></pre>
+<ul>
+<li>It's strongly advised to use <a href="https://pmem.io/2018/05/15/using_persistent_memory_devices_with_the_linux_device_mapper.html">Linux device mapper</a> to interleave PMem across sockets and get maximum size for Plasma.</li>
+</ul>
+<pre><code>   // use ipmctl command to show topology and dimm info of PMem
+   ipmctl show -topology
+   ipmctl show -dimm
+   // provision PMem in app direct mode
+   ipmctl create -goal PersistentMemoryType=AppDirect
+   // reboot system to make configuration take affect
+   reboot
+   // check capacity provisioned for app direct mode(AppDirectCapacity)
+   ipmctl show -memoryresources
+   // show the PMem region information
+   ipmctl show -region
+   // create namespace based on the region, multi namespaces can be created on a single region
+   ndctl create-namespace -m fsdax -r region0
+   ndctl create-namespace -m fsdax -r region1
+   // show the created namespaces
+   fdisk -l
+   // create and mount file system
+   sudo dmsetup create striped-pmem
+   mkfs.ext4 -b 4096 -E stride=512 -F /dev/mapper/striped-pmem
+   mkdir -p /mnt/pmem
+   mount -o dax /dev/mapper/striped-pmem /mnt/pmem
+</code></pre>
+<p>For more information you can refer to <a href="https://software.intel.com/content/www/us/en/develop/articles/quick-start-guide-configure-intel-optane-dc-persistent-memory-on-linux.html">Quick Start Guide: Provision Intel® Optane™ DC Persistent Memory</a></p>
+<ul>
+<li>
+<p>SQL Data Source Cache uses Plasma as a node-level external cache service, the benefit of using external cache is data could be shared across process boundaries.  <a href="http://arrow.apache.org/blog/2017/08/08/plasma-in-memory-object-store/">Plasma</a> is a high-performance shared-memory object store and a component of <a href="https://github.com/apache/arrow">Apache Arrow</a>. We have modified Plasma to support PMem, and make it open source on <a href="https://github.com/Intel-bigdata/arrow/tree/branch-0.17.0-oap-1.0">Intel-bigdata Arrow</a> repo. If you have finished <a href="../OAP-Installation-Guide/">OAP Installation Guide</a>, Plasma will be automatically installed and then you just need copy <code>arrow-plasma-0.17.0.jar</code> to <code>$SPARK_HOME/jars</code>. For manual building and installation steps you can refer to <a href="../Developer-Guide/#Plasma-installation">Plasma installation</a>.</p>
+</li>
+<li>
+<p>Refer to configuration below to apply external cache strategy and start Plasma service on each node and start your workload.</p>
+</li>
+</ul>
+<h4 id="configuration-for-numa">Configuration for NUMA</h4>
+<p>Install <code>numactl</code> to bind the executor to the PMem device on the same NUMA node. </p>
+<p><code>yum install numactl -y</code></p>
+<p>We recommend you use NUMA-patched Spark to achieve better performance gain for the <code>external</code> strategy compared with Community Spark.<br />
+Build Spark from source to enable NUMA-binding support, refer to <a href="../Developer-Guide/#Enabling-NUMA-binding-for-PMem-in-Spark">Enabling-NUMA-binding-for-PMem-in-Spark</a>. </p>
+<h4 id="configuration-for-enabling-pmem-cache">Configuration for enabling PMem cache</h4>
+<p>Add the following configuration to <code>$SPARK_HOME/conf/spark-defaults.conf</code>.</p>
+<pre><code># 2x number of your worker nodes
+spark.executor.instances          6
+# enable numa
+spark.yarn.numa.enabled           true
+# enable SQL Index and Data Source Cache extension in Spark
+spark.sql.extensions              org.apache.spark.sql.OapExtensions
+
+# absolute path of the jar on your working node, when in Yarn client mode
+spark.files                       $HOME/miniconda2/envs/oapenv/oap_jars/oap-cache-&lt;version&gt;-with-spark-&lt;version&gt;.jar,$HOME/miniconda2/envs/oapenv/oap_jars/oap-common-&lt;version&gt;-with-spark-&lt;version&gt;.jar
+# relative path to spark.files, just specify jar name in current dir, when in Yarn client mode
+spark.executor.extraClassPath     ./oap-cache-&lt;version&gt;-with-spark-&lt;version&gt;.jar:./oap-common-&lt;version&gt;-with-spark-&lt;version&gt;.jar
+# absolute path of the jar on your working node,when in Yarn client mode
+spark.driver.extraClassPath       $HOME/miniconda2/envs/oapenv/oap_jars/oap-cache-&lt;version&gt;-with-spark-&lt;version&gt;.jar:$HOME/miniconda2/envs/oapenv/oap_jars/oap-common-&lt;version&gt;-with-spark-&lt;version&gt;.jar
+
+# for parquet file format, enable binary cache
+spark.sql.oap.parquet.binary.cache.enabled                   true
+# for ORC file format, enable binary cache
+spark.sql.oap.orc.binary.cache.enabled                       true
+# enable external cache strategy 
+spark.oap.cache.strategy                                     external 
+spark.sql.oap.dcpmm.free.wait.threshold                      50000000000
+# according to your executor core number
+spark.executor.sql.oap.cache.external.client.pool.size       10
+</code></pre>
+<p>Start Plasma service manually</p>
+<p>Plasma config parameters:  </p>
+<pre><code> -m  how much Bytes share memory Plasma will use
+ -s  Unix Domain sockcet path
+ -d  PMem directory
+</code></pre>
+<p>Start Plasma service on each node with following command, then run your workload. If you install OAP by Conda, you can find <code>plasma-store-server</code> in the path <strong>$HOME/miniconda2/envs/oapenv/bin/</strong>.</p>
+<pre><code>./plasma-store-server -m 15000000000 -s /tmp/plasmaStore -d /mnt/pmem  
+</code></pre>
+<p>Remember to kill <code>plasma-store-server</code> process if you no longer need cache, and you should delete <code>/tmp/plasmaStore</code> which is a Unix domain socket.  </p>
+<ul>
+<li>Use Yarn to start Plamsa service<br />
+When using Yarn(Hadoop version &gt;= 3.1) to start Plasma service, you should provide a json file as below.</li>
+</ul>
+<pre><code>{
+  &quot;name&quot;: &quot;plasma-store-service&quot;,
+  &quot;version&quot;: 1,
+  &quot;components&quot; :
+  [
+   {
+     &quot;name&quot;: &quot;plasma-store-service&quot;,
+     &quot;number_of_containers&quot;: 3,
+     &quot;launch_command&quot;: &quot;plasma-store-server -m 15000000000 -s /tmp/plasmaStore -d /mnt/pmem&quot;,
+     &quot;resource&quot;: {
+       &quot;cpus&quot;: 1,
+       &quot;memory&quot;: 512
+     }
+   }
+  ]
+}
+</code></pre>
+<p>Run command  <code>yarn app -launch plasma-store-service /tmp/plasmaLaunch.json</code> to start Plasma server.<br />
+Run <code>yarn app -stop plasma-store-service</code> to stop it.<br />
+Run <code>yarn app -destroy plasma-store-service</code>to destroy it.</p>
+<h3 id="verify-pmem-cache-functionality">Verify PMem cache functionality</h3>
+<ul>
+<li>
+<p>After finishing configuration, restart Spark Thrift Server for the configuration changes to take effect. Start at step 2 of the <a href="#use-dram-cache">Use DRAM Cache</a> guide to verify that cache is working correctly.</p>
+</li>
+<li>
+<p>Check PMem cache size by checking disk space with <code>df -h</code>.</p>
+</li>
+</ul>
+<h2 id="run-tpc-ds-benchmark">Run TPC-DS Benchmark</h2>
+<p>This section provides instructions and tools for running TPC-DS queries to evaluate the cache performance of various configurations. The TPC-DS suite has many queries and we select 9 I/O intensive queries to simplify performance evaluation.</p>
+<p>We created some tool scripts <a href="https://github.com/Intel-bigdata/OAP/releases/download/v1.0.0-spark-3.0.0/oap-benchmark-tool.zip">oap-benchmark-tool.zip</a> to simplify running the workload. If you are already familiar with TPC-DS data generation and running a TPC-DS tool suite, skip our tool and use the TPC-DS tool suite directly.</p>
+<h3 id="prerequisites_2">Prerequisites</h3>
+<ul>
+<li>Python 2.7+ is required on the working node. </li>
+</ul>
+<h3 id="prepare-the-tool">Prepare the Tool</h3>
+<ol>
+<li>Download <a href="https://github.com/Intel-bigdata/OAP/releases/download/v1.0.0-spark-3.0.0/oap-benchmark-tool.zip">oap-benchmark-tool.zip</a> and unzip to a folder (for example, <code>oap-benchmark-tool</code> folder) on your working node. </li>
+<li>Copy <code>oap-benchmark-tool/tools/tpcds-kits</code> to <strong><em>ALL</em></strong> worker nodes under the same folder (for example, <code>/home/oap/tpcds-kits</code>).</li>
+</ol>
+<h3 id="generate-tpc-ds-data">Generate TPC-DS Data</h3>
+<ol>
+<li>
+<p>Update the values for the following variables in <code>oap-benchmark-tool/scripts/tool.conf</code> based on your environment and needs.</p>
+</li>
+<li>
+<p>SPARK_HOME: Point to the Spark home directory of your Spark setup.</p>
+</li>
+<li>TPCDS_KITS_DIR: The tpcds-kits directory you coped to the worker nodes in the above prepare process. For example, /home/oap/tpcds-kits</li>
+<li>NAMENODE_ADDRESS: Your HDFS Namenode address in the format of host:port.</li>
+<li>THRIFT_SERVER_ADDRESS: Your working node address on which you will run Thrift Server.</li>
+<li>DATA_SCALE: The data scale to be generated in GB</li>
+<li>DATA_FORMAT: The data file format. You can specify parquet or orc</li>
+</ol>
+<p>For example:</p>
+<pre><code>export SPARK_HOME=/home/oap/spark-3.0.0
+export TPCDS_KITS_DIR=/home/oap/tpcds-kits
+export NAMENODE_ADDRESS=mynamenode:9000
+export THRIFT_SERVER_ADDRESS=mythriftserver
+export DATA_SCALE=1024
+export DATA_FORMAT=parquet
+</code></pre>
+<ol>
+<li>Start data generation.</li>
+</ol>
+<p>In the root directory of this tool (<code>oap-benchmark-tool</code>), run <code>scripts/run_gen_data.sh</code> to start the data generation process. </p>
+<pre><code>cd oap-benchmark-tool
+sh ./scripts/run_gen_data.sh
+</code></pre>
+<p>Once finished, the <code>$scale</code> data will be generated in the HDFS folder <code>genData$scale</code>. And a database called <code>tpcds_$format$scale</code> will contain the TPC-DS tables.</p>
+<h3 id="start-spark-thrift-server">Start Spark Thrift Server</h3>
+<p>Start the Thrift Server in the tool root folder, which is the same folder you run data generation scripts. Use either the PMem or DRAM script to start the Thrift Server.</p>
+<h4 id="use-pmem-as-cache-media">Use PMem as Cache Media</h4>
+<p>Update the configuration values in <code>scripts/spark_thrift_server_yarn_with_PMem.sh</code> to reflect your environment. 
+Normally, you need to update the following configuration values to cache to PMem.</p>
+<ul>
+<li>--num-executors</li>
+<li>--driver-memory</li>
+<li>--executor-memory</li>
+<li>--executor-cores</li>
+<li>--conf spark.oap.cache.strategy</li>
+<li>--conf spark.sql.oap.dcpmm.free.wait.threshold</li>
+<li>--conf spark.executor.sql.oap.cache.external.client.pool.size</li>
+</ul>
+<p>These settings will override the values specified in Spark configuration file ( <code>spark-defaults.conf</code>). After the configuration is done, you can execute the following command to start Thrift Server.</p>
+<pre><code>cd oap-benchmark-tool
+sh ./scripts/spark_thrift_server_yarn_with_PMem.sh start
+</code></pre>
+<p>In this script, we use <code>external</code> as cache strategy for Parquet Binary data cache. </p>
+<h4 id="use-dram-as-cache-media">Use DRAM as Cache Media</h4>
+<p>Update the configuration values in <code>scripts/spark_thrift_server_yarn_with_DRAM.sh</code> to reflect your environment. Normally, you need to update the following configuration values to cache to DRAM.</p>
+<ul>
+<li>--num-executors</li>
+<li>--driver-memory</li>
+<li>--executor-memory</li>
+<li>--executor-cores</li>
+<li>--conf spark.executor.sql.oap.cache.offheap.memory.size</li>
+<li>--conf spark.executor.memoryOverhead</li>
+</ul>
+<p>These settings will override the values specified in Spark configuration file (<code>spark-defaults.conf</code>). After the configuration is done, you can execute the following command to start Thrift Server.</p>
+<pre><code>cd oap-benchmark-tool
+sh ./scripts/spark_thrift_server_yarn_with_DRAM.sh  start
+</code></pre>
+<h3 id="run-queries">Run Queries</h3>
+<p>Execute the following command to start to run queries. If you use <code>external</code> cache strategy, also need start plasma service manually as above.</p>
+<pre><code>cd oap-benchmark-tool
+sh ./scripts/run_tpcds.sh
+</code></pre>
+<p>When all the queries are done, you will see the <code>result.json</code> file in the current directory. You will find in the 2nd and 3rd round, cache feature takes effect and query time becomes less.
+And the Spark webUI OAP tab has more specific OAP cache metrics just as <a href="#use-dram-cache">section</a> step 5.</p>
+<h2 id="advanced-configuration">Advanced Configuration</h2>
+<ul>
+<li><a href="../Advanced-Configuration/#Additional-Cache-Strategies">Additional Cache Strategies</a>  </li>
+</ul>
+<p>In addition to <strong>external</strong> cache strategy, SQL Data Source Cache also supports 3 other cache strategies: <strong>guava</strong>, <strong>noevict</strong>  and <strong>vmemcache</strong>.
+- <a href="../Advanced-Configuration/#Index-and-Data-Cache-Separation">Index and Data Cache Separation</a> </p>
+<p>To optimize the cache media utilization, SQL Data Source Cache supports cache separation of data and index, by using same or different cache media with DRAM and PMem.
+- <a href="../Advanced-Configuration/#Cache-Hot-Tables">Cache Hot Tables</a> </p>
+<p>Data Source Cache also supports caching specific tables according to actual situations, these tables are usually hot tables.
+- <a href="../Advanced-Configuration/#Column-Vector-Cache">Column Vector Cache</a> </p>
+<p>This document above uses <strong>binary</strong> cache as example for Parquet file format, if your cluster memory resources is abundant enough, you can choose ColumnVector data cache instead of binary cache for Parquet to spare computation time.
+- <a href="../Advanced-Configuration/#Large-Scale-and-Heterogeneous-Cluster-Support">Large Scale and Heterogeneous Cluster Support</a> </p>
+<p>Introduce an external database to store cache locality info to support large-scale and heterogeneous clusters.</p>
+<p>For more information and configuration details, please refer to <a href="../Advanced-Configuration/">Advanced Configuration</a>.</p>
+              
+            </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="../Advanced-Configuration/" class="btn btn-neutral float-right" title="Advanced Configuration">Next <span class="icon icon-circle-arrow-right"></span></a>
+      
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+    
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+      
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="versions">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      
+      
+      
+        <span style="margin-left: 15px"><a href="../Advanced-Configuration/" style="color: #fcfcfc">Next &raquo;</a></span>
+      
+    </span>
+</div>
+    <script>var base_url = '..';</script>
+    <script src="../js/theme.js" defer></script>
+      <script src="../search/main.js" defer></script>
+    <script defer>
+        window.onload = function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        };
+    </script>
+
+</body>
+</html>
