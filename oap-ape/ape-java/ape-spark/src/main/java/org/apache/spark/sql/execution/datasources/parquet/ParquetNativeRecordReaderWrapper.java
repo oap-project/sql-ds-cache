@@ -44,6 +44,8 @@ public class ParquetNativeRecordReaderWrapper extends RecordReader<Void, Object>
   long bufferPtrs[];
   long nullPtrs[];
 
+  long readTime = 0;
+
   private ColumnarBatch columnarBatch;
 
   private NativeColumnVector[] columnVectors;
@@ -118,9 +120,12 @@ public class ParquetNativeRecordReaderWrapper extends RecordReader<Void, Object>
       Platform.freeMemory(nullPtrs[i]);
       Platform.freeMemory(bufferPtrs[i]);
     }
+
+    LOG.info("close reader, spend time: " + readTime + " ns");
   }
 
   private boolean nextBatch() {
+    long before = System.nanoTime();
     if (reader == 0) {
       return false;
     }
@@ -136,6 +141,7 @@ public class ParquetNativeRecordReaderWrapper extends RecordReader<Void, Object>
     columnarBatch.setNumRows(0);
 
     columnarBatch.setNumRows(rowsRead);
+    readTime += (System.nanoTime() - before);
     return true;
   }
 

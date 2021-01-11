@@ -239,8 +239,10 @@ int Reader::readBatch(int batchSize, long* buffersPtr, long* nullsPtr) {
 
   int rowsRet = rowsToRead;
   if (filterExpression) {
-    rowsRet = filterExpression->ExecuteWithParam(rowsToRead, buffersPtr, nullsPtr, schema,
-                                                 nullptr);
+    auto start = std::chrono::steady_clock::now();
+    rowsRet =
+        filterExpression->ExecuteWithParam(rowsToRead, buffersPtr, nullsPtr, nullptr);
+    time += std::chrono::steady_clock::now() - start;
   }
 
   delete[] defLevel;
@@ -263,6 +265,8 @@ bool Reader::skipNextRowGroup() {
 }
 
 void Reader::close() {
+  ARROW_LOG(INFO) << "Filter takes " << time.count() * 1000 << " ms.";
+
   ARROW_LOG(INFO) << "close reader.";
   parquetReader->Close();
   file->Close();
@@ -289,6 +293,7 @@ void Reader::setFilter(std::string filterJsonStr) {
 
   filterExpression = std::make_shared<RootFilterExpression>(
       "root", std::dynamic_pointer_cast<FilterExpression>(tmpExpression));
+  filterExpression->setSchema(schema);
 }
 
 }  // namespace ape

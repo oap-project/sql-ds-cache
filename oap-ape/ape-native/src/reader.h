@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include <chrono>
 #include <memory>
 #include <string>
 #include <vector>
@@ -84,5 +85,6 @@ class Reader {
   int64_t totalRowsLoadedSoFar = 0;
 
   std::shared_ptr<RootFilterExpression> filterExpression;
+  std::chrono::duration<double> time;
 };
 }  // namespace ape

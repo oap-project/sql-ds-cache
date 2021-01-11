@@ -16,6 +16,7 @@
 // under the License.
 
 #include <algorithm>
+#include <chrono>
 #include <cstring>
 #include <vector>
 
@@ -50,11 +51,16 @@ RootFilterExpression::RootFilterExpression(std::string type_,
 };
 
 int RootFilterExpression::ExecuteWithParam(int batchSize, long* dataBuffers,
-                                           long* nullBuffers, std::vector<Schema>& schema,
-                                           char* outBuffers) {
+                                           long* nullBuffers, char* outBuffers) {
   // root node doesn't need outbuffer
   char* childBuffer = new char[batchSize];
-  child->ExecuteWithParam(batchSize, dataBuffers, nullBuffers, schema, childBuffer);
+  auto start1 = std::chrono::steady_clock::now();
+  child->ExecuteWithParam(batchSize, dataBuffers, nullBuffers, childBuffer);
+  auto end1 = std::chrono::steady_clock::now();
+  ARROW_LOG(DEBUG) << "exec takes "
+                   << static_cast<std::chrono::duration<double>>(end1 - start1).count() *
+                          1000
+                   << " ms";
 
   // TODO: NOT support String type well now.
   int hitIndex = 0;
@@ -78,6 +84,12 @@ int RootFilterExpression::ExecuteWithParam(int batchSize, long* dataBuffers,
     // defaultSize)
   }
 
+  auto end2 = std::chrono::steady_clock::now();
+  ARROW_LOG(DEBUG) << "copy takes "
+                   << static_cast<std::chrono::duration<double>>(end2 - end1).count() *
+                          1000
+                   << " ms";
+
   delete[] childBuffer;
   return hitIndex;
 }
@@ -94,11 +106,10 @@ NotFilterExpression::NotFilterExpression(std::string type_,
 NotFilterExpression::~NotFilterExpression(){};
 
 int NotFilterExpression::ExecuteWithParam(int batchSize, long* dataBuffers,
-                                          long* nullBuffers, std::vector<Schema>& schema,
-                                          char* outBuffers) {
+                                          long* nullBuffers, char* outBuffers) {
   std::memset(outBuffers, 0, batchSize);
   char* childBuffer = new char[batchSize];
-  child->ExecuteWithParam(batchSize, dataBuffers, nullBuffers, schema, childBuffer);
+  child->ExecuteWithParam(batchSize, dataBuffers, nullBuffers, childBuffer);
 
   for (int i = 0; i < batchSize; i++) {
     if (childBuffer[i] == 1) {
@@ -126,15 +137,13 @@ BinaryFilterExpression::BinaryFilterExpression(std::string type_,
 BinaryFilterExpression::~BinaryFilterExpression(){};
 
 int BinaryFilterExpression::ExecuteWithParam(int batchSize, long* dataBuffers,
-                                             long* nullBuffers,
-                                             std::vector<Schema>& schema,
-                                             char* outBuffers) {
+                                             long* nullBuffers, char* outBuffers) {
   // assert(outBuffers != nullptr);
   std::memset(outBuffers, 0, batchSize);
   char* leftBuffer = new char[batchSize];
   char* rightBuffer = new char[batchSize];
-  left->ExecuteWithParam(batchSize, dataBuffers, nullBuffers, schema, leftBuffer);
-  right->ExecuteWithParam(batchSize, dataBuffers, nullBuffers, schema, rightBuffer);
+  left->ExecuteWithParam(batchSize, dataBuffers, nullBuffers, leftBuffer);
+  right->ExecuteWithParam(batchSize, dataBuffers, nullBuffers, rightBuffer);
 
   if (type.compare("or") == 0) {
     for (int i = 0; i < batchSize; i++) {
@@ -166,21 +175,33 @@ TypedUnaryFilterExpression<T>::TypedUnaryFilterExpression(std::string type_,
     : FilterExpression(type_) {
   columnName = columnName_;
   value = value_;
+  if (type.compare("gt") == 0) {
+    filter = std::make_shared<Gt<T>>();
+  } else if (type.compare("gteq") == 0) {
+    filter = std::make_shared<GtEq<T>>();
+  } else if (type.compare("eq") == 0) {
+    filter = std::make_shared<Eq<T>>();
+  } else if (type.compare("noteq") == 0) {
+    filter = std::make_shared<NotEq<T>>();
+  } else if (type.compare("lt") == 0) {
+    filter = std::make_shared<Lt<T>>();
+  } else if (type.compare("lteq") == 0) {
+    filter = std::make_shared<LtEq<T>>();
+  } else {
+    ARROW_LOG(WARNING) << "NOT support Filter type!";
+  }
 }
 
 template <>
 int TypedUnaryFilterExpression<NullStruct>::ExecuteWithParam(int batchSize,
                                                              long* dataBuffers,
                                                              long* nullBuffers,
-                                                             std::vector<Schema>& schema,
                                                              char* outBuffers) {
   std::memset(outBuffers, 0, batchSize);
-  ptrdiff_t pos = std::distance(
-      schema.begin(), std::find_if(schema.begin(), schema.end(), finder(columnName)));
-  long nullPtr = *(nullBuffers + pos);
+  long nullPtr = *(nullBuffers + columnIndex);
   char* ptr = (char*)nullPtr;
   if (type.compare("noteq") == 0) {  // not equal to null, we can return buffer directly.
-    std::memcpy(outBuffers, ptr, batchSize);
+    // std::memcpy(outBuffers, ptr, batchSize);
     for (int i = 0; i < batchSize; i++) {
       if (ptr[i] == 1) {
         outBuffers[i] = 1;
@@ -206,57 +227,23 @@ int TypedUnaryFilterExpression<NullStruct>::ExecuteWithParam(int batchSize,
 
 template <typename T>
 int TypedUnaryFilterExpression<T>::ExecuteWithParam(int batchSize, long* dataBuffers,
-                                                    long* nullBuffers,
-                                                    std::vector<Schema>& schema,
-                                                    char* outBuffers) {
+                                                    long* nullBuffers, char* outBuffers) {
   std::memset(outBuffers, 0, batchSize);
-  ptrdiff_t pos = std::distance(
-      schema.begin(), std::find_if(schema.begin(), schema.end(), finder(columnName)));
-  long dataPtr = *(dataBuffers + pos);
-  long nullPtr = *(nullBuffers + pos);
+  long dataPtr = *(dataBuffers + columnIndex);
+  long nullPtr = *(nullBuffers + columnIndex);
   T* ptr = (T*)dataPtr;
 
-  if (type.compare("lt") == 0) {
-    // todo: make it vectorized
-    for (int i = 0; i < batchSize; i++) {
-      if (ptr[i] < value) {
-        outBuffers[i] = 1;
-      }
-    }
-  } else if (type.compare("lteq") == 0) {
-    for (int i = 0; i < batchSize; i++) {
-      if (ptr[i] <= value) {
-        outBuffers[i] = 1;
-      }
-    }
-  } else if (type.compare("gt") == 0) {
-    for (int i = 0; i < batchSize; i++) {
-      if (ptr[i] > value) {
-        outBuffers[i] = 1;
-      }
-    }
-  } else if (type.compare("gteq") == 0) {
-    for (int i = 0; i < batchSize; i++) {
-      if (ptr[i] >= value) {
-        outBuffers[i] = 1;
-      }
-    }
-  } else if (type.compare("eq") == 0) {
-    for (int i = 0; i < batchSize; i++) {
-      if (ptr[i] == value) {
-        outBuffers[i] = 1;
-      }
-    }
-  } else if (type.compare("noteq") == 0) {
-    for (int i = 0; i < batchSize; i++) {
-      if (ptr[i] != value) {
-        outBuffers[i] = 1;
-      }
-    }
-  } else {
-    ARROW_LOG(WARNING) << "Impossible case!";
-  }
+  filter->execute(ptr, value, batchSize, outBuffers);
+
   return 0;
+}
+
+template <typename T>
+void TypedUnaryFilterExpression<T>::setSchema(std::vector<Schema> schema_) {
+  schema = schema_;
+  ptrdiff_t pos = std::distance(
+      schema.begin(), std::find_if(schema.begin(), schema.end(), finder(columnName)));
+  columnIndex = pos;
 }
 
 template <typename T>

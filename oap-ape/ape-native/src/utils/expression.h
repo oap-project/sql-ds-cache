@@ -29,13 +29,15 @@ class Expression {
  private:
  protected:
   std::string type;
+  std::vector<Schema> schema;
 
  public:
   std::string getType() { return type; };
   virtual void Execute() = 0;
   virtual int ExecuteWithParam(int batchSize, long* dataBuffers, long* nullBuffers,
-                               std::vector<Schema>& schema, char* outBuffers) = 0;
+                               char* outBuffers) = 0;
   Expression(){};
   virtual ~Expression() = default;
+  virtual void setSchema(std::vector<Schema> schema_){};
 };
 }  // namespace ape
