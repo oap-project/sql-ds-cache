@@ -56,8 +56,10 @@ class Reader {
 
   void checkEndOfRowGroup();
 
-  void getRequiredRowGroup(long splitStart, long splitSize,
-                           std::shared_ptr<parquet::FileMetaData> fileMetaData);
+  void getRequiredRowGroupId();
+
+  // void getRequiredRowGroup(long splitStart, long splitSize,
+  //  std::shared_ptr<parquet::FileMetaData> fileMetaData);
 
   HdfsOptions* options;
   std::shared_ptr<FileSystem> fs;
@@ -72,6 +74,7 @@ class Reader {
   std::vector<std::string> requiredColumnNames;
   std::vector<Schema> schema;
   std::vector<std::shared_ptr<parquet::ColumnReader>> columnReaders;
+  std::vector<int> requiredRowGroupId;
 
   int totalRowGroups = 0;
   int totalRowGroupsRead = 0;

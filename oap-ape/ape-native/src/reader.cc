@@ -58,15 +58,19 @@ void Reader::init(std::string fileName, std::string hdfsHost, int hdfsPort,
   parquetReader = parquet::ParquetFileReader::Open(file, properties, NULLPTR);
 
   fileMetaData = parquetReader->metadata();
-  getRequiredRowGroup(splitStart, splitSize, fileMetaData);
+  // getRequiredRowGroup(splitStart, splitSize, fileMetaData);
   totalColumns = fileMetaData->num_columns();
 
   ARROW_LOG(DEBUG) << "schema is " << fileMetaData->schema()->ToString();
   convertSchema(requiredSchema);
 
-  currentRowGroup = firstRowGroupIndex;
+  // currentRowGroup = firstRowGroupIndex;
+  // totalRowGroups = requiredRowGroupSize;
 
-  totalRowGroups = requiredRowGroupSize;
+  getRequiredRowGroupId();
+  currentRowGroup = *requiredRowGroupId.begin();
+  totalRowGroups = requiredRowGroupId.size();
+
   rowGroupReaders.resize(totalRowGroups);
   for (int i = 0; i < totalRowGroups; i++) {
     rowGroupReaders[i] = parquetReader->RowGroup(firstRowGroupIndex + i);
@@ -79,32 +83,40 @@ void Reader::init(std::string fileName, std::string hdfsHost, int hdfsPort,
   ARROW_LOG(INFO) << "init done, totalRows " << totalRows;
 }
 
-void Reader::getRequiredRowGroup(long splitStart, long splitSize,
-                                 std::shared_ptr<parquet::FileMetaData> fileMetaData) {
-  bool flag = false;
-  long currentOffSet = 0;
-  int PARQUET_MAGIC_NUMBER = 4;
-  currentOffSet += PARQUET_MAGIC_NUMBER;
-  int index = 0;
-  for (int i = 0; i < fileMetaData->num_row_groups(); i++) {
-    ARROW_LOG(DEBUG) << "rowgroup size " << i << " : "
-                     << parquetReader->RowGroup(i)->metadata()->total_byte_size();
-    if (splitStart <= currentOffSet && splitStart + splitSize >= currentOffSet) {
-      this->requiredRowGroupSize++;
-      if (flag == false) {
-        flag = true;
-        this->firstRowGroupIndex = index;
-      }
-    }
-
-    index++;
-    currentOffSet += parquetReader->RowGroup(i)->metadata()->total_byte_size();
-  }
-
-  ARROW_LOG(INFO) << "This splitStart is  " << splitStart << " splitSize is " << splitSize
-                  << " firstRowGroupIndex is " << this->firstRowGroupIndex
-                  << " requiredRowGroupSize is " << this->requiredRowGroupSize;
+// a quick fix for parquet split, return all row groups
+void Reader::getRequiredRowGroupId() {
+  int totalRowGroupsInFile = fileMetaData->num_row_groups();
+  requiredRowGroupId = std::vector<int>(totalRowGroupsInFile);
+  std::iota(requiredRowGroupId.begin(), requiredRowGroupId.end(), 0);
 }
+
+// void Reader::getRequiredRowGroup(long splitStart, long splitSize,
+//                                  std::shared_ptr<parquet::FileMetaData> fileMetaData) {
+//   bool flag = false;
+//   long currentOffSet = 0;
+//   int PARQUET_MAGIC_NUMBER = 4;
+//   currentOffSet += PARQUET_MAGIC_NUMBER;
+//   int index = 0;
+//   for (int i = 0; i < fileMetaData->num_row_groups(); i++) {
+//     ARROW_LOG(DEBUG) << "rowgroup size " << i << " : "
+//                      << parquetReader->RowGroup(i)->metadata()->total_byte_size();
+//     if (splitStart <= currentOffSet && splitStart + splitSize >= currentOffSet) {
+//       this->requiredRowGroupSize++;
+//       if (flag == false) {
+//         flag = true;
+//         this->firstRowGroupIndex = index;
+//       }
+//     }
+
+//     index++;
+//     currentOffSet += parquetReader->RowGroup(i)->metadata()->total_byte_size();
+//   }
+
+//   ARROW_LOG(INFO) << "This splitStart is  " << splitStart << " splitSize is " <<
+//   splitSize
+//                   << " firstRowGroupIndex is " << this->firstRowGroupIndex
+//                   << " requiredRowGroupSize is " << this->requiredRowGroupSize;
+// }
 
 // TODO: need consider column sequence?
 void Reader::convertSchema(std::string requiredColumnName) {
