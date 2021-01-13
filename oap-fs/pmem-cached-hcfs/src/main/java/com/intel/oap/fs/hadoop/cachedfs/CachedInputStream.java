@@ -134,7 +134,7 @@ public class CachedInputStream extends FSInputStream {
     if (oneByte == null) {
       oneByte = new byte[1];
     }
-    if (read(oneByte, 0, 1) == 0) {
+    if (read(oneByte, 0, 1) <= 0) {
       return -1;
     }
     return oneByte[0] & 0xFF;
@@ -233,7 +233,7 @@ public class CachedInputStream extends FSInputStream {
     checkNotClosed();
 
     int totalBytesRead = 0;
-    while (len > 0) {
+    while (len > 0 && pos < contentLength) {
       if (!ensureDataInCache()) {
         return totalBytesRead;
       }
@@ -249,6 +249,11 @@ public class CachedInputStream extends FSInputStream {
       off += bytesToRead;
       len -= bytesToRead;
     }
+
+    if (len > 0 && totalBytesRead == 0) {
+      return -1;
+    }
+
     return totalBytesRead;
   }
 
