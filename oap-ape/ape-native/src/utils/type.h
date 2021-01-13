@@ -65,7 +65,7 @@ class Schema {
         break;
       }
       case parquet::Type::BYTE_ARRAY: {
-        defaultSize = 8;
+        defaultSize = 16;
         break;
       }
       case parquet::Type::FIXED_LEN_BYTE_ARRAY: {
