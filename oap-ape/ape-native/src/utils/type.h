@@ -31,6 +31,7 @@ struct NullStruct {
   NullStruct(NullStruct& nullStruct){};
   NullStruct& operator=(NullStruct nullStruct) { return *this; };
   NullStruct& operator=(NullStruct&& nullStruct) { return *this; };
+  char valid;  // sizeof(NullStruct) = 1 byte
 };
 
 struct Int96Struct {};

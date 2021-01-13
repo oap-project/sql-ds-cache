@@ -55,13 +55,20 @@ void LtEq<NullStruct>::execute(NullStruct* buffer, NullStruct value, int batchSi
 template <>
 void Eq<NullStruct>::execute(NullStruct* buffer, NullStruct value, int batchSize,
                              char* out) {
-  ARROW_LOG(WARNING) << "Not support!";
+  // it's trick that we did such cast.
+  char* buf = (char*)buffer;
+  for (int i = 0; i < batchSize; i++) {
+    out[i] = !buf[i];
+  }
 }
 
 template <>
 void NotEq<NullStruct>::execute(NullStruct* buffer, NullStruct value, int batchSize,
                                 char* out) {
-  ARROW_LOG(WARNING) << "Not support!";
+  char* buf = (char*)buffer;
+  for (int i = 0; i < batchSize; i++) {
+    out[i] = buf[i];
+  }
 }
 
 // impl execute.
