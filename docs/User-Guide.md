@@ -449,15 +449,19 @@ And the Spark webUI OAP tab has more specific OAP cache metrics just as [section
 - [Additional Cache Strategies](./Advanced-Configuration.md#Additional-Cache-Strategies)  
 
   In addition to **external** cache strategy, SQL Data Source Cache also supports 3 other cache strategies: **guava**, **noevict**  and **vmemcache**.
+
 - [Index and Data Cache Separation](./Advanced-Configuration.md#Index-and-Data-Cache-Separation) 
 
   To optimize the cache media utilization, SQL Data Source Cache supports cache separation of data and index, by using same or different cache media with DRAM and PMem.
+
 - [Cache Hot Tables](./Advanced-Configuration.md#Cache-Hot-Tables) 
 
   Data Source Cache also supports caching specific tables according to actual situations, these tables are usually hot tables.
+
 - [Column Vector Cache](./Advanced-Configuration.md#Column-Vector-Cache) 
 
   This document above uses **binary** cache as example for Parquet file format, if your cluster memory resources is abundant enough, you can choose ColumnVector data cache instead of binary cache for Parquet to spare computation time.
+
 - [Large Scale and Heterogeneous Cluster Support](./Advanced-Configuration.md#Large-Scale-and-Heterogeneous-Cluster-Support) 
   
   Introduce an external database to store cache locality info to support large-scale and heterogeneous clusters.
