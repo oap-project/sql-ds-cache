@@ -71,7 +71,7 @@ int RootFilterExpression::ExecuteWithParam(int batchSize, long* dataBuffers,
         char* nullPtr = (char*)(nullBuffers[j]);
         std::memcpy(dataPtr + hitIndex * schema[j].getDefaultSize(),
                     dataPtr + i * schema[j].getDefaultSize(), schema[j].getDefaultSize());
-        nullPtr[j] = nullPtr[i];
+        nullPtr[hitIndex] = nullPtr[i];
       }
       hitIndex++;
     }
