@@ -132,6 +132,12 @@ BinaryFilterExpression::BinaryFilterExpression(std::string type_,
     : FilterExpression(type_) {
   left = left_;
   right = right_;
+
+  if (type_.compare("or") == 0) {
+    op = std::make_shared<Or>();
+  } else if (type_.compare("and") == 0) {
+    op = std::make_shared<And>();
+  }
 }
 
 BinaryFilterExpression::~BinaryFilterExpression(){};
@@ -145,21 +151,7 @@ int BinaryFilterExpression::ExecuteWithParam(int batchSize, long* dataBuffers,
   left->ExecuteWithParam(batchSize, dataBuffers, nullBuffers, leftBuffer);
   right->ExecuteWithParam(batchSize, dataBuffers, nullBuffers, rightBuffer);
 
-  if (type.compare("or") == 0) {
-    for (int i = 0; i < batchSize; i++) {
-      if (leftBuffer[i] == 1 || rightBuffer[i] == 1) {
-        outBuffers[i] = 1;
-      }
-    }
-  } else if (type.compare("and") == 0) {
-    for (int i = 0; i < batchSize; i++) {
-      if (leftBuffer[i] == 1 && rightBuffer[i] == 1) {
-        outBuffers[i] = 1;
-      }
-    }
-  } else {
-    ARROW_LOG(WARNING) << "Impossible case!";
-  }
+  op->execute(batchSize, leftBuffer, rightBuffer, outBuffers);
 
   delete[] leftBuffer;
   delete[] rightBuffer;
@@ -200,28 +192,9 @@ int TypedUnaryFilterExpression<NullStruct>::ExecuteWithParam(int batchSize,
   std::memset(outBuffers, 0, batchSize);
   long nullPtr = *(nullBuffers + columnIndex);
   char* ptr = (char*)nullPtr;
-  if (type.compare("noteq") == 0) {  // not equal to null, we can return buffer directly.
-    // std::memcpy(outBuffers, ptr, batchSize);
-    for (int i = 0; i < batchSize; i++) {
-      if (ptr[i] == 1) {
-        outBuffers[i] = 1;
-      } else if (ptr[i] == 0) {
-        outBuffers[i] = 0;
-      } else {
-        ARROW_LOG(WARNING) << "Impossible case!";
-      }
-    }
-  } else if (type.compare("eq") == 0) {
-    for (int i = 0; i < batchSize; i++) {
-      if (ptr[i] == 0) {
-        outBuffers[i] = 1;
-      } else if (ptr[i] == 1) {
-        outBuffers[i] = 0;
-      } else {
-        ARROW_LOG(WARNING) << "Impossible case!";
-      }
-    }
-  }
+  NullStruct nullSturct;
+  filter->execute((NullStruct*)ptr, nullSturct, batchSize, outBuffers);
+
   return 0;
 }
 

@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include "BinaryOp.h"
 #include "UnaryFilter.h"
 #include "expression.h"
 #include "type.h"
@@ -84,6 +85,7 @@ class BinaryFilterExpression : public FilterExpression {
  private:
   std::shared_ptr<Expression> left;
   std::shared_ptr<Expression> right;
+  std::shared_ptr<BinaryOp> op;
 };
 
 template <typename T>
