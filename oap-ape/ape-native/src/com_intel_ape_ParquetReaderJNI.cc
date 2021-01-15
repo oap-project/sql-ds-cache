@@ -23,7 +23,7 @@ using namespace ape;
 
 JNIEXPORT jlong JNICALL Java_com_intel_ape_ParquetReaderJNI_init(
     JNIEnv* env, jclass cls, jstring fileName, jstring hdfsHost, jint hdfsPort,
-    jstring requiredSchema, jlong splitStart, jlong splitSize) {
+    jstring requiredSchema, jint firstRowGroup, jint rowGroupToRead) {
   int i = 0;
   Reader* reader = new Reader();
 
@@ -31,7 +31,7 @@ JNIEXPORT jlong JNICALL Java_com_intel_ape_ParquetReaderJNI_init(
   std::string fileName_ = env->GetStringUTFChars(fileName, nullptr);
   std::string hdfsHost_ = env->GetStringUTFChars(hdfsHost, nullptr);
 
-  reader->init(fileName_, hdfsHost_, hdfsPort, schema_, splitStart, splitSize);
+  reader->init(fileName_, hdfsHost_, hdfsPort, schema_, firstRowGroup, rowGroupToRead);
   return reinterpret_cast<int64_t>(reader);
 }
 

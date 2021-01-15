@@ -47,10 +47,39 @@ class ParquetReaderTest {
     readBatchTest();
     skipNextRowGroupTest();
     splitAbleReaderTest();
+    splitAbleReadNoRowGroupToReadTest();
+  }
+
+  public static void splitAbleReadNoRowGroupToReadTest() {
+    long reader = ParquetReaderJNI.init(fileName, hdfsHost, hdfsPort, schema, 0, 0);
+    System.out.println("reader address " + reader);
+    if (reader == 0) {
+      System.out.println("reader init failed");
+      return;
+    }
+
+    int batchSize = 4096;
+    long[] buffers = new long[8];
+    for (int i = 0; i < 8; i++)
+      buffers[i] = Platform.allocateMemory(batchSize * 8);
+
+    long[] nulls = new long[8];
+    for (int i = 0; i < 8; i++)
+      nulls[i] = Platform.allocateMemory(batchSize);
+
+    int rows = ParquetReaderJNI.readBatch(reader, batchSize, buffers, nulls);
+
+    System.out.println("read rows: " + rows);
+
+    ParquetReaderJNI.close(reader);
+    for (int i = 0; i < 8; i++) {
+      Platform.freeMemory(buffers[i]);
+      Platform.freeMemory(nulls[i]);
+    }
   }
 
   public static void readBatchTest() {
-    long reader = ParquetReaderJNI.init(fileName, hdfsHost, hdfsPort, schema, 0l, 360000000l);
+    long reader = ParquetReaderJNI.init(fileName, hdfsHost, hdfsPort, schema, 1, 1);
     if (reader == 0) {
       System.out.println("reader init failed");
       return;
@@ -77,7 +106,7 @@ class ParquetReaderTest {
   }
 
   public static void splitAbleReaderTest() {
-    long reader = ParquetReaderJNI.init(fileName, hdfsHost, hdfsPort, schema, 134789790l, 140000000);
+    long reader = ParquetReaderJNI.init(fileName, hdfsHost, hdfsPort, schema, 2, 1);
     if (reader == 0) {
       System.out.println("reader init failed");
       return;
@@ -104,7 +133,7 @@ class ParquetReaderTest {
   }
 
   public static void skipNextRowGroupTest() {
-    long reader = ParquetReaderJNI.init(fileName, hdfsHost, hdfsPort, schema, 134789765l, 360000000l);
+    long reader = ParquetReaderJNI.init(fileName, hdfsHost, hdfsPort, schema, 1, 1);
     if (reader == 0) {
       System.out.println("reader init failed");
       return;
