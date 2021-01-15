@@ -222,7 +222,7 @@ public class CachedFileSystem extends FileSystem {
         FileStatus[] result = this.hdfs.listStatus(PathConverter.toHDFSScheme(path));
         for (FileStatus status : result) {
             // convert scheme back
-            status.setPath(PathConverter.toScheme(status.getPath(), path.toUri().getScheme()));
+            status.setPath(PathConverter.toScheme(status.getPath(), scheme));
         }
         return result;
     }
@@ -244,7 +244,7 @@ public class CachedFileSystem extends FileSystem {
     public FileStatus getFileStatus(Path path) throws IOException {
         FileStatus result = this.hdfs.getFileStatus(PathConverter.toHDFSScheme(path));
         // convert scheme back
-        result.setPath(PathConverter.toScheme(result.getPath(), path.toUri().getScheme()));
+        result.setPath(PathConverter.toScheme(result.getPath(), scheme));
         return result;
     }
 }
