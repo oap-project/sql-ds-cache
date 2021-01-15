@@ -20,12 +20,17 @@ package org.apache.spark.sql.execution.datasources.parquet;
 import com.intel.ape.ParquetReaderJNI;
 import com.intel.ape.util.ParquetFilterPredicateConvertor;
 
+import static org.apache.parquet.hadoop.ParquetFileReader.readFooter;
+
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.hadoop.ParquetInputSplit;
+import org.apache.parquet.hadoop.metadata.BlockMetaData;
+import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.spark.sql.execution.vectorized.NativeColumnVector;
 import org.apache.spark.sql.types.*;
 import org.apache.spark.sql.vectorized.ColumnarBatch;
@@ -34,6 +39,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.List;
 
 public class ParquetNativeRecordReaderWrapper extends RecordReader<Void, Object> {
   private static final Logger LOG = LoggerFactory.getLogger(ParquetNativeRecordReaderWrapper.class);
@@ -50,6 +56,9 @@ public class ParquetNativeRecordReaderWrapper extends RecordReader<Void, Object>
 
   private NativeColumnVector[] columnVectors;
 
+  private int inputSplitRowGroupStartIndex = 0;
+  private int inputSplitRowGroupNum = 0;
+
   StructType sparkSchema;
 
   public ParquetNativeRecordReaderWrapper(int capacity) {
@@ -62,8 +71,8 @@ public class ParquetNativeRecordReaderWrapper extends RecordReader<Void, Object>
     String reqSchema = configuration.get(ParquetReadSupport$.MODULE$.SPARK_ROW_REQUESTED_SCHEMA());
     sparkSchema = StructType$.MODULE$.fromString(reqSchema);
     ParquetInputSplit split = (ParquetInputSplit) inputSplit;
-    long splitStart = split.getStart();
-    long splitSize = split.getLength();
+
+    getRequiredSplitRowGroup(split, configuration);
 
     String fileName = split.getPath().toUri().getRawPath();
     String hdfs = configuration.get("fs.defaultFS"); // this string is like hdfs://host:port
@@ -72,7 +81,35 @@ public class ParquetNativeRecordReaderWrapper extends RecordReader<Void, Object>
     int hdfsPort = Integer.parseInt(res[2]);
     LOG.info("filename is " + fileName + " hdfs is " + hdfsHost + " " + hdfsPort);
     LOG.info("schema is " + sparkSchema.json());
-    reader = ParquetReaderJNI.init(fileName, hdfsHost, hdfsPort, sparkSchema.json(), splitStart, splitSize);
+    reader = ParquetReaderJNI.init(fileName, hdfsHost, hdfsPort, sparkSchema.json(), inputSplitRowGroupStartIndex, inputSplitRowGroupNum);
+  }
+
+  public void getRequiredSplitRowGroup(ParquetInputSplit split, Configuration configuration) throws IOException {
+    long splitStart = split.getStart();
+    long splitSize = split.getLength();
+    Path file = split.getPath();
+
+    ParquetMetadata footer = readFooter(configuration, file);
+    List<BlockMetaData> blocks = footer.getBlocks();
+
+    Long currentOffset = 0l;
+    Long PARQUET_MAGIC_NUMBER = 4l;
+    currentOffset += PARQUET_MAGIC_NUMBER;
+
+    int rowGroupIndex = 0;
+
+    boolean flag = false;
+    for (BlockMetaData blockMetaData : blocks) {
+      if (splitStart <= currentOffset && splitStart + splitSize >= currentOffset) {
+        if (!flag) {
+          flag = true;
+          inputSplitRowGroupStartIndex = rowGroupIndex;
+        }
+        inputSplitRowGroupNum ++;
+      }
+      rowGroupIndex ++;
+      currentOffset += blockMetaData.getCompressedSize();
+    }
   }
 
   public void setFilter(FilterPredicate predicate) {
