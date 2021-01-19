@@ -61,9 +61,9 @@ object FileSourceStrategy extends Strategy with Logging {
   }
 
   private def getExpressionBuckets(
-      expr: Expression,
-      bucketColumnName: String,
-      numBuckets: Int): BitSet = {
+                                    expr: Expression,
+                                    bucketColumnName: String,
+                                    numBuckets: Int): BitSet = {
 
     def getBucketNumber(attr: Attribute, v: Any): Int = {
       BucketingUtils.getBucketIdFromValue(attr, numBuckets, v)
@@ -108,8 +108,8 @@ object FileSourceStrategy extends Strategy with Logging {
   }
 
   private def genBucketSet(
-      normalizedFilters: Seq[Expression],
-      bucketSpec: BucketSpec): Option[BitSet] = {
+                            normalizedFilters: Seq[Expression],
+                            bucketSpec: BucketSpec): Option[BitSet] = {
     if (normalizedFilters.isEmpty) {
       return None
     }
@@ -138,7 +138,7 @@ object FileSourceStrategy extends Strategy with Logging {
 
   def apply(plan: LogicalPlan): Seq[SparkPlan] = plan match {
     case ScanOperation(projects, filters,
-    l @ LogicalRelation(fsRelation: HadoopFsRelation, _, table, _)) =>
+    l@LogicalRelation(fsRelation: HadoopFsRelation, _, table, _)) =>
       // Filters on this relation fall into four categories based on where we can use them to avoid
       // reading unneeded data:
       //  - partition keys only - used to prune directories to read
@@ -184,6 +184,12 @@ object FileSourceStrategy extends Strategy with Logging {
         .flatMap(DataSourceStrategy.translateFilter(_, supportNestedPredicatePushdown))
       logInfo(s"Pushed Filters: ${pushedFilters.mkString(",")}")
 
+      val pushedExpression = dataFilters.flatMap(e =>
+        if (DataSourceStrategy.translateFilter(e, supportNestedPredicatePushdown).isEmpty) None
+        else Some(e))
+      logInfo(s"Pushed Expressions:  ${pushedExpression.mkString(",")}")
+
+      // We don't change schema
       // Predicates with both partition keys and attributes need to be evaluated after the scan.
       val afterScanFilters = filterSet -- partitionKeyFilters.filter(_.references.nonEmpty)
       logInfo(s"Post-Scan Filters: ${afterScanFilters.mkString(",")}")
@@ -211,7 +217,12 @@ object FileSourceStrategy extends Strategy with Logging {
           dataFilters,
           table.map(_.identifier))
 
-      val afterScanFilter = afterScanFilters.toSeq.reduceOption(expressions.And)
+      // we should remove pushDownedFilter here.
+      val leftFilter = afterScanFilters -- pushedExpression
+      val afterScanFilter = leftFilter.toSeq.reduceOption(expressions.And)
+      logInfo(s"left data Filters: ${afterScanFilter.mkString(",")}")
+
+      // filter will not influence output, so keep it.
       val withFilter = afterScanFilter.map(execution.FilterExec(_, scan)).getOrElse(scan)
       val withProjections = if (projects == withFilter.output) {
         withFilter
