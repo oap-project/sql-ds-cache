@@ -18,6 +18,7 @@
 #pragma once
 
 #include <arrow/util/logging.h>
+#include <parquet/types.h>
 
 #include "type.h"
 
