@@ -17,6 +17,8 @@
 
 #pragma once
 
+#include <parquet/types.h>
+
 #include "BinaryOp.h"
 #include "UnaryFilter.h"
 #include "expression.h"
@@ -105,6 +107,49 @@ class TypedUnaryFilterExpression : public FilterExpression {
   int columnIndex;
 };
 
+class StringFilterExpression : public FilterExpression {
+ public:
+  StringFilterExpression(std::string type_, std::string columnName_, std::string value_);
+  ~StringFilterExpression(){};
+  void setSchema(std::vector<Schema> schema_);
+  int ExecuteWithParam(int batchSize, long* dataBuffers, long* nullBuffers,
+                       char* outBuffers) = 0;
+
+ protected:
+  std::string type;
+  std::string columnName;
+  std::string value;
+  int columnIndex;
+};
+
+class StartWithFilterExpression : public StringFilterExpression {
+ public:
+  StartWithFilterExpression(std::string type_, std::string columnName_,
+                            std::string value_)
+      : StringFilterExpression(type_, columnName_, value_){};
+  int ExecuteWithParam(int batchSize, long* dataBuffers, long* nullBuffers,
+                       char* outBuffers);
+  ~StartWithFilterExpression(){};
+};
+
+class EndWithFilterExpression : public StringFilterExpression {
+ public:
+  EndWithFilterExpression(std::string type_, std::string columnName_, std::string value_)
+      : StringFilterExpression(type_, columnName_, value_){};
+  int ExecuteWithParam(int batchSize, long* dataBuffers, long* nullBuffers,
+                       char* outBuffers);
+  ~EndWithFilterExpression(){};
+};
+
+class ContainsFilterExpression : public StringFilterExpression {
+ public:
+  ContainsFilterExpression(std::string type_, std::string columnName_, std::string value_)
+      : StringFilterExpression(type_, columnName_, value_){};
+  int ExecuteWithParam(int batchSize, long* dataBuffers, long* nullBuffers,
+                       char* outBuffers);
+  ~ContainsFilterExpression(){};
+};
+
 using BoolUnaryFilterExpression = TypedUnaryFilterExpression<bool>;
 using Int32UnaryFilterExpression = TypedUnaryFilterExpression<int32_t>;
 using Int64UnaryFilterExpression = TypedUnaryFilterExpression<int64_t>;
@@ -112,5 +157,6 @@ using Int64UnaryFilterExpression = TypedUnaryFilterExpression<int64_t>;
 using FloatUnaryFilterExpression = TypedUnaryFilterExpression<float>;
 using DoubleUnaryFilterExpression = TypedUnaryFilterExpression<double>;
 using NullUnaryFilterExpression = TypedUnaryFilterExpression<NullStruct>;
+using ByteArrayUnaryFilterExpression = TypedUnaryFilterExpression<parquet::ByteArray>;
 
 }  // namespace ape

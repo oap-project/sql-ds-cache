@@ -23,6 +23,7 @@ namespace ape {
 
 std::shared_ptr<Expression> JsonConvertor::parseToFilterExpression(
     std::string jsonString) {
+  ARROW_LOG(INFO) << "json string " << jsonString;
   auto json = nlohmann::json::parse(jsonString);
   return parseToFilterExpression(json);
 };
@@ -62,12 +63,36 @@ std::shared_ptr<Expression> JsonConvertor::parseToFilterExpression(nlohmann::jso
     } else if (colType.compare("Double") == 0) {
       double value = std::stod(valueString);
       ex = std::make_shared<DoubleUnaryFilterExpression>(type, columnName, value);
+    } else if (colType.compare("FromStringBinary") == 0) {
+      // the binary is like Binary{\"xxxxx\"}
+      int binLen = valueString.length() - 10;
+      std::string value = valueString.substr(8, binLen);
+      uint8_t* buf = new uint8_t[binLen];
+      // FIXME: memory leak!
+      std::memcpy(buf, value.data(), binLen);
+      parquet::ByteArray byteArray(binLen, buf);
+      ex = std::make_shared<ByteArrayUnaryFilterExpression>(type, columnName, byteArray);
     } else {
       // WARNING: NOT support yet;
       ARROW_LOG(WARNING) << "unsupported data type";
     }
+  } else if (type.compare("apestartwithfilter") == 0) {
+    std::string colType = root["ColumnType"];  // should be BinaryColumn
+    std::string columnName = root["ColumnName"];
+    std::string valueString = root["Value"];  // start with string
+    ex = std::make_shared<StartWithFilterExpression>(type, columnName, valueString);
+  } else if (type.compare("apeendwithfilter") == 0) {
+    std::string colType = root["ColumnType"];  // should be BinaryColumn
+    std::string columnName = root["ColumnName"];
+    std::string valueString = root["Value"];  // end with string
+    ex = std::make_shared<EndWithFilterExpression>(type, columnName, valueString);
+  } else if (type.compare("apecontainsfilter") == 0) {
+    std::string colType = root["ColumnType"];  // should be BinaryColumn
+    std::string columnName = root["ColumnName"];
+    std::string valueString = root["Value"];  // end with string
+    ex = std::make_shared<ContainsFilterExpression>(type, columnName, valueString);
   } else {
-    ARROW_LOG(WARNING) << "unsupported Expression type";
+    ARROW_LOG(WARNING) << "unsupported Expression type" << type;
   }
 
   return ex;

@@ -26,31 +26,47 @@
 #undef USE_AVX
 #endif
 
+#define NOT_SUPPORT(dataType, filterType)                                             \
+  template <>                                                                         \
+  void filterType<dataType>::execute(dataType* buffer, dataType value, int batchSize, \
+                                     char* out) {                                     \
+    ARROW_LOG(WARNING) << "Not support!";                                             \
+  }
+
 namespace ape {
 
-// For NullStruct, we will not use this method now.
+// For NullStruct and ByteArray, we will not use these methods.
+NOT_SUPPORT(NullStruct, Gt);
+NOT_SUPPORT(NullStruct, GtEq);
+NOT_SUPPORT(NullStruct, Lt);
+NOT_SUPPORT(NullStruct, LtEq);
+
+NOT_SUPPORT(parquet::ByteArray, Gt);
+NOT_SUPPORT(parquet::ByteArray, GtEq);
+NOT_SUPPORT(parquet::ByteArray, Lt);
+NOT_SUPPORT(parquet::ByteArray, LtEq);
+
 template <>
-void Gt<NullStruct>::execute(NullStruct* buffer, NullStruct value, int batchSize,
-                             char* out) {
-  ARROW_LOG(WARNING) << "Not support!";
+void Eq<parquet::ByteArray>::execute(parquet::ByteArray* buffer, parquet::ByteArray value,
+                                     int batchSize, char* out) {
+  int len = value.len;
+  for (int i = 0; i < batchSize; i++) {
+    if (buffer[i].len == len && !std::memcmp(buffer[i].ptr, value.ptr, len)) {
+      out[i] = 1;
+    }
+  }
 }
 
 template <>
-void GtEq<NullStruct>::execute(NullStruct* buffer, NullStruct value, int batchSize,
-                               char* out) {
-  ARROW_LOG(WARNING) << "Not support!";
-}
-
-template <>
-void Lt<NullStruct>::execute(NullStruct* buffer, NullStruct value, int batchSize,
-                             char* out) {
-  ARROW_LOG(WARNING) << "Not support!";
-}
-
-template <>
-void LtEq<NullStruct>::execute(NullStruct* buffer, NullStruct value, int batchSize,
-                               char* out) {
-  ARROW_LOG(WARNING) << "Not support!";
+void NotEq<parquet::ByteArray>::execute(parquet::ByteArray* buffer,
+                                        parquet::ByteArray value, int batchSize,
+                                        char* out) {
+  int len = value.len;
+  for (int i = 0; i < batchSize; i++) {
+    if (buffer[i].len != len || std::memcmp(buffer[i].ptr, value.ptr, len)) {
+      out[i] = 1;
+    }
+  }
 }
 
 template <>
