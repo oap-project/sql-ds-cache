@@ -83,5 +83,7 @@ class Reader {
 
   std::shared_ptr<RootFilterExpression> filterExpression;
   std::chrono::duration<double> time;
+
+  std::vector<char*> extraByteArrayBuffers;
 };
 }  // namespace ape

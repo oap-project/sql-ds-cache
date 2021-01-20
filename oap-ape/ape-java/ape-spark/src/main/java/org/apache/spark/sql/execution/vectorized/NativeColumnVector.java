@@ -131,7 +131,8 @@ public class NativeColumnVector extends ColumnVector {
   public byte[] getBinary(int rowId) {
     int size = Platform.getInt(null, bufferPtr + rowId * 16);
     byte[] str = new byte[size];
-    Platform.copyMemory(null, bufferPtr + rowId * 16 + 8, str, Platform.BYTE_ARRAY_OFFSET, size);
+    long addr = Platform.getLong(null, bufferPtr + rowId * 16 + 8);
+    Platform.copyMemory(null, addr, str, Platform.BYTE_ARRAY_OFFSET, size);
     return str;
   }
 

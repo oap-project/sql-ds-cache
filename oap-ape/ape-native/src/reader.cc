@@ -191,8 +191,28 @@ int Reader::readBatch(int batchSize, long* buffersPtr, long* nullsPtr) {
               static_cast<parquet::ByteArrayReader*>(columnReaders[i].get());
           tmpRows = byteArrayReader->ReadBatchSpaced(
               rowsToRead - rows, defLevel, repLevel,
-              (parquet::ByteArray*)buffersPtr[i] + rows, (uint8_t*)nullBitMap + rows, 0,
+              (parquet::ByteArray*)buffersPtr[i] + rows, (uint8_t*)nullBitMap, 0,
               &levelsRead, &valuesRead, &nullCount);
+          parquet::ByteArray* p = (parquet::ByteArray*)buffersPtr[i] + rows;
+          // we do need to read twice, buffer may be overwrite, so let's do an extra
+          // memory copy.
+          if (tmpRows + rows < rowsToRead) {
+            ARROW_LOG(DEBUG) << "read rows: " << tmpRows << " need to do memory copy!";
+            // calculate total size
+            uint32_t totalLen = 0;
+            for (int k = 0; k < tmpRows; k++) {
+              totalLen += p[k].len;
+            }
+            char* buffer = new char[totalLen];
+            extraByteArrayBuffers.push_back(buffer);
+            uint32_t write = 0;
+            for (int k = 0; k < tmpRows; k++) {
+              std::memcpy(buffer + write, p[k].ptr, p[k].len);
+              p[k].ptr = (uint8_t*)(buffer + write);
+              write += p[k].len;
+            }
+          }
+
           break;
         }
         case parquet::Type::FIXED_LEN_BYTE_ARRAY: {
@@ -250,6 +270,9 @@ void Reader::close() {
   ARROW_LOG(INFO) << "close reader.";
   parquetReader->Close();
   file->Close();
+  for (auto ptr : extraByteArrayBuffers) {
+    delete[] ptr;
+  }
   // delete options;
 }
 
