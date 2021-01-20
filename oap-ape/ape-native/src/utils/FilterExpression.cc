@@ -159,6 +159,69 @@ int BinaryFilterExpression::ExecuteWithParam(int batchSize, long* dataBuffers,
   return 0;
 }
 
+// StringFilterExpression
+StringFilterExpression::StringFilterExpression(std::string type_, std::string columnName_,
+                                               std::string value_)
+    : FilterExpression(type_) {
+  columnName = columnName_;
+  value = value_;
+}
+
+void StringFilterExpression::setSchema(std::vector<Schema> schema_) {
+  schema = schema_;
+  ptrdiff_t pos = std::distance(
+      schema.begin(), std::find_if(schema.begin(), schema.end(), finder(columnName)));
+  columnIndex = pos;
+}
+
+// StartWithFilterExpression
+int StartWithFilterExpression::ExecuteWithParam(int batchSize, long* dataBuffers,
+                                                long* nullBuffers, char* outBuffers) {
+  std::memset(outBuffers, 0, batchSize);
+  long dataPtr = *(dataBuffers + columnIndex);
+  parquet::ByteArray* data = (parquet::ByteArray*)dataPtr;
+  int len = value.length();
+  for (int i = 0; i < batchSize; i++) {
+    if (data[i].len >= value.length() &&
+        std::memcmp(data[i].ptr, value.data(), len) == 0) {
+      outBuffers[i] = 1;
+    }
+  }
+  return 0;
+}
+
+// EndWithFilterExpression
+int EndWithFilterExpression::ExecuteWithParam(int batchSize, long* dataBuffers,
+                                              long* nullBuffers, char* outBuffers) {
+  std::memset(outBuffers, 0, batchSize);
+  long dataPtr = *(dataBuffers + columnIndex);
+  parquet::ByteArray* data = (parquet::ByteArray*)dataPtr;
+  int len = value.length();
+  for (int i = 0; i < batchSize; i++) {
+    if (data[i].len >= value.length() &&
+        std::memcmp(data[i].ptr + (data[i].len - len), value.data(), len) == 0) {
+      outBuffers[i] = 1;
+    }
+  }
+  return 0;
+}
+
+// ContainsFilterExpression
+int ContainsFilterExpression::ExecuteWithParam(int batchSize, long* dataBuffers,
+                                               long* nullBuffers, char* outBuffers) {
+  std::memset(outBuffers, 0, batchSize);
+  long dataPtr = *(dataBuffers + columnIndex);
+  parquet::ByteArray* data = (parquet::ByteArray*)dataPtr;
+  int len = value.length();
+  for (int i = 0; i < batchSize; i++) {
+    std::string s = std::string((char*)data[i].ptr, data[i].len);
+    if (data[i].len >= value.length() && s.find(value) != std::string::npos) {
+      outBuffers[i] = 1;
+    }
+  }
+  return 0;
+}
+
 // UnaryFilterExpression
 template <typename T>
 TypedUnaryFilterExpression<T>::TypedUnaryFilterExpression(std::string type_,
@@ -229,5 +292,6 @@ template class TypedUnaryFilterExpression<long>;
 template class TypedUnaryFilterExpression<float>;
 template class TypedUnaryFilterExpression<double>;
 template class TypedUnaryFilterExpression<NullStruct>;
+template class TypedUnaryFilterExpression<parquet::ByteArray>;
 
 }  // namespace ape

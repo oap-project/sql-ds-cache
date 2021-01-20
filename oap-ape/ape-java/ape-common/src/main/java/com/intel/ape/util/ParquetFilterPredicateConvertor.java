@@ -18,10 +18,12 @@
 package com.intel.ape.util;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.intel.ape.Parquet.ApeLikeFilter;
 import org.apache.parquet.filter2.predicate.*;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import com.intel.ape.Parquet.ApeStartWithFilter;
 
 public class ParquetFilterPredicateConvertor {
   public static String toJsonString(FilterPredicate predicate) {
@@ -96,6 +98,14 @@ public class ParquetFilterPredicateConvertor {
               ((Operators.GtEq) predicate).getColumn().getColumnPath().toDotString());
       ((ObjectNode) rootNode).put("ColumnType", ((Operators.GtEq) predicate).getValue().getClass().getSimpleName());
       ((ObjectNode) rootNode).put("Value", ((Operators.GtEq) predicate).getValue().toString());
+    } else if (predicate instanceof Operators.UserDefined) {
+      ((ObjectNode) rootNode).put("FilterTypeName", ((Operators.UserDefined) predicate).getUserDefinedPredicate().getClass().getSimpleName().toLowerCase());
+      ((ObjectNode) rootNode).put("ColumnName",
+              ((Operators.UserDefined) predicate).getColumn().getColumnPath().toDotString());
+      ((ObjectNode) rootNode).put("ColumnType", ((Operators.UserDefined) predicate).getColumn().getClass().getSimpleName());
+      if (((Operators.UserDefined) predicate).getUserDefinedPredicate() instanceof ApeLikeFilter) {
+        ((ObjectNode) rootNode).put("Value", ((ApeLikeFilter) ((Operators.UserDefined) predicate).getUserDefinedPredicate()).getValue());
+      }
     }
 
     return rootNode;
