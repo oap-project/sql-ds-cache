@@ -67,12 +67,7 @@ void Reader::init(std::string fileName, std::string hdfsHost, int hdfsPort,
   ARROW_LOG(DEBUG) << "schema is " << fileMetaData->schema()->ToString();
   convertSchema(requiredSchema);
 
-  // currentRowGroup = firstRowGroupIndex;
-  // totalRowGroups = requiredRowGroupSize;
-
-  getRequiredRowGroupId();
-  currentRowGroup = *requiredRowGroupId.begin();
-  totalRowGroups = requiredRowGroupId.size();
+  currentRowGroup = firstRowGroupIndex;
 
   rowGroupReaders.resize(totalRowGroups);
   for (int i = 0; i < totalRowGroups; i++) {
