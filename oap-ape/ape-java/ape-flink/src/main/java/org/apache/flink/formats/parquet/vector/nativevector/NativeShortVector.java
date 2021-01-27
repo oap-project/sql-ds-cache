@@ -21,7 +21,7 @@ package org.apache.flink.formats.parquet.vector.nativevector;
 import org.apache.flink.formats.parquet.utils.Platform;
 import org.apache.flink.table.data.vector.heap.HeapShortVector;
 
-public class NativeShortVector extends HeapShortVector {
+public class NativeShortVector extends HeapShortVector implements NativeVector {
 
     private static final long serialVersionUID = 7216045902943789034L;
 
@@ -39,6 +39,21 @@ public class NativeShortVector extends HeapShortVector {
         bufferPtr = bufferPtr_;
         nullPtr = nullPtr_;
         capacity = size_;
+    }
+
+    @Override
+    public long getBufferPtr() {
+        return bufferPtr;
+    }
+
+    @Override
+    public long getNullPtr() {
+        return nullPtr;
+    }
+
+    @Override
+    public boolean isNullAt(int i) {
+        return !Platform.getBoolean(null, nullPtr + i);
     }
 
     @Override

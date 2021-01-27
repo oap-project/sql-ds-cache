@@ -22,7 +22,7 @@ import org.apache.flink.formats.parquet.utils.Platform;
 import org.apache.flink.table.data.vector.heap.HeapIntVector;
 
 
-public class NativeIntVector extends HeapIntVector {
+public class NativeIntVector extends HeapIntVector implements NativeVector {
 
     private static final long serialVersionUID = 7216045902943789034L;
 
@@ -41,6 +41,21 @@ public class NativeIntVector extends HeapIntVector {
         nullPtr = nullPtr_;
         capacity = size_;
 	}
+
+    @Override
+    public long getBufferPtr() {
+        return bufferPtr;
+    }
+
+    @Override
+    public long getNullPtr() {
+        return nullPtr;
+    }
+
+    @Override
+    public boolean isNullAt(int i) {
+        return !Platform.getBoolean(null, nullPtr + i);
+    }
 
 	@Override
 	public int getInt(int i){
