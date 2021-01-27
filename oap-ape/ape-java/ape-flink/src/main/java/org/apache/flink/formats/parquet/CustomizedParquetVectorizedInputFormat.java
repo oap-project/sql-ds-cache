@@ -81,11 +81,9 @@ public abstract class CustomizedParquetVectorizedInputFormat<T, SplitT extends F
     private final boolean isCaseSensitive;
     private final boolean isUtcTimestamp;
 
-    ParquetNativeRecordReaderWrapper nativeWarppar;
+    private ParquetNativeRecordReaderWrapper nativeWrapper;
 
     private static final Logger LOG = LoggerFactory.getLogger(CustomizedParquetVectorizedInputFormat.class);
-
-    private WritableColumnVector[] writableVectors;
 
     public CustomizedParquetVectorizedInputFormat(SerializableConfiguration hadoopConfig, RowType projectedType,
             ColumnBatchFactory<SplitT> batchFactory, int batchSize, boolean isUtcTimestamp, boolean isCaseSensitive) {
@@ -106,8 +104,6 @@ public abstract class CustomizedParquetVectorizedInputFormat<T, SplitT extends F
         final long splitOffset = split.offset();
         final long splitLength = split.length();
 
-        // nativeWarppar.initialize();
-        // nativeWarppar.initBatch();
         org.apache.hadoop.fs.Path hadoopPath = new org.apache.hadoop.fs.Path(filePath.toUri());
         ParquetMetadata footer = readFooter(hadoopConfig.conf(), hadoopPath,
                 range(splitOffset, splitOffset + splitLength));
@@ -116,12 +112,6 @@ public abstract class CustomizedParquetVectorizedInputFormat<T, SplitT extends F
         List<BlockMetaData> blocks = filterRowGroups(filter, footer.getBlocks(), fileSchema);
 
         MessageType requestedSchema = clipParquetSchema(fileSchema);
-
-        nativeWarppar = new ParquetNativeRecordReaderWrapper(batchSize);
-        nativeWarppar.initialize(hadoopConfig, projectedType, split);
-
-        // TODO: Check type list.
-
         ParquetFileReader reader = new ParquetFileReader(hadoopConfig.conf(), footer.getFileMetaData(), hadoopPath,
                 blocks, requestedSchema.getColumns());
 
@@ -132,11 +122,14 @@ public abstract class CustomizedParquetVectorizedInputFormat<T, SplitT extends F
 
         checkSchema(fileSchema, requestedSchema);
 
+        nativeWrapper = new ParquetNativeRecordReaderWrapper(batchSize);
+        nativeWrapper.initialize(hadoopConfig, projectedType, split);
+
         final int numBatchesToCirculate = config.getInteger(SourceReaderOptions.ELEMENT_QUEUE_CAPACITY);
         final Pool<ParquetReaderBatch<T>> poolOfBatches = createPoolOfBatches(split, requestedSchema,
                 numBatchesToCirculate);
 
-        return new ParquetReader(reader, totalRowCount, poolOfBatches, nativeWarppar);
+        return new ParquetReader(reader, totalRowCount, poolOfBatches, nativeWrapper);
     }
 
     @Override
@@ -237,7 +230,7 @@ public abstract class CustomizedParquetVectorizedInputFormat<T, SplitT extends F
 
     private ParquetReaderBatch<T> createReaderBatch(SplitT split, MessageType requestedSchema,
             Pool.Recycler<ParquetReaderBatch<T>> recycler) {
-        writableVectors = nativeWarppar.initBatch(requestedSchema, batchSize, projectedType);
+        WritableColumnVector[] writableVectors = nativeWrapper.initBatch(requestedSchema, batchSize, projectedType);
         VectorizedColumnBatch columnarBatch = batchFactory.create(split, createReadableVectors(writableVectors));
         return createReaderBatch(writableVectors, columnarBatch, recycler);
     }
@@ -281,7 +274,7 @@ public abstract class CustomizedParquetVectorizedInputFormat<T, SplitT extends F
 
         private final Pool<ParquetReaderBatch<T>> pool;
 
-        private final ParquetNativeRecordReaderWrapper nativeWarppar;
+        private final ParquetNativeRecordReaderWrapper nativeWrapper;
 
         /**
          * The number of rows that have been returned.
@@ -302,14 +295,14 @@ public abstract class CustomizedParquetVectorizedInputFormat<T, SplitT extends F
         private long recordsToSkip;
 
         private ParquetReader(ParquetFileReader reader, long totalRowCount, Pool<ParquetReaderBatch<T>> pool,
-                ParquetNativeRecordReaderWrapper nativeWarppar) {
+                ParquetNativeRecordReaderWrapper nativeWrapper) {
             this.reader = reader;
             this.totalRowCount = totalRowCount;
             this.pool = pool;
             this.rowsReturned = 0;
             this.totalCountLoadedSoFar = 0;
             this.recordsToSkip = 0;
-            this.nativeWarppar = nativeWarppar;
+            this.nativeWrapper = nativeWrapper;
         }
 
         @Nullable
@@ -338,10 +331,10 @@ public abstract class CustomizedParquetVectorizedInputFormat<T, SplitT extends F
                 v.reset();
             }
             batch.columnarBatch.setNumRows(0);
-            if (rowsReturned >= totalRowCount | !nativeWarppar.nextBatch()) {
+            if (rowsReturned >= totalRowCount | !nativeWrapper.nextBatch(batch.writableVectors)) {
                 return false;
             }
-            int rowsRead = nativeWarppar.getRowsRead();
+            int rowsRead = nativeWrapper.getRowsRead();
             rowsReturned += rowsRead;
             batch.columnarBatch.setNumRows(rowsRead);
             return true;
@@ -359,6 +352,10 @@ public abstract class CustomizedParquetVectorizedInputFormat<T, SplitT extends F
                     break;
                 } else {
                     reader.skipNextRowGroup();
+
+                    // skip row group in native reader too
+                    nativeWrapper.skipNextRowGroup();
+
                     rowsReturned += metaData.getRowCount();
                     totalCountLoadedSoFar += metaData.getRowCount();
                     rowCount -= metaData.getRowCount();
@@ -388,6 +385,10 @@ public abstract class CustomizedParquetVectorizedInputFormat<T, SplitT extends F
             if (reader != null) {
                 reader.close();
                 reader = null;
+            }
+
+            if (nativeWrapper != null) {
+                nativeWrapper.close();
             }
         }
     }
