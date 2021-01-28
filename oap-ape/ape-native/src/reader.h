@@ -56,6 +56,10 @@ class Reader {
 
   void checkEndOfRowGroup();
 
+  void setFilterColumnNames(std::shared_ptr<Expression> filter);
+  int allocateFilterBuffers(int batchSize);
+  void freeFilterBuffers();
+
   HdfsOptions* options;
   std::shared_ptr<FileSystem> fs;
   std::shared_ptr<arrow::io::RandomAccessFile> file;
@@ -85,5 +89,13 @@ class Reader {
   std::chrono::duration<double> time;
 
   std::vector<char*> extraByteArrayBuffers;
+
+  bool filterReset = false;
+  int currentBatchSize = 0;
+  int initRequiredColumnCount = 0;
+  std::vector<std::string> filterColumnNames;
+  std::vector<char*> filterDataBuffers;
+  std::vector<char*> filterNullBuffers;
+
 };
 }  // namespace ape
