@@ -18,6 +18,8 @@
 
 package org.apache.flink.formats.parquet;
 
+import static org.apache.flink.formats.parquet.vector.ParquetSplitReaderUtil.createColumnReader;
+import static org.apache.flink.formats.parquet.vector.ParquetSplitReaderUtil.createWritableColumnVector;
 import static org.apache.parquet.filter2.compat.RowGroupFilter.filterRowGroups;
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.range;
 import static org.apache.parquet.hadoop.ParquetFileReader.readFooter;
@@ -39,10 +41,13 @@ import org.apache.flink.connector.file.src.reader.BulkFormat;
 import org.apache.flink.connector.file.src.util.CheckpointedPosition;
 import org.apache.flink.connector.file.src.util.Pool;
 import org.apache.flink.core.fs.Path;
+import org.apache.flink.formats.parquet.ape.FlinkConfKeys;
 import org.apache.flink.formats.parquet.utils.ParquetNativeRecordReaderWrapper;
 import org.apache.flink.formats.parquet.utils.SerializableConfiguration;
 import org.apache.flink.formats.parquet.vector.ColumnBatchFactory;
 import org.apache.flink.formats.parquet.vector.ParquetDecimalVector;
+import org.apache.flink.formats.parquet.vector.reader.AbstractColumnReader;
+import org.apache.flink.formats.parquet.vector.reader.ColumnReader;
 import org.apache.flink.table.data.vector.ColumnVector;
 import org.apache.flink.table.data.vector.VectorizedColumnBatch;
 import org.apache.flink.table.data.vector.writable.WritableColumnVector;
@@ -52,10 +57,13 @@ import org.apache.flink.table.types.logical.RowType;
 import org.apache.flink.util.FlinkRuntimeException;
 import org.apache.flink.util.Preconditions;
 import org.apache.parquet.column.ColumnDescriptor;
+import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.filter2.compat.FilterCompat;
+import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
+import org.apache.parquet.hadoop.util.SerializationUtil;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Type;
@@ -81,7 +89,8 @@ public abstract class CustomizedParquetVectorizedInputFormat<T, SplitT extends F
     private final boolean isCaseSensitive;
     private final boolean isUtcTimestamp;
 
-    private ParquetNativeRecordReaderWrapper nativeWrapper;
+    private boolean useNativeParquetReader;
+    private ParquetNativeRecordReaderWrapper nativeReaderWrapper;
 
     private static final Logger LOG = LoggerFactory.getLogger(CustomizedParquetVectorizedInputFormat.class);
 
@@ -95,6 +104,9 @@ public abstract class CustomizedParquetVectorizedInputFormat<T, SplitT extends F
         this.isUtcTimestamp = isUtcTimestamp;
         this.isCaseSensitive = isCaseSensitive;
         this.projectedType = projectedType;
+
+        useNativeParquetReader = hadoopConfig.conf().getBoolean(
+                FlinkConfKeys.USE_NATIVE_PARQUET_READER, false);
     }
 
     @Override
@@ -122,14 +134,30 @@ public abstract class CustomizedParquetVectorizedInputFormat<T, SplitT extends F
 
         checkSchema(fileSchema, requestedSchema);
 
-        nativeWrapper = new ParquetNativeRecordReaderWrapper(batchSize);
-        nativeWrapper.initialize(hadoopConfig, projectedType, split);
+        // get filters pushed by HiveTableSource
+        FilterPredicate predicate = SerializationUtil.readObjectFromConfAsBase64(
+                "parquet.private.native.reader.filter.predicate", hadoopConfig.conf());
+
+        LOG.info("deserialized predicate toString: {}", predicate);
+        LOG.debug("parquet.private.native.reader.filter.predicate.human.readable: {}",
+                hadoopConfig.conf().get("parquet.private.native.reader.filter.predicate.human.readable"));
+
+        // native parquet reader is optional
+        if (useNativeParquetReader) {
+            nativeReaderWrapper = new ParquetNativeRecordReaderWrapper(batchSize);
+            nativeReaderWrapper.initialize(hadoopConfig, projectedType, split);
+
+            // push down filters to native reader
+            if (predicate != null) {
+                nativeReaderWrapper.setFilterPredicate(predicate);
+            }
+        }
 
         final int numBatchesToCirculate = config.getInteger(SourceReaderOptions.ELEMENT_QUEUE_CAPACITY);
         final Pool<ParquetReaderBatch<T>> poolOfBatches = createPoolOfBatches(split, requestedSchema,
                 numBatchesToCirculate);
 
-        return new ParquetReader(reader, totalRowCount, poolOfBatches, nativeWrapper);
+        return new ParquetReader(reader, requestedSchema, totalRowCount, poolOfBatches, nativeReaderWrapper);
     }
 
     @Override
@@ -230,23 +258,30 @@ public abstract class CustomizedParquetVectorizedInputFormat<T, SplitT extends F
 
     private ParquetReaderBatch<T> createReaderBatch(SplitT split, MessageType requestedSchema,
             Pool.Recycler<ParquetReaderBatch<T>> recycler) {
-        WritableColumnVector[] writableVectors = nativeWrapper.initBatch(requestedSchema, batchSize, projectedType);
+
+        WritableColumnVector[] writableVectors;
+
+        if (!useNativeParquetReader) {
+            writableVectors = createWritableVectors(requestedSchema);
+        } else {
+            // native parquet reader is optional
+            writableVectors = nativeReaderWrapper.initBatch(requestedSchema, batchSize, projectedType);
+        }
+
         VectorizedColumnBatch columnarBatch = batchFactory.create(split, createReadableVectors(writableVectors));
         return createReaderBatch(writableVectors, columnarBatch, recycler);
     }
 
-    // private WritableColumnVector[] createWritableVectors(MessageType
-    // requestedSchema) {
-    // WritableColumnVector[] columns = new
-    // WritableColumnVector[projectedTypes.length];
-    // for (int i = 0; i < projectedTypes.length; i++) {
-    // columns[i] = createWritableColumnVector(
-    // batchSize,
-    // projectedTypes[i],
-    // requestedSchema.getColumns().get(i).getPrimitiveType());
-    // }
-    // return columns;
-    // }
+    private WritableColumnVector[] createWritableVectors(MessageType requestedSchema) {
+        WritableColumnVector[] columns = new WritableColumnVector[projectedTypes.length];
+        for (int i = 0; i < projectedTypes.length; i++) {
+            columns[i] = createWritableColumnVector(
+                    batchSize,
+                    projectedTypes[i],
+                    requestedSchema.getColumns().get(i).getPrimitiveType());
+        }
+        return columns;
+    }
 
     /**
      * Create readable vectors from writable vectors. Especially for decimal, see
@@ -266,6 +301,8 @@ public abstract class CustomizedParquetVectorizedInputFormat<T, SplitT extends F
 
         private ParquetFileReader reader;
 
+        private final MessageType requestedSchema;
+
         /**
          * The total number of rows this RecordReader will eventually read. The sum of
          * the rows of all the row groups.
@@ -274,7 +311,7 @@ public abstract class CustomizedParquetVectorizedInputFormat<T, SplitT extends F
 
         private final Pool<ParquetReaderBatch<T>> pool;
 
-        private final ParquetNativeRecordReaderWrapper nativeWrapper;
+        private ParquetNativeRecordReaderWrapper nativeReaderWrapper;
 
         /**
          * The number of rows that have been returned.
@@ -288,21 +325,33 @@ public abstract class CustomizedParquetVectorizedInputFormat<T, SplitT extends F
         private long totalCountLoadedSoFar;
 
         /**
+         * For each request column, the reader to read this column. This is NULL if this column is
+         * missing from the file, in which case we populate the attribute with NULL.
+         */
+        @SuppressWarnings("rawtypes")
+        private ColumnReader[] columnReaders;
+
+        /**
          * For each request column, the reader to read this column. This is NULL if this
          * column is missing from the file, in which case we populate the attribute with
          * NULL.
          */
         private long recordsToSkip;
 
-        private ParquetReader(ParquetFileReader reader, long totalRowCount, Pool<ParquetReaderBatch<T>> pool,
-                ParquetNativeRecordReaderWrapper nativeWrapper) {
+        private ParquetReader(
+                ParquetFileReader reader,
+                MessageType requestedSchema,
+                long totalRowCount,
+                Pool<ParquetReaderBatch<T>> pool,
+                ParquetNativeRecordReaderWrapper nativeReaderWrapper) {
             this.reader = reader;
+            this.requestedSchema = requestedSchema;
             this.totalRowCount = totalRowCount;
             this.pool = pool;
             this.rowsReturned = 0;
             this.totalCountLoadedSoFar = 0;
             this.recordsToSkip = 0;
-            this.nativeWrapper = nativeWrapper;
+            this.nativeReaderWrapper = nativeReaderWrapper;
         }
 
         @Nullable
@@ -330,14 +379,52 @@ public abstract class CustomizedParquetVectorizedInputFormat<T, SplitT extends F
             for (WritableColumnVector v : batch.writableVectors) {
                 v.reset();
             }
+
             batch.columnarBatch.setNumRows(0);
-            if (rowsReturned >= totalRowCount | !nativeWrapper.nextBatch(batch.writableVectors)) {
+            if (rowsReturned >= totalRowCount) {
                 return false;
             }
-            int rowsRead = nativeWrapper.getRowsRead();
+
+            int rowsRead;
+            if (nativeReaderWrapper != null) {
+                if (!nativeReaderWrapper.nextBatch(batch.writableVectors)) {
+                    return false;
+                }
+
+                rowsRead = nativeReaderWrapper.getRowsRead();
+            } else {
+                if (rowsReturned == totalCountLoadedSoFar) {
+                    readNextRowGroup();
+                }
+
+                rowsRead = (int) Math.min(batchSize, totalCountLoadedSoFar - rowsReturned);
+                for (int i = 0; i < columnReaders.length; ++i) {
+                    //noinspection unchecked
+                    columnReaders[i].readToVector(rowsRead, batch.writableVectors[i]);
+                }
+            }
+
             rowsReturned += rowsRead;
             batch.columnarBatch.setNumRows(rowsRead);
             return true;
+        }
+
+        private void readNextRowGroup() throws IOException {
+            PageReadStore pages = reader.readNextRowGroup();
+            if (pages == null) {
+                throw new IOException("expecting more rows but reached last block. Read "
+                        + rowsReturned + " out of " + totalRowCount);
+            }
+            List<ColumnDescriptor> columns = requestedSchema.getColumns();
+            columnReaders = new AbstractColumnReader[columns.size()];
+            for (int i = 0; i < columns.size(); ++i) {
+                columnReaders[i] = createColumnReader(
+                        isUtcTimestamp,
+                        projectedTypes[i],
+                        columns.get(i),
+                        pages.getPageReader(columns.get(i)));
+            }
+            totalCountLoadedSoFar += pages.getRowCount();
         }
 
         public void seek(long rowCount) {
@@ -354,7 +441,9 @@ public abstract class CustomizedParquetVectorizedInputFormat<T, SplitT extends F
                     reader.skipNextRowGroup();
 
                     // skip row group in native reader too
-                    nativeWrapper.skipNextRowGroup();
+                    if (nativeReaderWrapper != null) {
+                        nativeReaderWrapper.skipNextRowGroup();
+                    }
 
                     rowsReturned += metaData.getRowCount();
                     totalCountLoadedSoFar += metaData.getRowCount();
@@ -387,8 +476,9 @@ public abstract class CustomizedParquetVectorizedInputFormat<T, SplitT extends F
                 reader = null;
             }
 
-            if (nativeWrapper != null) {
-                nativeWrapper.close();
+            if (nativeReaderWrapper != null) {
+                nativeReaderWrapper.close();
+                nativeReaderWrapper = null;
             }
         }
     }

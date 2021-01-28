@@ -65,6 +65,7 @@ void Reader::init(std::string fileName, std::string hdfsHost, int hdfsPort,
   totalColumns = fileMetaData->num_columns();
 
   ARROW_LOG(DEBUG) << "schema is " << fileMetaData->schema()->ToString();
+  ARROW_LOG(DEBUG) << "required schema is " << requiredSchema;
   convertSchema(requiredSchema);
 
   currentRowGroup = firstRowGroupIndex;
@@ -77,6 +78,8 @@ void Reader::init(std::string fileName, std::string hdfsHost, int hdfsPort,
                      << rowGroupReaders[i]->metadata()->num_rows();
   }
   columnReaders.resize(requiredColumnIndex.size());
+  initRequiredColumnCount = requiredColumnIndex.size();
+  ARROW_LOG(DEBUG) << "initRequiredColumnCount is " << initRequiredColumnCount;
 
   ARROW_LOG(INFO) << "init done, totalRows " << totalRows;
 }
@@ -111,13 +114,37 @@ void convertBitMap(uint8_t* srcBitMap, uint8_t* dstByteMap, int len) {
   }
 }
 
-int Reader::readBatch(int batchSize, long* buffersPtr, long* nullsPtr) {
+int Reader::readBatch(int batchSize, long* buffersPtr_, long* nullsPtr_) {
   // this reader have read all rows
   if (totalRowsRead >= totalRows) {
     return -1;
   }
   checkEndOfRowGroup();
 
+  long* buffersPtr = buffersPtr_;
+  long* nullsPtr = nullsPtr_;
+
+  // allocate extra memory for filtered columns if needed
+  allocateFilterBuffers(batchSize);
+  int filterBufferCount = filterDataBuffers.size();
+  if (filterBufferCount > 0) {
+    ARROW_LOG(DEBUG) << "use extra filter buffers count: " << filterBufferCount;
+
+    buffersPtr = new long[initRequiredColumnCount + filterBufferCount];
+    nullsPtr = new long[initRequiredColumnCount + filterBufferCount];
+
+    for (int i = 0; i < initRequiredColumnCount; i++) {
+      buffersPtr[i] = buffersPtr_[i];
+      nullsPtr[i] = nullsPtr_[i];
+    }
+
+    for (int i = 0; i < filterBufferCount; i++) {
+      buffersPtr[initRequiredColumnCount + i] = (long)filterDataBuffers[i];
+      nullsPtr[initRequiredColumnCount + i] = (long)filterNullBuffers[i];
+    }
+  }
+
+  currentBatchSize = batchSize;
   int rowsToRead = std::min((int64_t)batchSize, totalRowsLoadedSoFar - totalRowsRead);
   int16_t* defLevel = new int16_t[rowsToRead];
   int16_t* repLevel = new int16_t[rowsToRead];
@@ -244,6 +271,11 @@ int Reader::readBatch(int batchSize, long* buffersPtr, long* nullsPtr) {
   delete[] repLevel;
   delete[] nullBitMap;
 
+  if (filterBufferCount > 0) {
+    delete[] buffersPtr;
+    delete[] nullsPtr;
+  }
+
   ARROW_LOG(DEBUG) << "ret rows " << rowsRet;
   return rowsRet;
 }
@@ -268,6 +300,7 @@ void Reader::close() {
   for (auto ptr : extraByteArrayBuffers) {
     delete[] ptr;
   }
+  freeFilterBuffers();
   // delete options;
 }
 
@@ -291,7 +324,127 @@ void Reader::setFilter(std::string filterJsonStr) {
 
   filterExpression = std::make_shared<RootFilterExpression>(
       "root", std::dynamic_pointer_cast<FilterExpression>(tmpExpression));
+
+  // get column names from expression
+  filterColumnNames.clear();
+  setFilterColumnNames(tmpExpression);
+
+  // reset required columns to initial size
+  requiredColumnIndex.resize(initRequiredColumnCount);
+  requiredColumnNames.resize(initRequiredColumnCount);
+  schema.erase(schema.begin() + initRequiredColumnCount, schema.end());
+  columnReaders.resize(initRequiredColumnCount);
+
+  // Check with filtered column names. Append column if not present in the initial required columns.
+  for (int i = 0; i < filterColumnNames.size(); i++) {
+    std::string columnName = filterColumnNames[i];
+    if (std::find(requiredColumnNames.begin(), requiredColumnNames.end(), columnName)
+      == requiredColumnNames.end()) {
+
+      int columnIndex = fileMetaData->schema()->ColumnIndex(columnName);
+
+      // append column
+      requiredColumnIndex.push_back(columnIndex);
+      requiredColumnNames.push_back(columnName);
+      schema.push_back(
+          Schema(columnName, fileMetaData->schema()->Column(columnIndex)->physical_type()));
+      columnReaders.resize(requiredColumnIndex.size());
+    }
+  }
+
   filterExpression->setSchema(schema);
+  filterReset = true;
+}
+
+int Reader::allocateFilterBuffers(int batchSize) {
+  if (!filterReset && batchSize <= currentBatchSize) {
+    return 0;
+  }
+  filterReset = false;
+
+  // free current filter buffers
+  freeFilterBuffers();
+
+  // allocate new filter buffers
+  int extraBufferNum = 0;
+  for (int i = initRequiredColumnCount; i < requiredColumnIndex.size(); i++) {
+    int columnIndex = requiredColumnIndex[i];
+    // allocate memory buffer
+    char* dataBuffer;
+    switch (fileMetaData->schema()->Column(columnIndex)->physical_type()) {
+      case parquet::Type::BOOLEAN:
+        dataBuffer = (char*) new bool[batchSize];
+        break;
+      case parquet::Type::INT32:
+        dataBuffer = (char*) new int32_t[batchSize];
+        break;
+      case parquet::Type::INT64:
+        dataBuffer = (char*) new int64_t[batchSize];
+        break;
+      case parquet::Type::INT96:
+        dataBuffer = (char*) new parquet::Int96[batchSize];
+        break;
+      case parquet::Type::FLOAT:
+        dataBuffer = (char*) new float[batchSize];
+        break;
+      case parquet::Type::DOUBLE:
+        dataBuffer = (char*) new double[batchSize];
+        break;
+      case parquet::Type::BYTE_ARRAY:
+        dataBuffer = (char*) new parquet::ByteArray[batchSize];
+        break;
+      case parquet::Type::FIXED_LEN_BYTE_ARRAY:
+        dataBuffer = (char*) new parquet::FixedLenByteArray[batchSize];
+        break;
+      default:
+        ARROW_LOG(WARNING) << "Unsupported Type!";
+        continue;
+    }
+
+    char* nullBuffer = new char[batchSize];
+    filterDataBuffers.push_back(dataBuffer);
+    filterNullBuffers.push_back(nullBuffer);
+    extraBufferNum++;
+  }
+
+  ARROW_LOG(INFO) << "create extra filter buffers count: " << extraBufferNum;
+  return extraBufferNum;
+}
+
+void Reader::freeFilterBuffers() {
+  for (auto ptr : filterDataBuffers) {
+    delete[] ptr;
+  }
+  filterDataBuffers.clear();
+  for (auto ptr : filterNullBuffers) {
+    delete[] ptr;
+  }
+  filterNullBuffers.clear();
+}
+
+void Reader::setFilterColumnNames(std::shared_ptr<Expression> filter) {
+  std::string type = filter->getType();
+
+  if (type.compare("not") == 0) {
+    setFilterColumnNames(std::dynamic_pointer_cast<NotFilterExpression>(filter)->getChild());
+  } else if (type.compare("and") == 0 || type.compare("or") == 0) {
+    setFilterColumnNames(std::dynamic_pointer_cast<BinaryFilterExpression>(filter)->getLeftChild());
+    setFilterColumnNames(std::dynamic_pointer_cast<BinaryFilterExpression>(filter)->getRightChild());
+  } else if (type.compare("lt") == 0 || type.compare("lteq") == 0 ||
+             type.compare("gt") == 0 || type.compare("gteq") == 0 ||
+             type.compare("eq") == 0 || type.compare("noteq") == 0 ||
+             type.compare("apestartwithfilter") == 0 ||
+             type.compare("apeendwithfilter") == 0 ||
+             type.compare("apecontainsfilter") == 0) {
+    std::string columnName = std::dynamic_pointer_cast<UnaryFilterExpression>(filter)->getColumnName();
+    if (std::find(filterColumnNames.begin(), filterColumnNames.end(), columnName) ==
+        filterColumnNames.end()) {
+      filterColumnNames.push_back(columnName);
+    }
+  } else {
+    ARROW_LOG(WARNING) << "unsupported Expression type" << type;
+    return;
+  }
 }
 
 }  // namespace ape
