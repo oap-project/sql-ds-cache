@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.intel.ape.ParquetReaderJNI;
+import com.intel.ape.util.ParquetFilterPredicateConvertor;
 import org.apache.flink.connector.file.src.FileSourceSplit;
 import org.apache.flink.core.fs.Path;
 import org.apache.flink.formats.parquet.vector.nativevector.NativeBoolenVector;
@@ -40,6 +41,7 @@ import org.apache.flink.table.types.logical.DecimalType;
 import org.apache.flink.table.types.logical.LogicalType;
 import org.apache.flink.table.types.logical.RowType;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.schema.MessageType;
@@ -87,7 +89,7 @@ public class ParquetNativeRecordReaderWrapper {
         reader = ParquetReaderJNI.init(
                 fileName, hdfsHost, hdfsPort, message.toJson(), inputSplitRowGroupStartIndex, inputSplitRowGroupNum);
 
-        LOG.debug("native parquet reader initialized");
+        LOG.info("native parquet reader initialized");
 
         return reader;
 
@@ -280,6 +282,13 @@ public class ParquetNativeRecordReaderWrapper {
 
     public boolean skipNextRowGroup() {
         return ParquetReaderJNI.skipNextRowGroup(reader);
+    }
+
+    public void setFilterPredicate(FilterPredicate filterPredicate) {
+        if (filterPredicate != null) {
+            String predicateStr = ParquetFilterPredicateConvertor.toJsonString(filterPredicate);
+            ParquetReaderJNI.setFilterStr(reader, predicateStr);
+        }
     }
 
 }

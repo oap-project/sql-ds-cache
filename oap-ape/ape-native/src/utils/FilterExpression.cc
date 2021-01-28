@@ -162,8 +162,7 @@ int BinaryFilterExpression::ExecuteWithParam(int batchSize, long* dataBuffers,
 // StringFilterExpression
 StringFilterExpression::StringFilterExpression(std::string type_, std::string columnName_,
                                                std::string value_)
-    : FilterExpression(type_) {
-  columnName = columnName_;
+    : UnaryFilterExpression(type_, columnName_) {
   value = value_;
 }
 
@@ -172,6 +171,10 @@ void StringFilterExpression::setSchema(std::vector<Schema> schema_) {
   ptrdiff_t pos = std::distance(
       schema.begin(), std::find_if(schema.begin(), schema.end(), finder(columnName)));
   columnIndex = pos;
+}
+
+std::string StringFilterExpression::getColumnName() {
+  return columnName;
 }
 
 // StartWithFilterExpression
@@ -227,8 +230,7 @@ template <typename T>
 TypedUnaryFilterExpression<T>::TypedUnaryFilterExpression(std::string type_,
                                                           std::string columnName_,
                                                           T value_)
-    : FilterExpression(type_) {
-  columnName = columnName_;
+    : UnaryFilterExpression(type_, columnName_) {
   value = value_;
   if (type.compare("gt") == 0) {
     filter = std::make_shared<Gt<T>>();
@@ -280,6 +282,10 @@ void TypedUnaryFilterExpression<T>::setSchema(std::vector<Schema> schema_) {
   ptrdiff_t pos = std::distance(
       schema.begin(), std::find_if(schema.begin(), schema.end(), finder(columnName)));
   columnIndex = pos;
+}
+
+std::string UnaryFilterExpression::getColumnName() {
+  return columnName;
 }
 
 template <typename T>

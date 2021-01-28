@@ -65,6 +65,9 @@ class NotFilterExpression : public FilterExpression {
     schema = schema_;
     child->setSchema(schema);
   }
+  std::shared_ptr<Expression> getChild() {
+    return child;
+  }
 
  private:
   std::shared_ptr<Expression> child;
@@ -83,6 +86,12 @@ class BinaryFilterExpression : public FilterExpression {
     left->setSchema(schema);
     right->setSchema(schema);
   }
+  std::shared_ptr<Expression> getLeftChild() {
+    return left;
+  }
+  std::shared_ptr<Expression> getRightChild() {
+    return right;
+  }
 
  private:
   std::shared_ptr<Expression> left;
@@ -90,8 +99,19 @@ class BinaryFilterExpression : public FilterExpression {
   std::shared_ptr<BinaryOp> op;
 };
 
+class UnaryFilterExpression : public FilterExpression {
+  public:
+    UnaryFilterExpression(std::string type_, std::string columnName_): FilterExpression(type_) {
+      columnName = columnName_;
+    };
+    ~UnaryFilterExpression(){};
+    std::string getColumnName();
+  protected:
+    std::string columnName;
+};
+
 template <typename T>
-class TypedUnaryFilterExpression : public FilterExpression {
+class TypedUnaryFilterExpression : public UnaryFilterExpression {
  public:
   TypedUnaryFilterExpression(std::string type_, std::string columnName_, T value_);
   void Execute(){};
@@ -102,18 +122,18 @@ class TypedUnaryFilterExpression : public FilterExpression {
 
  private:
   std::shared_ptr<UnaryFilter<T>> filter;
-  std::string columnName;
   T value;
   int columnIndex;
 };
 
-class StringFilterExpression : public FilterExpression {
+class StringFilterExpression : public UnaryFilterExpression {
  public:
   StringFilterExpression(std::string type_, std::string columnName_, std::string value_);
   ~StringFilterExpression(){};
   void setSchema(std::vector<Schema> schema_);
   int ExecuteWithParam(int batchSize, long* dataBuffers, long* nullBuffers,
                        char* outBuffers) = 0;
+  std::string getColumnName();
 
  protected:
   std::string type;
