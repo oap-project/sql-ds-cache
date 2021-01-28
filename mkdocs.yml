@@ -6,12 +6,12 @@ edit_uri: ""
 
 
 nav:
-- User Guide: User-Guide.md
-- Advanced Configuration: Advanced-Configuration.md
-- OAP Installation Guide: OAP-Installation-Guide.md
-- OAP Developer Guide: OAP-Developer-Guide.md
-- Developer Guide: Developer-Guide.md
-- Version Selector: "../"
+  - User Guide: User-Guide.md
+  - Advanced Configuration: Advanced-Configuration.md
+  - OAP Installation Guide: OAP-Installation-Guide.md
+  - OAP Developer Guide: OAP-Developer-Guide.md
+  - Developer Guide: Developer-Guide.md
+  - Version Selector: "../"
 
 
 
@@ -21,5 +21,6 @@ theme: readthedocs
 plugins:
   - search
   - mkdocs-versioning:
-      version: 1.1.0 
+      version: master
       exclude_from_nav: ["image", "js", "css", "fonts", "img"]
+

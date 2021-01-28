@@ -8,32 +8,35 @@ After following that document, you can continue more details for SQL Index and D
 
 ## Building
 
-### Building SQL Index and  Data Source Cache 
+### Building SQL DS Cache 
 
 Building with [Apache Maven\*](http://maven.apache.org/).
 
-Clone the OAP project:
+Before building, install PMem-Common locally:
 
 ```
-git clone -b <tag-version>  https://github.com/Intel-bigdata/OAP.git
-cd OAP
+git clone -b <tag-version> https://github.com/oap-project/pmem-common.git
+cd pmem-common
+mvn clean install -DskipTests
 ```
 
-Build the `oap-cache` package:
+Build the SQL DS Cache package:
 
 ```
-mvn clean -pl com.intel.oap:oap-cache -am package
+git clone -b <tag-version> https://github.com/oap-project/sql-ds-cache.git
+cd sql-ds-cache
+mvn clean -DskipTests package
 ```
 
 ### Running Tests
 
 Run all the tests:
 ```
-mvn clean -pl com.intel.oap:oap-cache -am test
+mvn clean test
 ```
 Run a specific test suite, for example `OapDDLSuite`:
 ```
-mvn -pl com.intel.oap:oap-cache -am -DwildcardSuites=org.apache.spark.sql.execution.datasources.oap.OapDDLSuite test
+mvn -DwildcardSuites=org.apache.spark.sql.execution.datasources.oap.OapDDLSuite test
 ```
 **NOTE**: Log level of unit tests currently default to ERROR, please override oap-cache/oap/src/test/resources/log4j.properties if needed.
 
@@ -103,22 +106,35 @@ sudo make install -j$(nproc)
    
 ```
 cd /tmp/arrow/java
-mvn clean -q -pl plasma -DskipTests install
+mvn clean -q  plasma -DskipTests install
 ```
 
 
 #### Building the package
 You need to add `-Ppersistent-memory` to build with PMem support. For `noevict` cache strategy, you also need to build with `-Ppersistent-memory` parameter.
 ```
-mvn clean -q -pl com.intel.oap:oap-cache -am  -Ppersistent-memory -DskipTests package
+cd <path>/pmem-common
+mvn clean install -Ppersistent-memory -DskipTests 
+cd <path>/sql-ds-cache
+mvn clean -DskipTests package
 ```
+
 For vmemcache cache strategy, please build with command:
+
 ```
-mvn clean -q -pl com.intel.oap:oap-cache -am -Pvmemcache -DskipTests package
+cd <path>/pmem-common
+mvn clean install -Pvmemcache -DskipTests
+cd <path>/sql-ds-cache
+mvn clean -DskipTests package
 ```
+
 Build with this command to use all of them:
+
 ```
-mvn clean -q -pl com.intel.oap:oap-cache -am  -Ppersistent-memory -Pvmemcache -DskipTests package
+cd <path>/pmem-common
+mvn clean install -Ppersistent-memory -Pvmemcache -DskipTests
+cd <path>/sql-ds-cache
+mvn clean -DskipTests package
 ```
 
 ## Enabling NUMA binding for PMem in Spark
