@@ -4,3 +4,8 @@
 *.sh
 # IDEA config files
 .idea/
+# Vscode config files
+*.project
+*.settings
+*.classpath
+.vscode/
