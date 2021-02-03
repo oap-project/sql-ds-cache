@@ -113,7 +113,7 @@ public class ParquetNativeRecordReaderWrapper {
         filterFileMetaDataByMidpoint(readFileMetaData(footerBytesStream), splitStart, splitStart + splitSize);
     }
 
-    protected InputStream getFooterBytesStream(FileSourceSplit split, Configuration configuration) throws IOException {
+    private InputStream getFooterBytesStream(FileSourceSplit split, Configuration configuration) throws IOException {
 
         org.apache.hadoop.fs.Path file = new org.apache.hadoop.fs.Path(split.path().toUri());
         HadoopInputFile inputFile = HadoopInputFile.fromPath(file, configuration);
@@ -150,7 +150,7 @@ public class ParquetNativeRecordReaderWrapper {
         return footerBytesStream;
     }
 
-    protected void filterFileMetaDataByMidpoint(FileMetaData metaData, long startOffset, long endOffset) {
+    private void filterFileMetaDataByMidpoint(FileMetaData metaData, long startOffset, long endOffset) {
         List<RowGroup> rowGroups = metaData.getRow_groups();
         int inputIndex = 0;
         Boolean flag = false;
