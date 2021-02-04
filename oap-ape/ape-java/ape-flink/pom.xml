@@ -155,6 +155,9 @@
                 <includes combine.children="append">
                   <include>com.intel.oap:oap-common</include>
                   <include>com.intel.oap:ape-common</include>
+				  <include>com.fasterxml.jackson.core:jackson-core</include>
+                  <include>com.fasterxml.jackson.core:jackson-annotations</include>
+                  <include>com.fasterxml.jackson.core:jackson-databind</include>
                 </includes>
               </artifactSet>
               <relocations>
