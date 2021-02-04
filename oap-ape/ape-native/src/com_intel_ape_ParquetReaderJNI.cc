@@ -79,3 +79,13 @@ JNIEXPORT void JNICALL Java_com_intel_ape_ParquetReaderJNI_setFilterStr(
   std::string filterJsonStr_ = env->GetStringUTFChars(filterJsonStr, nullptr);
   reader->setFilter(filterJsonStr_);
 }
+
+JNIEXPORT void JNICALL Java_com_intel_ape_ParquetReaderJNI_setAggStr(JNIEnv* env,
+                                                                     jclass cls,
+                                                                     jlong readerPtr,
+                                                                     jstring aggStr) {
+  Reader* reader = reinterpret_cast<Reader*>(readerPtr);
+  std::string aggStr_ = env->GetStringUTFChars(aggStr, nullptr);
+  ARROW_LOG(INFO) << "agg str is: " << aggStr_;
+  reader->setAgg(aggStr_);
+}

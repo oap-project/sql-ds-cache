@@ -72,6 +72,14 @@ JNIEXPORT void JNICALL Java_com_intel_ape_ParquetReaderJNI_close
 JNIEXPORT void JNICALL Java_com_intel_ape_ParquetReaderJNI_setFilterStr
   (JNIEnv *, jclass, jlong, jstring);
 
+/*
+ * Class:     com_intel_ape_ParquetReaderJNI
+ * Method:    setAggStr
+ * Signature: (JLjava/lang/String;)V
+ */
+JNIEXPORT void JNICALL Java_com_intel_ape_ParquetReaderJNI_setAggStr
+  (JNIEnv *, jclass, jlong, jstring);
+
 #ifdef __cplusplus
 }
 #endif

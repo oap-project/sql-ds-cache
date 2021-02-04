@@ -19,6 +19,7 @@ package org.apache.spark.sql.execution.datasources.parquet;
 
 import com.intel.ape.ParquetReaderJNI;
 import com.intel.ape.util.ParquetFilterPredicateConvertor;
+import com.intel.ape.util.ParquetAggregateConvertor;
 
 import static org.apache.parquet.hadoop.ParquetFileReader.readFooter;
 
@@ -115,6 +116,11 @@ public class ParquetNativeRecordReaderWrapper extends RecordReader<Void, Object>
   public void setFilter(FilterPredicate predicate) {
     String predicateStr = ParquetFilterPredicateConvertor.toJsonString(predicate);
     ParquetReaderJNI.setFilterStr(reader, predicateStr);
+  }
+
+  public void setAgg(String aggExpresion) {
+    String aggStr = ParquetAggregateConvertor.toJsonString(aggExpresion);
+    ParquetReaderJNI.setAggStr(reader, aggStr);
   }
 
   @Override

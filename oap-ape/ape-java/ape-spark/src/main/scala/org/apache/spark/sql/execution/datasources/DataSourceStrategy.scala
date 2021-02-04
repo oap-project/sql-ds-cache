@@ -526,6 +526,17 @@ object DataSourceStrategy {
   }
 
   /**
+   * Tries to translate aggregation expressions into an APE defined format Expression.
+   *
+   * @return a String for downstream(native) to parse.
+   */
+  protected[sql] def translateAggregate(groupingExpressions: Seq[Expression],
+                                        aggregateExpressions: Seq[NamedExpression]): String = {
+    "grouping expression: " + groupingExpressions.mkString(",") + "\n " +
+    "agg expression: " + aggregateExpressions.mkString((","))
+  }
+
+  /**
    * Tries to translate a Catalyst [[Expression]] into data source [[Filter]].
    *
    * @param predicate The input [[Expression]] to be translated as [[Filter]]

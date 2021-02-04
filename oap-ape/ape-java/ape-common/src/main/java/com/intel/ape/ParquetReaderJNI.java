@@ -41,4 +41,6 @@ public class ParquetReaderJNI {
 
   public static native void setFilterStr(long reader, String filterStr);
 
+  public static native void setAggStr(long reader, String aggStr);
+
 }

@@ -74,6 +74,16 @@ private[sql] object PruneFileSourcePartitions extends Rule[LogicalPlan] {
   }
 
   override def apply(plan: LogicalPlan): LogicalPlan = plan transformDown {
+    case op @ Aggregate(groupingExpressions, resultExpressions, child) =>
+      child match {
+        case PhysicalOperation(projects, filters,
+        logicalRelation @
+          LogicalRelation(fsRelation: HadoopFsRelation, _, _, _ )) =>
+            val aggExpr = DataSourceStrategy.translateAggregate(groupingExpressions, resultExpressions)
+            fsRelation.aggExpr_(aggExpr)
+            op
+        case _ => op
+      }
     case op @ PhysicalOperation(projects, filters,
         logicalRelation @
           LogicalRelation(fsRelation @
