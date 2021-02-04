@@ -51,6 +51,8 @@ class Reader {
 
   void setFilter(std::string filterJsonStr);
 
+  void setAgg(std::string aggStr);
+
  private:
   void convertSchema(std::string requiredColumnName);
 
