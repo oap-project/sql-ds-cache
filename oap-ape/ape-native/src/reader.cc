@@ -447,4 +447,8 @@ void Reader::setFilterColumnNames(std::shared_ptr<Expression> filter) {
   }
 }
 
+void Reader::setAgg(std::string aggStr) {
+  // do nothing now
+}
+
 }  // namespace ape

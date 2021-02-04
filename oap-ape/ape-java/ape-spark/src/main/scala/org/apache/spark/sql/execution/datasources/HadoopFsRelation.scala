@@ -50,6 +50,10 @@ case class HadoopFsRelation(
     options: Map[String, String])(val sparkSession: SparkSession)
   extends BaseRelation with FileRelation {
 
+  private var _aggExpr = ""
+  def aggExpr = _aggExpr
+  def aggExpr_(newAggExpr: String)= _aggExpr = newAggExpr
+
   override def sqlContext: SQLContext = sparkSession.sqlContext
 
   // When data and partition schemas have overlapping columns, the output

@@ -388,14 +388,26 @@ case class FileSourceScanExec(
 
   lazy val inputRDD: RDD[InternalRow] = {
     val readFile: (PartitionedFile) => Iterator[InternalRow] =
-      relation.fileFormat.buildReaderWithPartitionValues(
-        sparkSession = relation.sparkSession,
-        dataSchema = relation.dataSchema,
-        partitionSchema = relation.partitionSchema,
-        requiredSchema = requiredSchema,
-        filters = pushedDownFilters,
-        options = relation.options,
-        hadoopConf = relation.sparkSession.sessionState.newHadoopConfWithOptions(relation.options))
+      if(relation.fileFormat.isInstanceOf[ParquetSource]) {
+        relation.fileFormat.asInstanceOf[ParquetSource].buildParquetReader(
+          sparkSession = relation.sparkSession,
+          dataSchema = relation.dataSchema,
+          partitionSchema = relation.partitionSchema,
+          requiredSchema = requiredSchema,
+          filters = pushedDownFilters,
+          options = relation.options,
+          hadoopConf = relation.sparkSession.sessionState.newHadoopConfWithOptions(relation.options),
+          aggExpr = relation.aggExpr)
+      } else {
+        relation.fileFormat.buildReaderWithPartitionValues(
+          sparkSession = relation.sparkSession,
+          dataSchema = relation.dataSchema,
+          partitionSchema = relation.partitionSchema,
+          requiredSchema = requiredSchema,
+          filters = pushedDownFilters,
+          options = relation.options,
+          hadoopConf = relation.sparkSession.sessionState.newHadoopConfWithOptions(relation.options))
+      }
 
     val readRDD = if (bucketedScan) {
       createBucketedReadRDD(relation.bucketSpec.get, readFile, dynamicallySelectedPartitions,

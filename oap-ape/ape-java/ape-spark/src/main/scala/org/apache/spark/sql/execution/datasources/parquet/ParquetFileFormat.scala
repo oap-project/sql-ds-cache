@@ -195,6 +195,19 @@ class ParquetFileFormat
       filters: Seq[Filter],
       options: Map[String, String],
       hadoopConf: Configuration): (PartitionedFile) => Iterator[InternalRow] = {
+    buildParquetReader(sparkSession, dataSchema, partitionSchema, requiredSchema, filters, options,
+      hadoopConf, "")
+  }
+
+  def buildParquetReader(
+      sparkSession: SparkSession,
+      dataSchema: StructType,
+      partitionSchema: StructType,
+      requiredSchema: StructType,
+      filters: Seq[Filter],
+      options: Map[String, String],
+      hadoopConf: Configuration,
+      aggExpr: String): (PartitionedFile) => Iterator[InternalRow] = {
     hadoopConf.set(ParquetInputFormat.READ_SUPPORT_CLASS, classOf[ParquetReadSupport].getName)
     hadoopConf.set(
       ParquetReadSupport.SPARK_ROW_REQUESTED_SCHEMA,
@@ -317,7 +330,8 @@ class ParquetFileFormat
         reader.initialize(split, hadoopAttemptContext)
         if(enableParquetFilterPushDown && pushed.isDefined)
           reader.setFilter(pushed.get)
-
+        if (true) // TODO: config aggPushDownEnable
+          reader.setAgg(aggExpr)
         // UnsafeRowParquetRecordReader appends the columns internally to avoid another copy.
         iter.asInstanceOf[Iterator[InternalRow]]
       } else {
