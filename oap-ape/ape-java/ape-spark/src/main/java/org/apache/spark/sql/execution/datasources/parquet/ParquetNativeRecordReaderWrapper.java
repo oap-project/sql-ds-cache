@@ -119,8 +119,7 @@ public class ParquetNativeRecordReaderWrapper extends RecordReader<Void, Object>
   }
 
   public void setAgg(String aggExpresion) {
-    String aggStr = ParquetAggregateConvertor.toJsonString(aggExpresion);
-    ParquetReaderJNI.setAggStr(reader, aggStr);
+    ParquetReaderJNI.setAggStr(reader, aggExpresion);
   }
 
   @Override

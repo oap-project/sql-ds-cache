@@ -79,8 +79,15 @@ private[sql] object PruneFileSourcePartitions extends Rule[LogicalPlan] {
         case PhysicalOperation(projects, filters,
         logicalRelation @
           LogicalRelation(fsRelation: HadoopFsRelation, _, _, _ )) =>
-            val aggExpr = DataSourceStrategy.translateAggregate(groupingExpressions, resultExpressions)
-            fsRelation.aggExpr_(aggExpr)
+            // TODO: whether this agg could pushDown
+            val PDEnable = true
+            val canPD = DataSourceStrategy.canAggExprPushDown(groupingExpressions, resultExpressions)
+            if (PDEnable && canPD) {
+              val aggExpr = DataSourceStrategy.translateAggregate(groupingExpressions, resultExpressions)
+              fsRelation.aggExpr_(aggExpr)
+              // TODO: we should mark this node will be pushdown or
+              // replace this node for further SparkPlan generation.
+            }
             op
         case _ => op
       }
