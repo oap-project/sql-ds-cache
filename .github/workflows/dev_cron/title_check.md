@@ -20,13 +20,13 @@
 Thanks for opening a pull request!
 
 Could you open an issue for this pull request on Github Issues?
-https://github.com/Intel-bigdata/OAP/issues
+https://github.com/oap-project/sql-ds-cache/issues
 
 Then could you also rename ***pull request title*** and ***commit log*** in the following format?
 
-    [OAP-${ISSUES_ID}][optional:${MUDULENAME}] ${detailed message}
+    [SQL-DS-CACHE-${ISSUES_ID}] ${detailed message}
 
 See also:
 
-  * [Other pull requests](https://github.com/Intel-bigdata/OAP/pulls/)
+  * [Other pull requests](https://github.com/oap-project/sql-ds-cache/pulls/)
 
