@@ -21,6 +21,7 @@ import java.util.Locale
 
 import scala.collection.mutable
 
+import com.intel.ape.util.ParquetAggregateConvertor
 import org.apache.hadoop.fs.Path
 
 import org.apache.spark.internal.Logging
@@ -526,14 +527,27 @@ object DataSourceStrategy {
   }
 
   /**
+   * Whether an aggregation node could be pushed down. An agg node may have multi expressions,
+   * we will pushdown all or nothing.
+   * TODO: add rule
+   *
+   * @return a Boolean value represent whether this node could pushdown.
+   */
+  protected[sql] def canAggExprPushDown(groupingExpressions: Seq[Expression],
+                                        aggregateExpressions: Seq[NamedExpression]) : Boolean = {
+    true
+  }
+
+  /**
    * Tries to translate aggregation expressions into an APE defined format Expression.
    *
-   * @return a String for downstream(native) to parse.
+   * @return a Json String for downstream(native) to parse.
    */
   protected[sql] def translateAggregate(groupingExpressions: Seq[Expression],
                                         aggregateExpressions: Seq[NamedExpression]): String = {
-    "grouping expression: " + groupingExpressions.mkString(",") + "\n " +
-    "agg expression: " + aggregateExpressions.mkString((","))
+    ParquetAggregateConvertor.toJsonString(
+      scala.collection.JavaConverters.seqAsJavaList(groupingExpressions),
+      scala.collection.JavaConverters.seqAsJavaList(aggregateExpressions))
   }
 
   /**
