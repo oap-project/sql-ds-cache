@@ -17,10 +17,14 @@
 
 #pragma once
 
+#include <chrono>
+#include <memory>
 #include <string>
+#include <vector>
 
 #include <nlohmann/json.hpp>
 
+#include "AggExpression.h"
 #include "FilterExpression.h"
 #include "expression.h"
 
@@ -28,10 +32,22 @@ namespace ape {
 
 class JsonConvertor {
  public:
-  static std::shared_ptr<Expression> parseToFilterExpression(
-      std::string jsonString);
-
+  static std::shared_ptr<Expression> parseToFilterExpression(std::string jsonString);
   static std::shared_ptr<Expression> parseToFilterExpression(nlohmann::json root);
+
+  static std::vector<std::shared_ptr<Expression>> parseToGroupByExpressions(
+      std::string jsonString);
+  static std::vector<std::shared_ptr<Expression>> parseToGroupByExpressions(
+      nlohmann::json root);
+
+  static std::vector<std::shared_ptr<Expression>> parseToAggExpressions(
+      std::string jsonString);
+  static std::vector<std::shared_ptr<Expression>> parseToAggExpressions(
+      nlohmann::json root);
+
+ private:
+  static std::shared_ptr<WithResultExpression> parseToAggExpressionsHelper(
+      nlohmann::json root);
 };
 
 }  // namespace ape
