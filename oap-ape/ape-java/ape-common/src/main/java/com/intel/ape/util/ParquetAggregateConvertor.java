@@ -42,7 +42,7 @@ public class ParquetAggregateConvertor {
       groupByList.add(constructTree(expr, null));
     }
     groupByArrayNode.addAll(groupByList);
-    ((ObjectNode) rootNode).put("GroupByExprs", groupByArrayNode);
+    ((ObjectNode) rootNode).put("groupByExprs", groupByArrayNode);
 
     ArrayNode AggArrayNode = objectMapper.createArrayNode();
     ArrayList<JsonNode> aggList = new ArrayList<>();
@@ -50,7 +50,7 @@ public class ParquetAggregateConvertor {
       aggList.add(constructTree(expr, null));
     }
     AggArrayNode.addAll(aggList);
-    ((ObjectNode) rootNode).put("AggregateExprs", AggArrayNode);
+    ((ObjectNode) rootNode).put("aggregateExprs", AggArrayNode);
 
     return rootNode;
   }
@@ -67,61 +67,61 @@ public class ParquetAggregateConvertor {
 
     if (expr instanceof Alias) {
       Alias tmpExpr = (Alias) expr;
-      ((ObjectNode) tmpNode).put("AliasName", tmpExpr.name());
+      ((ObjectNode) tmpNode).put("aliasName", tmpExpr.name());
       return constructTree(exprs.get(0), tmpNode);
     } else if (expr instanceof AggregateExpression) {  // this will be root node for a agg expr.
       AggregateExpression tmpExpr = (AggregateExpression) expr;
-      ((ObjectNode) tmpNode).put("ExprName", "rootAgg");
+      ((ObjectNode) tmpNode).put("exprName", "RootAgg");
       ((ObjectNode) tmpNode).put("isDistinct", tmpExpr.isDistinct());
       ((ObjectNode) tmpNode).put("child", constructTree(exprs.get(0), null));
       return tmpNode;
     } else if (expr instanceof Cast) {
       assert (exprs.size() == 1); // should only have one node
       Cast tmpExpr = (Cast) expr;
-      ((ObjectNode) tmpNode).put("CastType", tmpExpr.dataType().toString());
+      ((ObjectNode) tmpNode).put("castType", tmpExpr.dataType().toString());
       return constructTree(exprs.get(0), tmpNode);
 
     } else if (expr instanceof PromotePrecision) {
       assert (exprs.size() == 1); // should only have one node
       PromotePrecision tmpExpr = (PromotePrecision) expr;
-      ((ObjectNode) tmpNode).put("PromotePrecision", true);
+      ((ObjectNode) tmpNode).put("promotePrecision", true);
       return constructTree(exprs.get(0), tmpNode);
 
     } else if (expr instanceof CheckOverflow) {
       assert (exprs.size() == 1); // should only have one node
       CheckOverflow tmpExpr = (CheckOverflow) expr;
-      ((ObjectNode) tmpNode).put("CheckOverflow", true);
-      ((ObjectNode) tmpNode).put("CheckOverflowType", tmpExpr.dataType().toString());
+      ((ObjectNode) tmpNode).put("checkOverflow", true);
+      ((ObjectNode) tmpNode).put("checkOverflowType", tmpExpr.dataType().toString());
       ((ObjectNode) tmpNode).put("nullOnOverFlow", tmpExpr.nullOnOverflow());
       return constructTree(exprs.get(0), tmpNode);
 
     } else if (expr instanceof Sum || expr instanceof Min || expr instanceof Max ||
             expr instanceof Average || expr instanceof Count) {  // use DeclarativeAggregate ?
       assert (exprs.size() == 1);
-      ((ObjectNode) tmpNode).put("ExprName", expr.nodeName());
+      ((ObjectNode) tmpNode).put("exprName", expr.nodeName());
       ((ObjectNode) tmpNode).put("child", constructTree(exprs.get(0), null));
       return tmpNode;
     } else if (expr instanceof BinaryArithmetic) { // Add sub Multiply ...
       assert (exprs.size() == 2);
-      ((ObjectNode) tmpNode).put("ExprName", expr.nodeName());
-      ((ObjectNode) tmpNode).put("LeftNode", constructTree(exprs.get(0), null));
-      ((ObjectNode) tmpNode).put("RightNode", constructTree(exprs.get(1), null));
+      ((ObjectNode) tmpNode).put("exprName", expr.nodeName());
+      ((ObjectNode) tmpNode).put("leftNode", constructTree(exprs.get(0), null));
+      ((ObjectNode) tmpNode).put("rightNode", constructTree(exprs.get(1), null));
       return tmpNode;
 
     } else if (expr instanceof AttributeReference) {  // leaf node AttributeReference
       assert (exprs.size() == 0);
       AttributeReference tmpExpr = (AttributeReference) expr;
-      ((ObjectNode) tmpNode).put("ExprName", "AttributeReference");
-      ((ObjectNode) tmpNode).put("DataType", tmpExpr.dataType().toString());
-      ((ObjectNode) tmpNode).put("ColumnName", tmpExpr.name());
+      ((ObjectNode) tmpNode).put("exprName", "AttributeReference");
+      ((ObjectNode) tmpNode).put("dataType", tmpExpr.dataType().toString());
+      ((ObjectNode) tmpNode).put("columnName", tmpExpr.name());
       return tmpNode;
 
     } else if (expr instanceof Literal) {   // leaf node AttributeReference
       assert (exprs.size() == 0);
       Literal tmpExpr = (Literal) expr;
-      ((ObjectNode) tmpNode).put("ExprName", "Literal");
-      ((ObjectNode) tmpNode).put("DataType", tmpExpr.dataType().toString());
-      ((ObjectNode) tmpNode).put("Value", tmpExpr.value().toString());
+      ((ObjectNode) tmpNode).put("exprName", "Literal");
+      ((ObjectNode) tmpNode).put("dataType", tmpExpr.dataType().toString());
+      ((ObjectNode) tmpNode).put("value", tmpExpr.value().toString());
       return tmpNode;
 
     } else {

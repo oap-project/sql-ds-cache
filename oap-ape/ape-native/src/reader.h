@@ -27,6 +27,7 @@
 #include <arrow/util/logging.h>
 #include <parquet/api/reader.h>
 
+#include "utils/AggExpression.h"
 #include "utils/FilterExpression.h"
 #include "utils/jsonConvertor.h"
 #include "utils/type.h"
@@ -99,5 +100,7 @@ class Reader {
   std::vector<char*> filterDataBuffers;
   std::vector<char*> filterNullBuffers;
 
+  std::vector<std::shared_ptr<Expression>> aggExprs;
+  std::vector<std::shared_ptr<Expression>> groupByExprs;
 };
 }  // namespace ape
