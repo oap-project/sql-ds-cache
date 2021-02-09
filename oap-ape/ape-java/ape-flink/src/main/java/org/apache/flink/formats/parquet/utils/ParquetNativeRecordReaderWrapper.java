@@ -33,7 +33,7 @@ import com.intel.ape.ParquetReaderJNI;
 import com.intel.ape.util.ParquetFilterPredicateConvertor;
 import org.apache.flink.connector.file.src.FileSourceSplit;
 import org.apache.flink.core.fs.Path;
-import org.apache.flink.formats.parquet.vector.nativevector.NativeBoolenVector;
+import org.apache.flink.formats.parquet.vector.nativevector.NativeBooleanVector;
 import org.apache.flink.formats.parquet.vector.nativevector.NativeBytesVector;
 import org.apache.flink.formats.parquet.vector.nativevector.NativeDoubleVector;
 import org.apache.flink.formats.parquet.vector.nativevector.NativeFloatVector;
@@ -74,17 +74,19 @@ public class ParquetNativeRecordReaderWrapper {
 
     private final List<Long> allocatedMemory = new ArrayList<>();
 
+    private boolean isAggregatePushedDown = false;
+
     public ParquetNativeRecordReaderWrapper(int capacity) {
         this.batchSize = capacity;
     }
 
-    public long initialize(SerializableConfiguration hadoopConfig, RowType projectedType, FileSourceSplit split)
+    public long initialize(Configuration hadoopConfig, RowType projectedType, FileSourceSplit split)
             throws IOException {
 
         final Path filePath = split.path();
-        getRequiredSplitRowGroup(split, hadoopConfig.conf());
+        getRequiredSplitRowGroup(split, hadoopConfig);
         final String fileName = filePath.toUri().getRawPath();
-        final String hdfs = hadoopConfig.conf().get("fs.defaultFS"); // this string is like hdfs://host:port
+        final String hdfs = hadoopConfig.get("fs.defaultFS"); // this string is like hdfs://host:port
         String[] res = hdfs.split(":");
         String hdfsHost = filePath.toUri().getHost() != null ? filePath.toUri().getHost() : res[1].substring(2);
         int hdfsPort = filePath.toUri().getPort() != -1 ? filePath.toUri().getPort() : Integer.parseInt(res[2]);
@@ -191,8 +193,13 @@ public class ParquetNativeRecordReaderWrapper {
         WritableColumnVector[] columns = new WritableColumnVector[projectedType.getFieldCount()];
 
         for (int i = 0; i < projectedType.getFieldCount(); i++) {
-            PrimitiveType primitiveType = requestSchema.getColumns().get(i).getPrimitiveType();
-            PrimitiveType.PrimitiveTypeName typeName = primitiveType.getPrimitiveTypeName();
+            PrimitiveType primitiveType = null;
+            PrimitiveType.PrimitiveTypeName typeName = null;
+
+            if (!isAggregatePushedDown) {
+                primitiveType = requestSchema.getColumns().get(i).getPrimitiveType();
+                typeName = primitiveType.getPrimitiveTypeName();
+            }
             LogicalType fieldType = projectedType.getTypeAt(i);
 
             long nullPtr = Platform.allocateMemory(batchSize);
@@ -202,8 +209,9 @@ public class ParquetNativeRecordReaderWrapper {
             int typeSize = 1;
             switch (fieldType.getTypeRoot()) {
                 case BOOLEAN:
-                    checkArgument(typeName == PrimitiveType.PrimitiveTypeName.BOOLEAN, "Unexpected type: %s", typeName);
-                    NativeBoolenVector booleanVector = new NativeBoolenVector(batchSize, typeSize);
+                    checkArgument(typeName == null || typeName == PrimitiveType.PrimitiveTypeName.BOOLEAN,
+                            "Unexpected type: %s", typeName);
+                    NativeBooleanVector booleanVector = new NativeBooleanVector(batchSize, typeSize);
                     bufferPtr = Platform.allocateMemory(batchSize * typeSize);
                     booleanVector.setPtr(bufferPtr, nullPtr, batchSize);
                     columns[i] = booleanVector;
@@ -212,7 +220,8 @@ public class ParquetNativeRecordReaderWrapper {
                 case SMALLINT:
                 case INTEGER:
                 case TIME_WITHOUT_TIME_ZONE:
-                    checkArgument(typeName == PrimitiveType.PrimitiveTypeName.INT32, "Unexpected type: %s", typeName);
+                    checkArgument(typeName == null || typeName == PrimitiveType.PrimitiveTypeName.INT32,
+                            "Unexpected type: %s", typeName);
                     typeSize = 4;
                     NativeIntVector intVector = new NativeIntVector(batchSize, typeSize);
                     bufferPtr = Platform.allocateMemory(batchSize * typeSize);
@@ -220,7 +229,8 @@ public class ParquetNativeRecordReaderWrapper {
                     columns[i] = intVector;
                     break;
                 case BIGINT:
-                    checkArgument(typeName == PrimitiveType.PrimitiveTypeName.INT64, "Unexpected type: %s", typeName);
+                    checkArgument(typeName == null || typeName == PrimitiveType.PrimitiveTypeName.INT64,
+                            "Unexpected type: %s", typeName);
                     typeSize = 8;
                     NativeLongVector longVector = new NativeLongVector(batchSize, typeSize);
                     bufferPtr = Platform.allocateMemory(batchSize * typeSize);
@@ -228,7 +238,8 @@ public class ParquetNativeRecordReaderWrapper {
                     columns[i] = longVector;
                     break;
                 case FLOAT:
-                    checkArgument(typeName == PrimitiveType.PrimitiveTypeName.FLOAT, "Unexpected type: %s", typeName);
+                    checkArgument(typeName == null || typeName == PrimitiveType.PrimitiveTypeName.FLOAT,
+                            "Unexpected type: %s", typeName);
                     typeSize = 4;
                     NativeFloatVector floatVector = new NativeFloatVector(batchSize, typeSize);
                     bufferPtr = Platform.allocateMemory(batchSize * typeSize);
@@ -236,7 +247,8 @@ public class ParquetNativeRecordReaderWrapper {
                     columns[i] = floatVector;
                     break;
                 case DOUBLE:
-                    checkArgument(typeName == PrimitiveType.PrimitiveTypeName.DOUBLE, "Unexpected type: %s", typeName);
+                    checkArgument(typeName == null || typeName == PrimitiveType.PrimitiveTypeName.DOUBLE,
+                            "Unexpected type: %s", typeName);
                     typeSize = 8;
                     NativeDoubleVector doubleVector = new NativeDoubleVector(batchSize, typeSize);
                     bufferPtr = Platform.allocateMemory(batchSize * typeSize);
@@ -247,7 +259,8 @@ public class ParquetNativeRecordReaderWrapper {
                 case VARCHAR:
                 case BINARY:
                 case VARBINARY:
-                    checkArgument(typeName == PrimitiveType.PrimitiveTypeName.BINARY, "Unexpected type: %s", typeName);
+                    checkArgument(typeName == null || typeName == PrimitiveType.PrimitiveTypeName.BINARY,
+                            "Unexpected type: %s", typeName);
                     typeSize = 16;
                     NativeBytesVector bytesVector = new NativeBytesVector(batchSize, typeSize);
                     bufferPtr = Platform.allocateMemory(batchSize * typeSize);
@@ -258,9 +271,12 @@ public class ParquetNativeRecordReaderWrapper {
                     DecimalType decimalType = (DecimalType) fieldType;
                     if (DecimalDataUtils.is32BitDecimal(decimalType.getPrecision())) {
                         checkArgument(
-                                (typeName == PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY
-                                        || typeName == PrimitiveType.PrimitiveTypeName.INT32)
-                                        && primitiveType.getOriginalType() == OriginalType.DECIMAL,
+                                (typeName == null
+                                        || typeName == PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY
+                                        || typeName == PrimitiveType.PrimitiveTypeName.INT32
+                                ) && (primitiveType == null
+                                        || primitiveType.getOriginalType() == OriginalType.DECIMAL
+                                ),
                                 "Unexpected type: %s", typeName);
                         typeSize = 4;
                         NativeIntVector decimal32Vector = new NativeIntVector(batchSize, typeSize);
@@ -269,9 +285,12 @@ public class ParquetNativeRecordReaderWrapper {
                         columns[i] = decimal32Vector;
                     } else if (DecimalDataUtils.is64BitDecimal(decimalType.getPrecision())) {
                         checkArgument(
-                                (typeName == PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY
-                                        || typeName == PrimitiveType.PrimitiveTypeName.INT64)
-                                        && primitiveType.getOriginalType() == OriginalType.DECIMAL,
+                                (typeName == null
+                                        || typeName == PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY
+                                        || typeName == PrimitiveType.PrimitiveTypeName.INT64
+                                ) && (primitiveType == null
+                                        || primitiveType.getOriginalType() == OriginalType.DECIMAL
+                                ),
                                 "Unexpected type: %s", typeName);
 
                         typeSize = 8;
@@ -347,6 +366,13 @@ public class ParquetNativeRecordReaderWrapper {
         if (filterPredicate != null) {
             String predicateStr = ParquetFilterPredicateConvertor.toJsonString(filterPredicate);
             ParquetReaderJNI.setFilterStr(reader, predicateStr);
+        }
+    }
+
+    public void setAggStr(String aggStr) {
+        if (aggStr != null && !aggStr.isEmpty()) {
+            ParquetReaderJNI.setAggStr(reader, aggStr);
+            isAggregatePushedDown = true;
         }
     }
 

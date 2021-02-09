@@ -21,7 +21,7 @@ package org.apache.flink.formats.parquet.vector.nativevector;
 import org.apache.flink.formats.parquet.utils.Platform;
 import org.apache.flink.table.data.vector.heap.HeapBooleanVector;
 
-public class NativeBoolenVector extends HeapBooleanVector implements NativeVector {
+public class NativeBooleanVector extends HeapBooleanVector implements NativeVector {
 
     private static final long serialVersionUID = 7216045902943789034L;
 
@@ -30,7 +30,7 @@ public class NativeBoolenVector extends HeapBooleanVector implements NativeVecto
     private int capacity = 0;
     private long nullPtr = 0;
 
-    public NativeBoolenVector(int len, int typeLength) {
+    public NativeBooleanVector(int len, int typeLength) {
         super(len);
         typeSize = typeLength;
     }
