@@ -449,6 +449,9 @@ void Reader::setFilterColumnNames(std::shared_ptr<Expression> filter) {
 
 void Reader::setAgg(std::string aggStr) {
   // do nothing now
+  groupByExprs = JsonConvertor::parseToGroupByExpressions(aggStr);
+  aggExprs = JsonConvertor::parseToAggExpressions(aggStr);
+
 }
 
 }  // namespace ape
