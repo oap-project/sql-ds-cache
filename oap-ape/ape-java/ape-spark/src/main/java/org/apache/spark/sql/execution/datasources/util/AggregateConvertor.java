@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package com.intel.ape.util;
+package org.apache.spark.sql.execution.datasources.util;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -27,7 +27,7 @@ import org.apache.spark.sql.catalyst.expressions.aggregate.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ParquetAggregateConvertor {
+public class AggregateConvertor {
   public static String toJsonString(List<Expression> groupByExprs, List<Expression> aggExprs) {
     return toJson(groupByExprs, aggExprs).toString();
   }

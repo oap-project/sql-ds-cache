@@ -19,7 +19,6 @@ package org.apache.spark.sql.execution.datasources.parquet;
 
 import com.intel.ape.ParquetReaderJNI;
 import com.intel.ape.util.ParquetFilterPredicateConvertor;
-import com.intel.ape.util.ParquetAggregateConvertor;
 
 import static org.apache.parquet.hadoop.ParquetFileReader.readFooter;
 
