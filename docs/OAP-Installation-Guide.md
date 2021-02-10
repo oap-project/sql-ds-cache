@@ -43,9 +43,9 @@ $ conda install -c conda-forge -c intel -y oap=1.0.0
 
 Once finished steps above, you have completed OAP dependencies installation and OAP building, and will find built OAP jars under `$HOME/miniconda2/envs/oapenv/oap_jars`
 
-#### Extra Steps for Shuffle Remote PMem Extension
+#### Extra Steps for PMem Shuffle
 
-If you use one of OAP features -- [PMmem Shuffle](https://github.com/oap-project/pmem-shuffle) with **RDMA**, you need to configure and validate RDMA, please refer to [PMem Shuffle](https://github.com/oap-project/pmem-shuffle#4-configure-and-validate-rdma) for the details.
+If you use one of OAP features -- [PMem Shuffle](https://github.com/oap-project/pmem-shuffle) with **RDMA**, you need to configure and validate RDMA, please refer to [PMem Shuffle](https://github.com/oap-project/pmem-shuffle#4-configure-and-validate-rdma) for the details.
 
 
 ##  Configuration
