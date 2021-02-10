@@ -21,7 +21,7 @@ import java.util.Locale
 
 import scala.collection.mutable
 
-import com.intel.ape.util.ParquetAggregateConvertor
+import org.apache.spark.sql.execution.datasources.util.AggregateConvertor
 import org.apache.hadoop.fs.Path
 
 import org.apache.spark.internal.Logging
@@ -545,7 +545,7 @@ object DataSourceStrategy {
    */
   protected[sql] def translateAggregate(groupingExpressions: Seq[Expression],
                                         aggregateExpressions: Seq[NamedExpression]): String = {
-    ParquetAggregateConvertor.toJsonString(
+    AggregateConvertor.toJsonString(
       scala.collection.JavaConverters.seqAsJavaList(groupingExpressions),
       scala.collection.JavaConverters.seqAsJavaList(aggregateExpressions))
   }

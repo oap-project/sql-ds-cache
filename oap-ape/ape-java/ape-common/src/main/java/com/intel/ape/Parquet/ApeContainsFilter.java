@@ -19,7 +19,6 @@ package com.intel.ape.Parquet;
 
 import org.apache.parquet.filter2.predicate.Statistics;
 import org.apache.parquet.io.api.Binary;
-import org.apache.spark.unsafe.types.UTF8String;
 
 
 public class ApeContainsFilter extends ApeLikeFilter {
@@ -29,13 +28,12 @@ public class ApeContainsFilter extends ApeLikeFilter {
 
   @Override
   public boolean keep(Binary binary) {
-    return binary != null && UTF8String.fromBytes(binary.getBytes()).contains(
-            UTF8String.fromBytes(strToBinary.getBytes()));
+    return binary != null;
   }
 
   @Override
   public boolean canDrop(Statistics<Binary> statistics) {
-return false;
+    return false;
   }
 
   @Override

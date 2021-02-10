@@ -19,7 +19,7 @@ package com.intel.ape;
 
 import com.intel.ape.ParquetReaderJNI;
 
-import org.apache.spark.unsafe.Platform;
+import com.intel.ape.util.Platform;
 
 class ParquetReaderTest {
 
