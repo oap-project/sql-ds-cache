@@ -20,7 +20,6 @@ package com.intel.ape.Parquet;
 import org.apache.parquet.filter2.predicate.Statistics;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.PrimitiveComparator;
-import org.apache.spark.unsafe.types.UTF8String;
 
 
 public class ApeEndWithFilter extends ApeLikeFilter {
@@ -30,8 +29,7 @@ public class ApeEndWithFilter extends ApeLikeFilter {
 
   @Override
   public boolean keep(Binary binary) {
-    return binary != null && UTF8String.fromBytes(binary.getBytes()).endsWith(
-            UTF8String.fromBytes(strToBinary.getBytes()));
+    return binary != null;
   }
 
   @Override
