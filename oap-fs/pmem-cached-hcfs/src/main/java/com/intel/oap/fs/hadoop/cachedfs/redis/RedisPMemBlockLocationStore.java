@@ -7,8 +7,10 @@ import org.apache.hadoop.conf.Configuration;
 import redis.clients.jedis.Tuple;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -43,6 +45,33 @@ public class RedisPMemBlockLocationStore implements PMemBlockLocationStore {
                                 host)
                 );
 
+    }
+
+
+    @Override
+    public void addBlockLocations(List<PMemBlock> blocks, String host) {
+        if (blocks == null || blocks.isEmpty() || host == null || host.trim().isEmpty()) {
+            return;
+        }
+
+        String path = blocks.get(0).getPath().toString();
+
+        Map<String, Double> scoreMembers = new HashMap<>();
+        blocks.forEach(block -> {
+            scoreMembers.put(
+                String.format(
+                    "%d%s%d%s%s",
+                    block.getOffset(),
+                    REDIS_ZSET_VALUE_DELIM,
+                    block.getLength(),
+                    REDIS_ZSET_VALUE_DELIM,
+                    host
+                ),
+                (double) block.getOffset()
+            );
+        });
+
+        RedisUtils.getRedisClient(this.conf).zadd(path, scoreMembers);
     }
 
     @Override

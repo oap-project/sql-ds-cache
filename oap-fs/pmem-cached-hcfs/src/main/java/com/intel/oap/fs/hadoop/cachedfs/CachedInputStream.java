@@ -37,6 +37,9 @@ import java.io.IOException;
 import java.io.EOFException;
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Pattern;
 
 public class CachedInputStream extends FSInputStream {
   private static final Logger LOG = LoggerFactory.getLogger(CachedInputStream.class);
@@ -61,6 +64,15 @@ public class CachedInputStream extends FSInputStream {
   private final long pmemCachedBlockSize;
   private ObjectId[] ids;
 
+  private int cacheMissCount = 0;
+  private int cacheHitCount = 0;
+  private List<PMemBlock> cachedBlocks = new ArrayList<>();
+
+  // white list and black list regular expressions that decide whether to cache or not
+  private String cacheWhiteListRegexp;
+  private String cacheBlackListRegexp;
+  private boolean fileShouldBeCached;
+
   public CachedInputStream(FSDataInputStream hdfsInputStream, Configuration conf,
                            Path path, int bufferSize, long contentLength) {
     this.hdfsInputStream = hdfsInputStream;
@@ -81,7 +93,20 @@ public class CachedInputStream extends FSInputStream {
     this.statisticsStore = new RedisGlobalPMemCacheStatisticsStore(conf);
     this.ids = new ObjectId[(int)((contentLength + pmemCachedBlockSize - 1) / pmemCachedBlockSize)];
 
-    LOG.debug("Opening file: {} for reading.", path);
+    cacheWhiteListRegexp = conf.get(Constants.CONF_KEY_CACHE_WHITE_LIST_REGEXP,
+            Constants.DEFAULT_CACHE_WHITE_LIST_REGEXP);
+
+    cacheBlackListRegexp = conf.get(Constants.CONF_KEY_CACHE_BLACK_LIST_REGEXP,
+            Constants.DEFAULT_CACHE_BLACK_LIST_REGEXP);
+
+    fileShouldBeCached = checkFileShouldBeCached();
+
+    LOG.info("Opening file: {} for reading. fileShouldBeCached: {}", path, fileShouldBeCached);
+  }
+
+  private boolean checkFileShouldBeCached() {
+    return (cacheWhiteListRegexp.isEmpty() || Pattern.compile(cacheWhiteListRegexp).matcher(path.toString()).find())
+            && (cacheBlackListRegexp.isEmpty() || !Pattern.compile(cacheBlackListRegexp).matcher(path.toString()).find());
   }
 
   private void advanceCachePosition(long pos) {
@@ -156,22 +181,26 @@ public class CachedInputStream extends FSInputStream {
     currentBlock = new PMemBlock(path, currentCachePos, bytesToRead);
     ObjectId id = new ObjectId(currentBlock.getCacheKey());
 
-    boolean cached = true;
+    boolean cacheHit = false;
+    boolean cacheValid = false;
     ByteBuffer cachedByteBuffer = null;
-    boolean hit = cacheManager.contains(id);
+    if (fileShouldBeCached) {
+      cacheHit = cacheManager.contains(id);
+    }
 
     // read block from cache
-    if (hit) {
+    if (cacheHit) {
       LOG.debug("read block from cache: {}", currentBlock);
-      this.statisticsStore.incrementCacheHit(1);
 
       // get cache
       try {
         cachedByteBuffer = ((SimpleFiberCache)cacheManager.get(id)).getBuffer();
+        cacheHitCount += 1;
+        cacheValid = true;
       } catch (Exception ex) {
         // fail
         LOG.warn("exception when get cache: {}, block: {}", ex.toString(), currentBlock);
-        cached = false;
+        cacheValid = false;
 
         // remove cache
         try {
@@ -185,9 +214,11 @@ public class CachedInputStream extends FSInputStream {
     }
 
     // read block from HDFS
-    if (!hit || !cached){
+    if (!cacheHit || !cacheValid){
       LOG.info("read block from hdfs: {}", currentBlock);
-      this.statisticsStore.incrementCacheMissed(1);
+      if (fileShouldBeCached) {
+        cacheMissCount += 1;
+      }
       hdfsInputStream.seek(currentCachePos);
       byte[] cacheBytes = new byte[(int)bytesToRead];
       hdfsInputStream.readFully(cacheBytes);
@@ -195,33 +226,25 @@ public class CachedInputStream extends FSInputStream {
       hdfsInputStream.seek(pos);
 
       // save to cache
-      if (!cacheManager.contains(id)) {
+      if (fileShouldBeCached && !cacheManager.contains(id)) {
         try {
           FiberCache fiberCache = cacheManager.create(id, bytesToRead);
           ((SimpleFiberCache)fiberCache).getBuffer().put(cacheBytes);
           cacheManager.seal(id);
           ids[(int)(currentCachePos / pmemCachedBlockSize)] = id;
           LOG.info("data cached to pmem for block: {}", currentBlock);
+          cacheValid = true;
         } catch (Exception ex) {
-          cached = false;
+          cacheValid = false;
           LOG.warn("exception, data not cached to pmem for block: {}", currentBlock);
         }
       } else {
-        LOG.info("data already cached to pmem by others for block: {}", currentBlock);
+        LOG.debug("data will not be cached since it's in blacklist or it's already cached: {}", currentBlock);
       }
     }
 
-    if (cached) {
-      // save location info to redis
-      String host = "";
-      try {
-        host = InetAddress.getLocalHost().getHostName();
-
-        this.locationStore.addBlockLocation(currentBlock, host);
-        LOG.debug("block location saved for block: {}, host: {}", currentBlock, host);
-      } catch (Exception ex) {
-        // ignore
-      }
+    if (fileShouldBeCached && cacheValid) {
+      cachedBlocks.add(new PMemBlock(currentBlock.getPath(), currentBlock.getOffset(), currentBlock.getLength()));
     }
 
     currentBlock.setData(cachedByteBuffer);
@@ -271,6 +294,22 @@ public class CachedInputStream extends FSInputStream {
       super.close();
       hdfsInputStream.close();
       closed = true;
+
+      // set cache locations to redis
+      String host = "";
+      try {
+        host = InetAddress.getLocalHost().getHostName();
+        locationStore.addBlockLocations(cachedBlocks, host);
+        LOG.debug("block locations saved. path: {}, host: {}", path.toString(), host);
+      } catch (Exception ex) {
+        // ignore
+        LOG.warn("block locations failed to be saved. path: {}, host: {}", path.toString(), host);
+      }
+
+      // set cache hit/miss count
+      statisticsStore.incrementCacheHit(cacheHitCount);
+      statisticsStore.incrementCacheMissed(cacheMissCount);
+
       for (int i = 0; i < ids.length; i++) {
         if (ids[i] != null) {
           cacheManager.release(ids[i]);
