@@ -23,6 +23,7 @@
 
   <modules>
     <module>Plasma-based-cache</module>
+    <module>HCFS-based-cache</module>
   </modules>
 
 </project>
