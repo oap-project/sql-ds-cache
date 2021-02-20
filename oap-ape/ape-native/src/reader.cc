@@ -43,7 +43,9 @@ void Reader::init(std::string fileName, std::string hdfsHost, int hdfsPort,
   }
   ARROW_LOG(DEBUG) << "HadoopFileSystem Make succeed. ";
 
-  std::shared_ptr<FileSystem> fs = std::make_shared<SubTreeFileSystem>("", *result);
+  // move and keep the result to prevent the FileSystem from destruction
+  fsResult = result;
+  std::shared_ptr<FileSystem> fs = std::make_shared<SubTreeFileSystem>("", fsResult.ValueOrDie());
   auto fileResult = fs->OpenInputFile(fileName);
   if (!fileResult.ok()) {
     ARROW_LOG(WARNING) << "Open hdfs file failed! err msg: "
