@@ -23,6 +23,7 @@
 #include <vector>
 
 #include <arrow/api.h>
+#include <arrow/result.h>
 #include <arrow/filesystem/api.h>
 #include <arrow/util/logging.h>
 #include <parquet/api/reader.h>
@@ -63,6 +64,7 @@ class Reader {
   int allocateFilterBuffers(int batchSize);
   void freeFilterBuffers();
 
+  arrow::Result<std::shared_ptr<HadoopFileSystem>> fsResult;
   HdfsOptions* options;
   std::shared_ptr<FileSystem> fs;
   std::shared_ptr<arrow::io::RandomAccessFile> file;

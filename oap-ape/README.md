@@ -1,5 +1,8 @@
 #Dependency
 [comment]: <>(TODO: can use some easier way?)
+
+## json
+
 APE is using [nlohmann/json](https://github.com/nlohmann/json) lib to parse json between java and native. This is a
  header-only json lib. You need to pre-install this library on your work nodes.
  
@@ -13,6 +16,33 @@ cmake .. -DCMAKE_INSTALL_PREFIX=/your/library/path/
 make -j
 make install
 ```
+
+## libhdfs
+
+**libhdfs version**
+
+`libhdfs` in `$HADOOP_HOME/lib/native` should be upgraded if you don't choose `libhdfs3`.
+
+`libhdfs3` may enlarge data sizes of reading in some cases.
+
+If you decide to update `libhdfs`, you can use the one under `resources/libhdfs/hadoop-3.2.2/`.
+
+You can also copy it from the official `hadoop-3.2.2` package.
+Hadoop release site: [Apache Hadoop](https://hadoop.apache.org/releases.html).
+
+
+**JDK version**
+
+`libhdfs` must run in newer versions of JDK.
+
+Otherwise, core dump may occur occasionally when thread are existing.
+
+We tested the following JDK which works well with `libhdfs`:
+
+```
+openjdk version "1.8.0_282"
+```
+Download site: [AdoptOpenJDK](https://adoptopenjdk.net/releases.html?variant=openjdk8&jvmVariant=openj9)
 
 
 # How to build
