@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package com.intel.oap.fs.hadoop.cachedfs.cacheUtil;
+package com.intel.oap.fs.hadoop.cachedfs.cacheutil;
 
 import java.nio.ByteBuffer;
 

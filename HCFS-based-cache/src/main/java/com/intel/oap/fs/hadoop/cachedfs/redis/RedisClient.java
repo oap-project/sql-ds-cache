@@ -1,4 +1,24 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.intel.oap.fs.hadoop.cachedfs.redis;
+
+import java.util.Map;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -7,9 +27,6 @@ import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
 import redis.clients.jedis.Tuple;
 import redis.clients.jedis.exceptions.JedisException;
-
-import java.util.Map;
-import java.util.Set;
 
 /**
  * read and write data with redis.
@@ -22,7 +39,7 @@ public class RedisClient {
 
     private String password = "";
 
-    private volatile static RedisClient instance;
+    private static volatile RedisClient instance;
 
     private RedisClient(String host, int port, String auth, int maxTotal, int maxIdle) {
         JedisPoolConfig config = new JedisPoolConfig();
@@ -33,7 +50,8 @@ public class RedisClient {
         password = auth;
     }
 
-    public static RedisClient getInstance(String host, int port, String auth, int maxTotal, int maxIdle) {
+    public static RedisClient getInstance(String host,
+                int port, String auth, int maxTotal, int maxIdle) {
         if (instance == null) {
             synchronized (RedisClient.class) {
                 if (instance == null) {
@@ -325,7 +343,8 @@ public class RedisClient {
             jedis = getJedis();
             return jedis.zrangeByScoreWithScores(key, min, max);
         } catch (Exception e) {
-            LOG.error("redis exception: {}, when: {}, key: {}", e.toString(), "zrangeByScoreWithScores", key);
+            LOG.error("redis exception: {}, when: {}, key: {}",
+                      e.toString(), "zrangeByScoreWithScores", key);
             throw new JedisException(e.getMessage(), e);
         } finally {
             close(jedis);

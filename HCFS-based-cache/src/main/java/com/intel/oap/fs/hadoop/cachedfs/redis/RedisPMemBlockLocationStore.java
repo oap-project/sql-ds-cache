@@ -1,10 +1,21 @@
-package com.intel.oap.fs.hadoop.cachedfs.redis;
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-import com.intel.oap.fs.hadoop.cachedfs.PMemBlock;
-import com.intel.oap.fs.hadoop.cachedfs.PMemBlockLocation;
-import com.intel.oap.fs.hadoop.cachedfs.PMemBlockLocationStore;
-import org.apache.hadoop.conf.Configuration;
-import redis.clients.jedis.Tuple;
+package com.intel.oap.fs.hadoop.cachedfs.redis;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -13,11 +24,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.intel.oap.fs.hadoop.cachedfs.PMemBlock;
+import com.intel.oap.fs.hadoop.cachedfs.PMemBlockLocation;
+import com.intel.oap.fs.hadoop.cachedfs.PMemBlockLocationStore;
+import org.apache.hadoop.conf.Configuration;
+import redis.clients.jedis.Tuple;
+
 /**
  * Class for storage of block locations.
  */
 public class RedisPMemBlockLocationStore implements PMemBlockLocationStore {
-    private final static String REDIS_ZSET_VALUE_DELIM = "_";
+    private static final String REDIS_ZSET_VALUE_DELIM = "_";
 
     private final Configuration conf;
 
@@ -156,7 +173,8 @@ public class RedisPMemBlockLocationStore implements PMemBlockLocationStore {
             // get locations with the right offset range
             Set<Tuple> locationStrings = RedisUtils
                     .getRedisClient(this.conf)
-                    .zrangeByScoreWithScores(blocks[0].getPath().toString(), block.getOffset(), block.getOffset());
+                    .zrangeByScoreWithScores(blocks[0].getPath().toString(),
+                                             block.getOffset(), block.getOffset());
 
             PMemBlockLocation location = this.filterLocationInfo(block,locationStrings);
 

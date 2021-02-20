@@ -17,29 +17,29 @@
 
 package com.intel.oap.fs.hadoop.cachedfs;
 
-import com.intel.oap.fs.hadoop.cachedfs.redis.RedisGlobalPMemCacheStatisticsStore;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.hadoop.fs.FSInputStream;
-import org.apache.hadoop.fs.Path;
-
-import com.intel.oap.fs.hadoop.cachedfs.cacheUtil.CacheManager;
-import com.intel.oap.fs.hadoop.cachedfs.cacheUtil.CacheManagerFactory;
-import com.intel.oap.fs.hadoop.cachedfs.cacheUtil.ObjectId;
-import com.intel.oap.fs.hadoop.cachedfs.cacheUtil.FiberCache;
-import com.intel.oap.fs.hadoop.cachedfs.cacheUtil.SimpleFiberCache;
-import com.intel.oap.fs.hadoop.cachedfs.redis.RedisPMemBlockLocationStore;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
 import java.io.EOFException;
+import java.io.IOException;
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
+
+import com.intel.oap.fs.hadoop.cachedfs.cacheutil.CacheManager;
+import com.intel.oap.fs.hadoop.cachedfs.cacheutil.CacheManagerFactory;
+import com.intel.oap.fs.hadoop.cachedfs.cacheutil.FiberCache;
+import com.intel.oap.fs.hadoop.cachedfs.cacheutil.ObjectId;
+import com.intel.oap.fs.hadoop.cachedfs.cacheutil.SimpleFiberCache;
+import com.intel.oap.fs.hadoop.cachedfs.redis.RedisGlobalPMemCacheStatisticsStore;
+import com.intel.oap.fs.hadoop.cachedfs.redis.RedisPMemBlockLocationStore;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FSInputStream;
+import org.apache.hadoop.fs.Path;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class CachedInputStream extends FSInputStream {
   private static final Logger LOG = LoggerFactory.getLogger(CachedInputStream.class);
@@ -105,8 +105,10 @@ public class CachedInputStream extends FSInputStream {
   }
 
   private boolean checkFileShouldBeCached() {
-    return (cacheWhiteListRegexp.isEmpty() || Pattern.compile(cacheWhiteListRegexp).matcher(path.toString()).find())
-            && (cacheBlackListRegexp.isEmpty() || !Pattern.compile(cacheBlackListRegexp).matcher(path.toString()).find());
+    return (cacheWhiteListRegexp.isEmpty()
+            || Pattern.compile(cacheWhiteListRegexp).matcher(path.toString()).find())
+            && (cacheBlackListRegexp.isEmpty()
+            || !Pattern.compile(cacheBlackListRegexp).matcher(path.toString()).find());
   }
 
   private void advanceCachePosition(long pos) {
@@ -166,7 +168,8 @@ public class CachedInputStream extends FSInputStream {
   }
 
   private boolean dataAvailableInCache() {
-    return currentBlock != null && pos >= currentCachePos && pos < currentCachePos + currentBlock.getLength();
+    return currentBlock != null && pos >= currentCachePos
+            && pos < currentCachePos + currentBlock.getLength();
   }
 
   private boolean ensureDataInCache() throws IOException {
@@ -208,7 +211,8 @@ public class CachedInputStream extends FSInputStream {
           LOG.info("block cache removed, block: {}", currentBlock);
         } catch (Exception ex1) {
           // ignore
-          LOG.warn("exception when removing block cache: {}, block: {}", ex1.toString(), currentBlock);
+          LOG.warn("exception when removing block cache: {}, block: {}",
+                   ex1.toString(), currentBlock);
         }
       }
     }
@@ -239,12 +243,15 @@ public class CachedInputStream extends FSInputStream {
           LOG.warn("exception, data not cached to pmem for block: {}", currentBlock);
         }
       } else {
-        LOG.debug("data will not be cached since it's in blacklist or it's already cached: {}", currentBlock);
+        LOG.debug("data will not be cached since it's in blacklist or it's already cached: {}",
+                  currentBlock);
       }
     }
 
     if (fileShouldBeCached && cacheValid) {
-      cachedBlocks.add(new PMemBlock(currentBlock.getPath(), currentBlock.getOffset(), currentBlock.getLength()));
+      cachedBlocks.add(new PMemBlock(currentBlock.getPath(),
+                                     currentBlock.getOffset(),
+                                     currentBlock.getLength()));
     }
 
     currentBlock.setData(cachedByteBuffer);

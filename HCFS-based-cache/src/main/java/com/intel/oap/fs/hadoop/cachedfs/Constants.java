@@ -1,3 +1,20 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.intel.oap.fs.hadoop.cachedfs;
 
 public class Constants {
@@ -29,22 +46,28 @@ public class Constants {
 
     public static final String CONF_KEY_CACHED_FS_REDIS_MAX_IDLE = "fs.cachedFs.redis.maxIdle";
 
-    public static final String REDIS_KEY_PMEM_CACHE_GLOBAL_STATISTICS_CACHE_HIT = "pmem_cache_global_cache_hit";
+    public static final String REDIS_KEY_PMEM_CACHE_GLOBAL_STATISTICS_CACHE_HIT
+            = "pmem_cache_global_cache_hit";
 
-    public static final String REDIS_KEY_PMEM_CACHE_GLOBAL_STATISTICS_CACHE_MISSED = "pmem_cache_global_cache_missed";
+    public static final String REDIS_KEY_PMEM_CACHE_GLOBAL_STATISTICS_CACHE_MISSED
+            = "pmem_cache_global_cache_missed";
 
     public static final long UNSAFE_COPY_MEMORY_STEP_LENGTH = 1024 * 1024;
 
-    public static final String CONF_KEY_CACHED_FS_BLOCK_LOCATION_POLICY = "fs.cachedFs.blockLocation.policy";
+    public static final String CONF_KEY_CACHED_FS_BLOCK_LOCATION_POLICY
+            = "fs.cachedFs.blockLocation.policy";
 
-    // default policy. file block locations consist of cached blocks and hdfs blocks (if cached blocks are incomplete)
+    // default policy. file block locations consist of cached blocks
+    // and hdfs blocks (if cached blocks are incomplete)
     public static final String CACHE_LOCATION_POLICY_DEFAULT = "default";
     public static final String CACHE_LOCATION_POLICY_MERGING_HDFS = "cache_merging_hdfs";
 
-    // use cached block location only if all requested content is cached, otherwise use HDFS block locations.
+    // use cached block location only if all requested content is cached,
+    // otherwise use HDFS block locations.
     public static final String CACHE_LOCATION_POLICY_OVER_HDFS = "cache_over_hdfs";
 
-    // use HDFS file block locations directly. ignoring cached blocks when finding file block locations
+    // use HDFS file block locations directly.
+    // ignoring cached blocks when finding file block locations
     public static final String CACHE_LOCATION_POLICY_HDFS_ONLY = "hdfs_only";
 
     // regular expression that contains patterns of paths which will be cached.

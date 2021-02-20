@@ -17,12 +17,12 @@
 
 package com.intel.oap.fs.hadoop.cachedfs;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.DelegateToFileSystem;
-
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.DelegateToFileSystem;
 
 /**
  * The implementation of Hadoop AbstractFileSystem. The implementation delegates to the
@@ -35,7 +35,8 @@ import java.net.URISyntaxException;
  * &lt;/property&gt;
  * </pre>
  *
- * The above configuration is used when you want to start a hadoop cluster after changing the 'fs.defaultFS' to
+ * The above configuration is used when you want to start a hadoop cluster
+ * after changing the 'fs.defaultFS' to
  * the new schema started with 'cachedFs' in core-site.xml
  *
  */

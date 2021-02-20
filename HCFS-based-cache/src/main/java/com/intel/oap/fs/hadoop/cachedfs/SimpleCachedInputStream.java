@@ -1,24 +1,40 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.intel.oap.fs.hadoop.cachedfs;
 
-import com.intel.oap.fs.hadoop.cachedfs.cacheUtil.CacheManager;
-import com.intel.oap.fs.hadoop.cachedfs.cacheUtil.CacheManagerFactory;
-import com.intel.oap.fs.hadoop.cachedfs.cacheUtil.FiberCache;
-import com.intel.oap.fs.hadoop.cachedfs.cacheUtil.ObjectId;
-import com.intel.oap.fs.hadoop.cachedfs.cacheUtil.SimpleFiberCache;
+import java.io.IOException;
+import java.net.InetAddress;
+import java.nio.ByteBuffer;
+
+import com.intel.oap.fs.hadoop.cachedfs.cacheutil.CacheManager;
+import com.intel.oap.fs.hadoop.cachedfs.cacheutil.CacheManagerFactory;
+import com.intel.oap.fs.hadoop.cachedfs.cacheutil.FiberCache;
+import com.intel.oap.fs.hadoop.cachedfs.cacheutil.ObjectId;
+import com.intel.oap.fs.hadoop.cachedfs.cacheutil.SimpleFiberCache;
 import com.intel.oap.fs.hadoop.cachedfs.redis.RedisGlobalPMemCacheStatisticsStore;
 import com.intel.oap.fs.hadoop.cachedfs.redis.RedisPMemBlockLocationStore;
-import com.intel.oap.fs.hadoop.cachedfs.unsafe.UnsafeUtils;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSInputStream;
 import org.apache.hadoop.fs.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import sun.nio.ch.DirectBuffer;
-
-import java.io.IOException;
-import java.net.InetAddress;
-import java.nio.ByteBuffer;
 
 public class SimpleCachedInputStream extends FSInputStream {
     private static final Logger LOG = LoggerFactory.getLogger(SimpleCachedInputStream.class);
@@ -46,7 +62,11 @@ public class SimpleCachedInputStream extends FSInputStream {
     private PMemBlockLocationStore locationStore;
     private PMemCacheStatisticsStore statisticsStore;
 
-    public SimpleCachedInputStream(FSDataInputStream hdfsInputStream, Configuration conf, Path path, int bufferSize, Long contentLength) {
+    public SimpleCachedInputStream(FSDataInputStream hdfsInputStream,
+                                   Configuration conf,
+                                   Path path,
+                                   int bufferSize,
+                                   Long contentLength) {
         this.hdfsInputStream = hdfsInputStream;
 
         this.conf = conf;
@@ -58,7 +78,8 @@ public class SimpleCachedInputStream extends FSInputStream {
         this.lastByteStart = -1L;
         this.closed = false;
 
-        this.pmemCachedBlockSize = conf.getLong(Constants.CONF_KEY_CACHED_FS_BLOCK_SIZE, Constants.DEFAULT_CACHED_BLOCK_SIZE);
+        this.pmemCachedBlockSize = conf.getLong(Constants.CONF_KEY_CACHED_FS_BLOCK_SIZE,
+                                                Constants.DEFAULT_CACHED_BLOCK_SIZE);
 
         this.cacheManager = CacheManagerFactory.getOrCreate();
         this.locationStore = new RedisPMemBlockLocationStore(conf);
@@ -73,7 +94,8 @@ public class SimpleCachedInputStream extends FSInputStream {
         }
 
         // compute cache block
-        PMemBlock block = CachedFileSystemUtils.computePossiblePMemBlocks(path, pos, 1, pmemCachedBlockSize)[0];
+        PMemBlock block = CachedFileSystemUtils
+                .computePossiblePMemBlocks(path, pos, 1, pmemCachedBlockSize)[0];
 
         // create new block
         if (currentBlock == null || currentBlock.getOffset() != block.getOffset()) {
@@ -187,7 +209,8 @@ public class SimpleCachedInputStream extends FSInputStream {
         // create new block
         if ((currentBlock == null || partRemaining <= 0) && this.position < this.contentLength) {
             // compute cache block
-            PMemBlock block = CachedFileSystemUtils.computePossiblePMemBlocks(path, this.position, 1, pmemCachedBlockSize)[0];
+            PMemBlock block = CachedFileSystemUtils
+                    .computePossiblePMemBlocks(path, this.position, 1, pmemCachedBlockSize)[0];
             this.fetchBlockDataAndCache(block);
             this.currentBlock = block;
             this.partRemaining = block.getLength();

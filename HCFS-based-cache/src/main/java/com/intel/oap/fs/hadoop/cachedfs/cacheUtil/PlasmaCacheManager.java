@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package com.intel.oap.fs.hadoop.cachedfs.cacheUtil;
+package com.intel.oap.fs.hadoop.cachedfs.cacheutil;
 
 import org.apache.arrow.plasma.PlasmaClient;
 import org.apache.arrow.plasma.exceptions.*;
@@ -28,7 +28,7 @@ public class PlasmaCacheManager implements CacheManager {
     try {
       System.loadLibrary("plasma_java");
     } catch(Exception e) {
-
+      //This is ignored
     }
     // TODO: get socket via conf(hadoopConf/SparkConf)
     client = new PlasmaClient("/tmp/plasmaStore", "", 0);

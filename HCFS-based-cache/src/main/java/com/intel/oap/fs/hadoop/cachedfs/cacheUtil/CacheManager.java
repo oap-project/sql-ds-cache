@@ -15,11 +15,10 @@
  * limitations under the License.
  */
 
-package com.intel.oap.fs.hadoop.cachedfs.cacheUtil;
+package com.intel.oap.fs.hadoop.cachedfs.cacheutil;
 
 import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hashing;
-
 
 public interface CacheManager {
 
@@ -48,13 +47,13 @@ public interface CacheManager {
 class HashHelper {
   static HashFunction hf = Hashing.murmur3_128();
 
-  static public byte[] hash(byte[] key) {
+  public static byte[] hash(byte[] key) {
     byte[] ret = new byte[20];
     hf.newHasher().putBytes(key).hash().writeBytesTo(ret, 0, 20);
     return ret;
   }
 
-  static public byte[] hash(String key) {
+  public static byte[] hash(String key) {
     return hash(key.getBytes());
   }
 }
