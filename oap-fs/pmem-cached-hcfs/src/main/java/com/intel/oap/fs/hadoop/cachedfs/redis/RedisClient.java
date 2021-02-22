@@ -268,6 +268,19 @@ public class RedisClient {
         }
     }
 
+    public Long zadd(String key, Map<String, Double> scoreMembers) {
+        Jedis jedis = null;
+        try {
+            jedis = getJedis();
+            return jedis.zadd(key, scoreMembers);
+        } catch (Exception e) {
+            LOG.error("redis exception: {}, when: {}, key: {}", e.toString(), "zadd", key);
+            throw new JedisException(e.getMessage(), e);
+        } finally {
+            close(jedis);
+        }
+    }
+
     public Long zrem(String key, String... members) {
         Jedis jedis = null;
         try {
