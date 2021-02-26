@@ -42,9 +42,9 @@
       <version>${hadoop.version}</version>
     </dependency>
     <dependency>
-      <groupId>com.intel.arrow</groupId>
+      <groupId>org.apache.arrow</groupId>
       <artifactId>arrow-plasma</artifactId>
-      <version>0.17.0</version>
+      <version>3.0.0</version>
     </dependency>
     <dependency>
       <groupId>redis.clients</groupId>

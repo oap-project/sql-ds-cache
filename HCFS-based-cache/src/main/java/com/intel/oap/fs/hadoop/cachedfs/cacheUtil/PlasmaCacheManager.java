@@ -17,8 +17,11 @@
 
 package com.intel.oap.fs.hadoop.cachedfs.cacheutil;
 
+import java.nio.ByteBuffer;
+
 import org.apache.arrow.plasma.PlasmaClient;
 import org.apache.arrow.plasma.exceptions.*;
+import sun.nio.ch.DirectBuffer;
 
 
 public class PlasmaCacheManager implements CacheManager {
@@ -41,11 +44,13 @@ public class PlasmaCacheManager implements CacheManager {
   public FiberCache get(ObjectId id) {
     // TODO: what if get an unsealed object? Let's throw an exception here,
     //  higher level should catch this exception and do some fall back.
-    try {
-      // TODO: should not return a ArrowFiberCache directly
-      return new SimpleFiberCache(client.getObjAsByteBuffer(id.toByteArray(), -1, false));
-    } catch(PlasmaGetException e) {
-        throw new CacheManagerException("Plasma exception:" + e.getMessage());
+    // TODO: should not return a ArrowFiberCache directly
+    ByteBuffer bb = client.getObjAsByteBuffer(id.toByteArray(), -1, false);
+    // get api may return a nullptr which means get an invalid value.
+    if(((DirectBuffer)bb).address() != 0) {
+      return new SimpleFiberCache(bb);
+    } else {
+      throw new CacheManagerException("Plasma get an invalid value.");
     }
   }
 
@@ -67,7 +72,7 @@ public class PlasmaCacheManager implements CacheManager {
       if (length > Integer.MAX_VALUE) {
         throw new ArithmeticException("Can't create $length bytes Object");
       }
-      return new SimpleFiberCache(client.create(id.toByteArray(), length.intValue()));
+      return new SimpleFiberCache(client.create(id.toByteArray(), length.intValue(), null));
     } catch (DuplicateObjectException | PlasmaOutOfMemoryException e) {
         throw new CacheManagerException("Plasma exception:" + e.getMessage());
     }
