@@ -23,9 +23,12 @@ using namespace ape;
 
 JNIEXPORT jlong JNICALL Java_com_intel_ape_ParquetReaderJNI_init(
     JNIEnv* env, jclass cls, jstring fileName, jstring hdfsHost, jint hdfsPort,
-    jstring requiredSchema, jint firstRowGroup, jint rowGroupToRead) {
+    jstring requiredSchema, jint firstRowGroup, jint rowGroupToRead,
+    jboolean plasmaCacheEnabled) {
   int i = 0;
   Reader* reader = new Reader();
+
+  reader->setPlasmaCacheEnabled(plasmaCacheEnabled);
 
   std::string schema_ = env->GetStringUTFChars(requiredSchema, nullptr);
   std::string fileName_ = env->GetStringUTFChars(fileName, nullptr);
@@ -63,7 +66,7 @@ JNIEXPORT jint JNICALL Java_com_intel_ape_ParquetReaderJNI_readBatch(
 JNIEXPORT jboolean JNICALL Java_com_intel_ape_ParquetReaderJNI_skipNextRowGroup(
     JNIEnv* env, jclass cls, jlong readerPtr) {
   Reader* reader = reinterpret_cast<Reader*>(readerPtr);
-  reader->skipNextRowGroup();
+  return reader->skipNextRowGroup();
 }
 
 JNIEXPORT void JNICALL Java_com_intel_ape_ParquetReaderJNI_close(JNIEnv* env, jclass cls,

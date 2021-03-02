@@ -26,8 +26,14 @@ public class ParquetReaderJNI {
     NativeLibraryLoader.load(LibraryName);
   }
 
+  public static long init(String fileName, String hdfsHost, int hdfsPort, String requiredSchema,
+                          int firstRowGroupIndex, int totalGroupToRead) {
+    return init(fileName, hdfsHost, hdfsPort, requiredSchema, firstRowGroupIndex, totalGroupToRead, false);
+  }
+
   // return a reader pointer
-  public static native long init(String fileName, String hdfsHost, int hdfsPort, String requiredSchema, int firstRowGroupIndex, int totalGroupToRead);
+  public static native long init(String fileName, String hdfsHost, int hdfsPort, String requiredSchema,
+                                 int firstRowGroupIndex, int totalGroupToRead, boolean plasmaCacheEnabled);
 
   public static native int readBatch(long reader, int batchSize, long[] buffers, long[] nulls);
 
