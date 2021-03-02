@@ -60,8 +60,9 @@ void Reader::init(std::string fileName, std::string hdfsHost, int hdfsPort,
   parquetReader = parquet::ParquetFileReader::Open(file, properties, NULLPTR);
 
   // init and set cache manager to parquet reader.
-  // TODO. make this configurable
-  initCacheManager(fileName, hdfsHost, hdfsPort);
+  if (plasmaCacheEnabled) {
+    initCacheManager(fileName, hdfsHost, hdfsPort);
+  }
 
   fileMetaData = parquetReader->metadata();
 
@@ -484,6 +485,10 @@ void Reader::setAgg(std::string aggStr) {
   groupByExprs = JsonConvertor::parseToGroupByExpressions(aggStr);
   aggExprs = JsonConvertor::parseToAggExpressions(aggStr);
 
+}
+
+void Reader::setPlasmaCacheEnabled(bool isEnabled) {
+  plasmaCacheEnabled = isEnabled;
 }
 
 }  // namespace ape

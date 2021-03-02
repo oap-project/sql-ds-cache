@@ -58,6 +58,8 @@ class Reader {
 
   void setAgg(std::string aggStr);
 
+  void setPlasmaCacheEnabled(bool isEnabled);
+
  private:
   void convertSchema(std::string requiredColumnName);
 
@@ -108,6 +110,7 @@ class Reader {
   std::vector<std::shared_ptr<Expression>> aggExprs;
   std::vector<std::shared_ptr<Expression>> groupByExprs;
 
+  bool plasmaCacheEnabled = false;
   std::shared_ptr<PlasmaCacheManager> plasmaCacheManager;
 };
 }  // namespace ape
