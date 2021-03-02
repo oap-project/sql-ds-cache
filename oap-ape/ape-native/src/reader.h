@@ -32,6 +32,7 @@
 #include "utils/FilterExpression.h"
 #include "utils/jsonConvertor.h"
 #include "utils/type.h"
+#include "utils/PlasmaCacheManager.h"
 
 using namespace arrow::fs;
 
@@ -42,6 +43,8 @@ class Reader {
 
   void init(std::string fileName, std::string hdfsHost, int hdfsPort,
             std::string requiredSchema, int firstRowGroup, int rowGroupToRead);
+
+  void initCacheManager(std::string fileName, std::string hdfsHost, int hdfsPort);
 
   int readBatch(int batchSize, long* buffersPtr, long* nullsPtr);
 
@@ -104,5 +107,7 @@ class Reader {
 
   std::vector<std::shared_ptr<Expression>> aggExprs;
   std::vector<std::shared_ptr<Expression>> groupByExprs;
+
+  std::shared_ptr<PlasmaCacheManager> plasmaCacheManager;
 };
 }  // namespace ape

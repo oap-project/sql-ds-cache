@@ -26,6 +26,9 @@ find_library(PARQUET_LIB parquet)
 
 find_package(nlohmann_json 3.2.0 REQUIRED)
 
+find_library(PLASMA_LIB plasma)
+find_package(OpenSSL REQUIRED)
+
 find_package(JNI REQUIRED)
 # add jni support
 include_directories(${JAVA_INCLUDE_PATH})
@@ -38,6 +41,10 @@ endif()
 
 if(NOT PARQUET_LIB)
   message(FATAL_ERROR "Parquet library not found")
+endif()
+
+if(NOT PLASMA_LIB)
+  message(FATAL_ERROR "Plasma library not found")
 endif()
 
 set(APE_SRCS
@@ -54,10 +61,12 @@ file(GLOB JNI_LIB_SRC
     com_intel_ape_ParquetReaderJNI.cc reader.cc)
 # set(PARQUET_NATIVE_SRC reader.cc)
 
+set(CACHE_SRC utils/PlasmaCacheManager.cc)
+
 add_executable(ape ${APE_SRCS})
 add_executable(parquet_test ${PARQUET_DEMO})
 # add_library(parquet_native SHARED ${PARQUET_NATIVE_SRC})
-add_library(parquet_jni SHARED ${JNI_LIB_SRC} ${PARSE_SRC})
+add_library(parquet_jni SHARED ${JNI_LIB_SRC} ${PARSE_SRC} ${CACHE_SRC})
 add_library(parse SHARED ${PARSE_SRC})
 add_executable(parse_test ${PARSE_SRC} ${PARSE_TEST})
 add_executable(agg_parse_test ${PARSE_SRC} ${AGG_PARSE_TEST})
@@ -67,9 +76,9 @@ add_compile_options("-I$ENV{JAVA_HOME}/include/linux")
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O3")
 
-target_link_libraries(parquet_test ${ARROW_LIB} ${PARQUET_LIB})
+target_link_libraries(parquet_test ${ARROW_LIB} ${PARQUET_LIB} ${PLASMA_LIB} OpenSSL::SSL)
 # target_link_libraries(parquet_native ${ARROW_LIB} ${PARQUET_LIB} ${JNI} )
-target_link_libraries(parquet_jni ${ARROW_LIB} ${PARQUET_LIB} ${JNI} nlohmann_json::nlohmann_json )
+target_link_libraries(parquet_jni ${ARROW_LIB} ${PARQUET_LIB} ${PLASMA_LIB} ${JNI} nlohmann_json::nlohmann_json OpenSSL::SSL)
 target_link_libraries(ape ${ARROW_LIB} ${PARQUET_LIB} parquet_jni)
 target_link_libraries(parse nlohmann_json::nlohmann_json ${ARROW_LIB})
 target_link_libraries(parse_test parse)

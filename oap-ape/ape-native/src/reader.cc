@@ -59,6 +59,10 @@ void Reader::init(std::string fileName, std::string hdfsHost, int hdfsPort,
   parquet::ReaderProperties properties;
   parquetReader = parquet::ParquetFileReader::Open(file, properties, NULLPTR);
 
+  // init and set cache manager to parquet reader.
+  // TODO. make this configurable
+  initCacheManager(fileName, hdfsHost, hdfsPort);
+
   fileMetaData = parquetReader->metadata();
 
   this->firstRowGroupIndex = firstRowGroup;
@@ -84,6 +88,20 @@ void Reader::init(std::string fileName, std::string hdfsHost, int hdfsPort,
   ARROW_LOG(DEBUG) << "initRequiredColumnCount is " << initRequiredColumnCount;
 
   ARROW_LOG(INFO) << "init done, totalRows " << totalRows;
+}
+
+void Reader::initCacheManager(std::string fileName, std::string hdfsHost, int hdfsPort) {
+  char buff[1024];
+  snprintf(buff, sizeof(buff), "hdfs://%s:%d%s", hdfsHost.c_str(), hdfsPort, fileName.c_str());
+  std::string path = buff;
+
+  std::shared_ptr<PlasmaCacheManager> cacheManager = std::make_shared<PlasmaCacheManager>(path);
+  if (cacheManager->connected()) {
+    plasmaCacheManager = cacheManager;
+    parquetReader->setCacheManager(cacheManager);
+    ARROW_LOG(INFO) << "set cache manager in parquet reader";
+  }
+
 }
 
 // TODO: need consider column sequence?
@@ -303,6 +321,12 @@ void Reader::close() {
     delete[] ptr;
   }
   freeFilterBuffers();
+
+  if (plasmaCacheManager) {
+    plasmaCacheManager->close();
+    plasmaCacheManager = nullptr;
+  }
+
   // delete options;
 }
 
@@ -313,6 +337,12 @@ void Reader::checkEndOfRowGroup() {
   rowGroupReader = rowGroupReaders[currentRowGroup - firstRowGroupIndex];
   currentRowGroup++;
   totalRowGroupsRead++;
+
+  // relase objects in previous row group
+  if (plasmaCacheManager) {
+    plasmaCacheManager->release();
+  }
+
   for (int i = 0; i < requiredColumnIndex.size(); i++) {
     columnReaders[i] = rowGroupReader->Column(requiredColumnIndex[i]);
   }
