@@ -1,6 +1,11 @@
 #Dependency
 [comment]: <>(TODO: can use some easier way?)
 
+## [arrow](https://gitlab.devtools.intel.com/POAE/arrow/-/tree/arrow-3.0.0-internal)
+We use arrow to load parquet file data natively from HDFS.
+
+We also use arrow-plasma as a KV store for caching. arrow-parquet is modified for caching.
+
 ## json
 
 APE is using [nlohmann/json](https://github.com/nlohmann/json) lib to parse json between java and native. This is a
@@ -44,6 +49,9 @@ openjdk version "1.8.0_282"
 ```
 Download site: [AdoptOpenJDK](https://adoptopenjdk.net/releases.html?variant=openjdk8&jvmVariant=openj9)
 
+## Other Dependencies
+* [openssl](https://www.openssl.org/) (We use it to compute hash when creating object ids of plasma)
+
 
 # How to build
 
@@ -64,16 +72,16 @@ cmake ..
 make
 ```
 ## parquet-test demo
-For parquet-test demo, make sure you have install libarrow, libparquet. Arrow build and install command:
+For parquet-test demo, make sure you have installed libarrow, libparquet, etc. Arrow build and install command:
 ```
-git clone https://github.com/Intel-bigdata/arrow.git
-cd arrow && git checkout branch-0.17.0-oap-1.0
+git clone https://gitlab.devtools.intel.com/POAE/arrow.git
+cd arrow && git checkout arrow-3.0.0-internal
 mkdir -p cpp/release-build
 cd cpp/release-build
 ARROW_INSTALL_DIR=/usr # it's better to install to a user private dir and manually add path to LD_LIBRARY_PATH
 , CPLUS_INCLUDE_PATH
-cmake -DCMAKE_INSTALL_PREFIX=$ARROW_INSTALL_DIR -DARROW_PARQUET=ON -DARROW_HDFS=ON -DARROW_JNI=ON -DARROW_FILESYSTEM -DARROW_ORC=ON
-=ON -DARROW_DEPENDENCY_SOURCE=BUNDLED ..
+cmake -DCMAKE_INSTALL_PREFIX=$ARROW_INSTALL_DIR -DARROW_PARQUET=ON -DARROW_HDFS=ON -DARROW_JNI=ON -DARROW_FILESYSTEM=ON \
+-DARROW_ORC=ON -DARROW_PLASMA_JAVA_CLIENT=on -DARROW_PLASMA=on -DARROW_DEPENDENCY_SOURCE=BUNDLED ..
 make -j 
 make install
 ```

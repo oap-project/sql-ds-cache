@@ -195,6 +195,7 @@ public class CachedInputStream extends FSInputStream {
       // get cache
       try {
         cachedByteBuffer = ((SimpleFiberCache)cacheManager.get(id)).getBuffer();
+        ids[(int)(currentCachePos / pmemCachedBlockSize)] = id;
         cacheHitCount += 1;
         cacheValid = true;
       } catch (Exception ex) {
