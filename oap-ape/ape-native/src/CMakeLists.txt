@@ -35,6 +35,10 @@ include_directories(${JAVA_INCLUDE_PATH})
 include_directories(${JAVA_INCLUDE_PATH2})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
 
+# redis
+find_library(HIREDIS_LIB hiredis)
+find_library(REDIS_PLUS_PLUS_LIB redis++)
+
 if(NOT ARROW_LIB)
   message(FATAL_ERROR "Arrow library not found")
 endif()
@@ -46,6 +50,15 @@ endif()
 if(NOT PLASMA_LIB)
   message(FATAL_ERROR "Plasma library not found")
 endif()
+
+if(NOT HIREDIS_LIB)
+  message(FATAL_ERROR "hiredis library not found")
+endif()
+
+if(NOT REDIS_PLUS_PLUS_LIB)
+  message(FATAL_ERROR "redis++ library not found")
+endif()
+
 
 set(APE_SRCS
     main.cc)
@@ -83,9 +96,9 @@ add_compile_options("-I$ENV{JAVA_HOME}/include/linux")
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O3")
 
-target_link_libraries(parquet_test ${ARROW_LIB} ${PARQUET_LIB} ${PLASMA_LIB} OpenSSL::SSL)
+target_link_libraries(parquet_test ${ARROW_LIB} ${PARQUET_LIB} ${PLASMA_LIB} OpenSSL::SSL ${HIREDIS_LIB} ${REDIS_PLUS_PLUS_LIB})
 # target_link_libraries(parquet_native ${ARROW_LIB} ${PARQUET_LIB} ${JNI} )
-target_link_libraries(parquet_jni ${ARROW_LIB} ${PARQUET_LIB} ${PLASMA_LIB} ${JNI} nlohmann_json::nlohmann_json OpenSSL::SSL)
+target_link_libraries(parquet_jni ${ARROW_LIB} ${PARQUET_LIB} ${PLASMA_LIB} ${JNI} nlohmann_json::nlohmann_json OpenSSL::SSL ${HIREDIS_LIB} ${REDIS_PLUS_PLUS_LIB})
 if(APE_WITH_QPL)
     target_link_libraries(parquet_jni Qpl::qplhl)
 endif()

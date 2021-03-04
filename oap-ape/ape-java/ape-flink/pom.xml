@@ -115,64 +115,97 @@
     </dependency>
   </dependencies>
 
-  <build>
-    <plugins>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.8.1</version>
-        <configuration>
-          <source>${java.version}</source>
-          <target>${java.version}</target>
-          <encoding>UTF-8</encoding>
-          <maxmem>1024m</maxmem>
-          <fork>true</fork>
-          <compilerArgs>
-            <arg>-Xlint:all,-serial,-path</arg>
-          </compilerArgs>
-        </configuration>
-      </plugin>
+  <profiles>
+    <profile>
+      <id>no-shading</id>
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
 
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-shade-plugin</artifactId>
-        <executions>
-          <execution>
-            <id>shade-flink</id>
-            <phase>package</phase>
-            <goals>
-              <goal>shade</goal>
-            </goals>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-compiler-plugin</artifactId>
+            <version>3.8.1</version>
             <configuration>
-              <shadeTestJar>false</shadeTestJar>
-              <artifactSet>
-                <includes combine.children="append">
-                  <include>com.intel.oap:oap-common</include>
-                  <include>com.intel.oap:ape-common</include>
-                  <include>com.fasterxml.jackson.core:jackson-core</include>
-                  <include>com.fasterxml.jackson.core:jackson-annotations</include>
-                  <include>com.fasterxml.jackson.core:jackson-databind</include>
-                </includes>
-              </artifactSet>
-              <relocations>
-                <!-- relocate some packages to the same package locations as in Flink -->
-                <relocation>
-                  <pattern>org.apache.flink.formats.parquet</pattern>
-                  <shadedPattern>org.apache.flink.hive.shaded.formats.parquet</shadedPattern>
-                </relocation>
-                <relocation>
-                  <pattern>org.apache.parquet</pattern>
-                  <shadedPattern>org.apache.flink.hive.shaded.parquet</shadedPattern>
-                </relocation>
-              </relocations>
-              <filters>
-              </filters>
+              <source>${java.version}</source>
+              <target>${java.version}</target>
+              <encoding>UTF-8</encoding>
+              <maxmem>1024m</maxmem>
+              <fork>true</fork>
+              <compilerArgs>
+                <arg>-Xlint:all,-serial,-path</arg>
+              </compilerArgs>
             </configuration>
-          </execution>
-        </executions>
-      </plugin>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
 
-    </plugins>
-  </build>
+    <profile>
+      <id>shading</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-compiler-plugin</artifactId>
+            <version>3.8.1</version>
+            <configuration>
+              <source>${java.version}</source>
+              <target>${java.version}</target>
+              <encoding>UTF-8</encoding>
+              <maxmem>1024m</maxmem>
+              <fork>true</fork>
+              <compilerArgs>
+                <arg>-Xlint:all,-serial,-path</arg>
+              </compilerArgs>
+            </configuration>
+          </plugin>
+
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-shade-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>shade-flink</id>
+                <phase>package</phase>
+                <goals>
+                  <goal>shade</goal>
+                </goals>
+                <configuration>
+                  <shadeTestJar>false</shadeTestJar>
+                  <artifactSet>
+                    <includes combine.children="append">
+                      <include>com.intel.oap:oap-common</include>
+                      <include>com.intel.oap:ape-common</include>
+                      <include>com.fasterxml.jackson.core:jackson-core</include>
+                      <include>com.fasterxml.jackson.core:jackson-annotations</include>
+                      <include>com.fasterxml.jackson.core:jackson-databind</include>
+                    </includes>
+                  </artifactSet>
+                  <relocations>
+                    <!-- relocate some packages to the same package locations as in Flink -->
+                    <relocation>
+                      <pattern>org.apache.flink.formats.parquet</pattern>
+                      <shadedPattern>org.apache.flink.hive.shaded.formats.parquet</shadedPattern>
+                    </relocation>
+                    <relocation>
+                      <pattern>org.apache.parquet</pattern>
+                      <shadedPattern>org.apache.flink.hive.shaded.parquet</shadedPattern>
+                    </relocation>
+                  </relocations>
+                  <filters>
+                  </filters>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+
+        </plugins>
+      </build>
+    </profile>
+
+  </profiles>
 
 </project>
