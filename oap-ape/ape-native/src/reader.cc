@@ -99,6 +99,11 @@ void Reader::initCacheManager(std::string fileName, std::string hdfsHost, int hd
   std::shared_ptr<PlasmaCacheManager> cacheManager = std::make_shared<PlasmaCacheManager>(path);
   if (cacheManager->connected()) {
     plasmaCacheManager = cacheManager;
+
+    if (redisConnectionOptions != nullptr) {
+      plasmaCacheManager->setCacheRedis(redisConnectionOptions);
+    }
+
     parquetReader->setCacheManager(cacheManager);
     ARROW_LOG(INFO) << "set cache manager in parquet reader";
   }
@@ -489,6 +494,20 @@ void Reader::setAgg(std::string aggStr) {
 
 void Reader::setPlasmaCacheEnabled(bool isEnabled) {
   plasmaCacheEnabled = isEnabled;
+}
+
+void Reader::setPlasmaCacheRedis(std::string host, int port, std::string password) {
+  auto options = std::make_shared<sw::redis::ConnectionOptions>();
+  options->host = host;
+  options->port = port;
+  if (password.size() > 0) {
+    options->password = password;
+  }
+  redisConnectionOptions = options;
+
+  if (plasmaCacheManager != nullptr) {
+    plasmaCacheManager->setCacheRedis(options);
+  }
 }
 
 }  // namespace ape

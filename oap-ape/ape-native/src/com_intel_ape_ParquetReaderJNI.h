@@ -80,6 +80,14 @@ JNIEXPORT void JNICALL Java_com_intel_ape_ParquetReaderJNI_setFilterStr
 JNIEXPORT void JNICALL Java_com_intel_ape_ParquetReaderJNI_setAggStr
   (JNIEnv *, jclass, jlong, jstring);
 
+/*
+ * Class:     com_intel_ape_ParquetReaderJNI
+ * Method:    setPlasmaCacheRedis
+ * Signature: (JLjava/lang/String;ILjava/lang/String;)V
+ */
+JNIEXPORT void JNICALL Java_com_intel_ape_ParquetReaderJNI_setPlasmaCacheRedis
+  (JNIEnv *, jclass, jlong, jstring, jint, jstring);
+
 #ifdef __cplusplus
 }
 #endif

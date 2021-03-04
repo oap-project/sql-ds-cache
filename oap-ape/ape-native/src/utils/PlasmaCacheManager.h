@@ -19,6 +19,7 @@
 
 #include <parquet/api/reader.h>
 #include <plasma/client.h>
+#include <sw/redis++/redis++.h>
 
 namespace ape {
 
@@ -31,6 +32,8 @@ class PlasmaCacheManager : public parquet::CacheManager {
   void release();
   plasma::ObjectID objectIdOfColumnChunk(::arrow::io::ReadRange range);
 
+  void setCacheRedis(std::shared_ptr<sw::redis::ConnectionOptions> options);
+
   // override methods
   bool containsColumnChunk(::arrow::io::ReadRange range) override;
   std::shared_ptr<Buffer> getColumnChunk(::arrow::io::ReadRange range) override;
@@ -39,11 +42,19 @@ class PlasmaCacheManager : public parquet::CacheManager {
 
  protected:
   std::string cacheKeyofColumnChunk(::arrow::io::ReadRange range);
+  void setCacheInfoToRedis();
 
  private:
   std::shared_ptr<plasma::PlasmaClient> client_ = nullptr;
   std::string file_path_;
   std::vector<plasma::ObjectID> object_ids;
+  std::shared_ptr<sw::redis::Redis> redis_;
+
+  // data which will be saved to redis
+  std::string hostname;
+  int cache_hit_count_ = 0;
+  int cache_miss_count_ = 0;
+  std::vector<::arrow::io::ReadRange> cached_ranges_;
 };
     
 } // namespace ape

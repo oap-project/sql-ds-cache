@@ -51,7 +51,7 @@ Download site: [AdoptOpenJDK](https://adoptopenjdk.net/releases.html?variant=ope
 
 ## Other Dependencies
 * [openssl](https://www.openssl.org/) (We use it to compute hash when creating object ids of plasma)
-
+* [redis-plus-plus](https://github.com/sewenew/redis-plus-plus) (We use redis to save locations in cluster of cached file data)
 
 # How to build
 
