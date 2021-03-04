@@ -60,6 +60,8 @@ class Reader {
 
   void setPlasmaCacheEnabled(bool isEnabled);
 
+  void setPlasmaCacheRedis(std::string host, int port, std::string password);
+
  private:
   void convertSchema(std::string requiredColumnName);
 
@@ -112,5 +114,6 @@ class Reader {
 
   bool plasmaCacheEnabled = false;
   std::shared_ptr<PlasmaCacheManager> plasmaCacheManager;
+  std::shared_ptr<sw::redis::ConnectionOptions> redisConnectionOptions;
 };
 }  // namespace ape

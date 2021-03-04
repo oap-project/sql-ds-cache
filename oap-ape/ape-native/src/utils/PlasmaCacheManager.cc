@@ -15,6 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#include <unistd.h>
 #include <arrow/util/logging.h>
 
 #include <openssl/sha.h>
@@ -32,6 +33,10 @@ PlasmaCacheManager::PlasmaCacheManager(std::string file_path) : file_path_(file_
   if (status.ok()) {
     client_ = client;
     ARROW_LOG(INFO) << "plasma, cache manager initialized";
+
+    char buff[1024];
+    gethostname(buff, sizeof(buff));
+    std::string hostname = buff;
   } else {
     ARROW_LOG(WARNING) << "plasma, Connect failed: " << status.message();
   }
@@ -69,12 +74,43 @@ void PlasmaCacheManager::close() {
   // release objects
   release();
 
+  // save cache info to redis
+  setCacheInfoToRedis();
+
+  // disconnct
   arrow:Status status = client_->Disconnect();
   if (!status.ok()) {
     ARROW_LOG(WARNING) << "plasma, Disconnect failed: " << status.message();
   }
   
   client_ = nullptr;
+}
+
+void PlasmaCacheManager::setCacheInfoToRedis() {
+  if (redis_) {
+    try {
+      redis_->incrby("pmem_cache_global_cache_hit", cache_hit_count_);
+      redis_->incrby("pmem_cache_global_cache_missed", cache_miss_count_);
+
+      // save locations of cached data
+      std::unordered_map<std::string, double> scores;
+      char buff[1024];
+      for (auto range : cached_ranges_) {
+        snprintf(buff, sizeof(buff), "%d_%d_%s", range.offset, range.length, hostname.c_str());
+        std::string member = buff;
+        scores.insert({member, range.offset});
+      }
+      redis_->zadd(file_path_, scores.begin(), scores.end());
+
+      cache_hit_count_ = 0;
+      cache_miss_count_ = 0;
+      cached_ranges_.clear();
+
+      ARROW_LOG(INFO) << "plasma, saved cache info to redis";
+    } catch (const sw::redis::Error &e) {
+      ARROW_LOG(WARNING) << "plasma, save cache info to redis failed: " << e.what();
+    }
+  }
 }
 
 std::string PlasmaCacheManager::cacheKeyofColumnChunk(::arrow::io::ReadRange range) {
@@ -93,6 +129,21 @@ plasma::ObjectID PlasmaCacheManager::objectIdOfColumnChunk(::arrow::io::ReadRang
   return plasma::ObjectID::from_binary(std::string(hash, hash + sizeof(hash)));
 }
 
+void PlasmaCacheManager::setCacheRedis(std::shared_ptr<sw::redis::ConnectionOptions> options) {
+  try {
+    sw::redis::ConnectionOptions connection_options;
+    connection_options.host = options->host;
+    connection_options.port = options->port;
+    connection_options.password = options->password;
+
+    auto redis = std::make_shared<sw::redis::Redis>(connection_options);
+    redis_ = redis;
+     ARROW_LOG(INFO) << "plasma, set cache redis: " << options->host;
+  } catch (const sw::redis::Error &e) {
+    ARROW_LOG(WARNING) << "plasma, set redis failed: " << e.what();
+  }
+}
+
 bool PlasmaCacheManager::containsColumnChunk(::arrow::io::ReadRange range) {
   bool has_object;
 
@@ -100,6 +151,12 @@ bool PlasmaCacheManager::containsColumnChunk(::arrow::io::ReadRange range) {
   if (!status.ok()) {
     ARROW_LOG(WARNING) << "plasma, Contains failed: " << status.message();
     return false;
+  }
+
+  // we don't increase cache_hit_count_ here when has_object == true.
+  // cache_hit_count_ will be updated in `get()`.
+  if (!has_object) {
+    cache_miss_count_ += 1;
   }
 
   return has_object;
@@ -115,11 +172,15 @@ std::shared_ptr<Buffer> PlasmaCacheManager::getColumnChunk(::arrow::io::ReadRang
   arrow:Status status = client_->Get(oids.data(), 1, -1, obufs.data());
   if (!status.ok()) {
     ARROW_LOG(WARNING) << "plasma, Get failed: " << status.message();
+    cache_miss_count_ += 1;
     return nullptr;
   }
 
   // save object id for future release()
   object_ids.push_back(oid);
+
+  cache_hit_count_ += 1;
+  cached_ranges_.push_back(range);
 
   ARROW_LOG(DEBUG) << "plasma, get object from cache: " << file_path_ << ", " << range.offset << ", " << range.length;
 
@@ -160,6 +221,8 @@ bool PlasmaCacheManager::cacheColumnChunk(::arrow::io::ReadRange range, std::sha
     return false;
   }
   
+  cached_ranges_.push_back(range);
+
   ARROW_LOG(DEBUG) << "plasma, object cached: " << file_path_ << ", " << range.offset << ", " << range.length;
 
   return true;
@@ -173,6 +236,7 @@ bool PlasmaCacheManager::deleteColumnChunk(::arrow::io::ReadRange range) {
   }
 
   ARROW_LOG(INFO) << "plasma, delete object from cache: " << file_path_ << ", " << range.offset << ", " << range.length;
+  return true;
 }
 
 }
