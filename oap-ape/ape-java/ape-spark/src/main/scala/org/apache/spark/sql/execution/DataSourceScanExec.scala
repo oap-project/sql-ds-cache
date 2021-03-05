@@ -389,6 +389,8 @@ case class FileSourceScanExec(
   lazy val inputRDD: RDD[InternalRow] = {
     val readFile: (PartitionedFile) => Iterator[InternalRow] =
       if(relation.fileFormat.isInstanceOf[ParquetSource]) {
+        val aggExpr = DataSourceStrategy.translateAggregate(
+          relation.groupExpr.getOrElse(null), relation.resultExpr.getOrElse(null))
         relation.fileFormat.asInstanceOf[ParquetSource].buildParquetReader(
           sparkSession = relation.sparkSession,
           dataSchema = relation.dataSchema,
@@ -397,7 +399,7 @@ case class FileSourceScanExec(
           filters = pushedDownFilters,
           options = relation.options,
           hadoopConf = relation.sparkSession.sessionState.newHadoopConfWithOptions(relation.options),
-          aggExpr = relation.aggExpr)
+          aggExpr = aggExpr)
       } else {
         relation.fileFormat.buildReaderWithPartitionValues(
           sparkSession = relation.sparkSession,

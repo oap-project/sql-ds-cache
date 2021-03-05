@@ -19,7 +19,9 @@ package org.apache.spark.sql.execution.aggregate
 
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.expressions.aggregate._
-import org.apache.spark.sql.execution.SparkPlan
+import org.apache.spark.sql.catalyst.plans.logical.{Filter, Project}
+import org.apache.spark.sql.execution.datasources.{HadoopFsRelation, LogicalRelation}
+import org.apache.spark.sql.execution.{PlanLater, SparkPlan}
 import org.apache.spark.sql.execution.streaming.{StateStoreRestoreExec, StateStoreSaveExec}
 
 /**
@@ -118,6 +120,49 @@ object AggUtils {
     // The attributes of the final aggregation buffer, which is presented as input to the result
     // projection:
     val finalAggregateAttributes = finalAggregateExpressions.map(_.resultAttribute)
+
+    // more case ?
+    child match {
+      case later: PlanLater =>
+        later.plan match {
+          case proj: Project =>
+            proj.child match {
+               case LogicalRelation (fsRelation: HadoopFsRelation, _, _, _) =>
+                 if(!fsRelation.resultExpr.isEmpty) {
+                   println("!!!!!!!!!!!! reach here 1.")
+                   val agg = createAggregate(
+                     requiredChildDistributionExpressions = Some(groupingAttributes),
+                     groupingExpressions = groupingAttributes,
+                     aggregateExpressions = finalAggregateExpressions,
+                     aggregateAttributes = finalAggregateAttributes,
+                     initialInputBufferOffset = groupingExpressions.length,
+                     resultExpressions = resultExpressions,
+                     child = child)
+                   return agg :: Nil
+                 }
+               case filter: Filter =>
+                filter.child match {
+                  case LogicalRelation (fsRelation: HadoopFsRelation, _, _, _) =>
+                    if(!fsRelation.resultExpr.isEmpty) {
+                      println("!!!!!!!!!!!! reach here 2.")
+                      val agg = createAggregate(
+                        requiredChildDistributionExpressions = Some(groupingAttributes),
+                        groupingExpressions = groupingAttributes,
+                        aggregateExpressions = finalAggregateExpressions,
+                        aggregateAttributes = finalAggregateAttributes,
+                        initialInputBufferOffset = groupingExpressions.length,
+                        resultExpressions = resultExpressions,
+                        child = child)
+                      return agg :: Nil
+                    }
+                }
+               case _ =>
+            }
+          case _ =>
+        }
+      case exec: SparkPlan =>
+        println("!!!!!!!!!!!! plan type: " + exec.nodeName)
+    }
 
     val finalAggregate = createAggregate(
       requiredChildDistributionExpressions = Some(groupingAttributes),
