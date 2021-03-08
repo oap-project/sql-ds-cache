@@ -71,6 +71,10 @@ class Reader {
   int allocateFilterBuffers(int batchSize);
   void freeFilterBuffers();
 
+  void setAggColumnNames(std::shared_ptr<Expression> agg);
+  int allocateAggBuffers(int batchSize);
+  void freeAggBuffers();
+
   arrow::Result<std::shared_ptr<HadoopFileSystem>> fsResult;
   HdfsOptions* options;
   std::shared_ptr<FileSystem> fs;
@@ -109,8 +113,14 @@ class Reader {
   std::vector<char*> filterDataBuffers;
   std::vector<char*> filterNullBuffers;
 
+  int initPlusFilterRequiredColumnCount = 0;
+  bool aggReset = false;
+  std::vector<std::string> aggColumnNames;
+  std::vector<char*> aggDataBuffers;
+  std::vector<char*> aggNullBuffers;
   std::vector<std::shared_ptr<Expression>> aggExprs;
   std::vector<std::shared_ptr<Expression>> groupByExprs;
+  std::vector<std::vector<ApeDecimal128Ptr>> aggResults;
 
   bool plasmaCacheEnabled = false;
   std::shared_ptr<PlasmaCacheManager> plasmaCacheManager;

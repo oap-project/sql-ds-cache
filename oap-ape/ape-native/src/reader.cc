@@ -86,6 +86,7 @@ void Reader::init(std::string fileName, std::string hdfsHost, int hdfsPort,
   }
   columnReaders.resize(requiredColumnIndex.size());
   initRequiredColumnCount = requiredColumnIndex.size();
+  initPlusFilterRequiredColumnCount = initRequiredColumnCount;
   ARROW_LOG(DEBUG) << "initRequiredColumnCount is " << initRequiredColumnCount;
 
   ARROW_LOG(INFO) << "init done, totalRows " << totalRows;
@@ -151,13 +152,21 @@ int Reader::readBatch(int batchSize, long* buffersPtr_, long* nullsPtr_) {
   long* nullsPtr = nullsPtr_;
 
   // allocate extra memory for filtered columns if needed
-  allocateFilterBuffers(batchSize);
+  if (filterExpression) {
+    allocateFilterBuffers(batchSize);
+  }
+
+  if (aggExprs.size()) {
+    allocateAggBuffers(batchSize);
+  }
+
   int filterBufferCount = filterDataBuffers.size();
-  if (filterBufferCount > 0) {
+  int aggBufferCount = aggDataBuffers.size();
+  if (filterBufferCount > 0 || aggBufferCount > 0) {
     ARROW_LOG(DEBUG) << "use extra filter buffers count: " << filterBufferCount;
 
-    buffersPtr = new long[initRequiredColumnCount + filterBufferCount];
-    nullsPtr = new long[initRequiredColumnCount + filterBufferCount];
+    buffersPtr = new long[initRequiredColumnCount + filterBufferCount + aggBufferCount];
+    nullsPtr = new long[initRequiredColumnCount + filterBufferCount + aggBufferCount];
 
     for (int i = 0; i < initRequiredColumnCount; i++) {
       buffersPtr[i] = buffersPtr_[i];
@@ -167,6 +176,13 @@ int Reader::readBatch(int batchSize, long* buffersPtr_, long* nullsPtr_) {
     for (int i = 0; i < filterBufferCount; i++) {
       buffersPtr[initRequiredColumnCount + i] = (long)filterDataBuffers[i];
       nullsPtr[initRequiredColumnCount + i] = (long)filterNullBuffers[i];
+    }
+
+    for (int i = 0; i < aggBufferCount; i++) {
+      buffersPtr[initRequiredColumnCount + filterBufferCount + i]
+          = (long)aggDataBuffers[i];
+      nullsPtr[initRequiredColumnCount + filterBufferCount + i]
+          = (long)aggNullBuffers[i];
     }
   }
 
@@ -293,11 +309,31 @@ int Reader::readBatch(int batchSize, long* buffersPtr_, long* nullsPtr_) {
     time += std::chrono::steady_clock::now() - start;
   }
 
+  if (aggExprs.size()) {
+    auto start = std::chrono::steady_clock::now();
+    for (int i = 0; i < aggExprs.size();i++) {
+      auto agg = aggExprs[i];
+      if (typeid(*agg) == typeid(RootAggExpression)) {
+        rowsRet =
+            agg->ExecuteWithParam(rowsToRead, buffersPtr, nullsPtr, nullptr);
+        auto result = std::dynamic_pointer_cast<RootAggExpression>(agg)->getResult();
+        if (result.size() == 1) {
+          aggResults[i].push_back(result[0]);
+        } else {
+          ARROW_LOG(DEBUG) << "Oops... why return " << result.size() << " results";
+        }
+      } else if (typeid(*agg) == typeid(AttributeReferenceExpression)) {
+          //TODO
+      }
+    }
+    time += std::chrono::steady_clock::now() - start;
+  }
+
   delete[] defLevel;
   delete[] repLevel;
   delete[] nullBitMap;
 
-  if (filterBufferCount > 0) {
+  if (filterBufferCount > 0 || aggBufferCount > 0) {
     delete[] buffersPtr;
     delete[] nullsPtr;
   }
@@ -392,6 +428,7 @@ void Reader::setFilter(std::string filterJsonStr) {
 
   filterExpression->setSchema(schema);
   filterReset = true;
+  initPlusFilterRequiredColumnCount = requiredColumnIndex.size();
 }
 
 int Reader::allocateFilterBuffers(int batchSize) {
@@ -405,7 +442,7 @@ int Reader::allocateFilterBuffers(int batchSize) {
 
   // allocate new filter buffers
   int extraBufferNum = 0;
-  for (int i = initRequiredColumnCount; i < requiredColumnIndex.size(); i++) {
+  for (int i = initRequiredColumnCount; i < initPlusFilterRequiredColumnCount; i++) {
     int columnIndex = requiredColumnIndex[i];
     // allocate memory buffer
     char* dataBuffer;
@@ -485,11 +522,135 @@ void Reader::setFilterColumnNames(std::shared_ptr<Expression> filter) {
   }
 }
 
+int Reader::allocateAggBuffers(int batchSize) {
+
+  if (!aggReset && batchSize <= currentBatchSize) {
+    return 0;
+  }
+  aggReset = false;
+
+  // free current agg buffers
+  freeAggBuffers();
+
+  // allocate new agg buffers
+  int extraBufferNum = 0;
+  for (int i = initPlusFilterRequiredColumnCount; i < requiredColumnIndex.size(); i++) {
+    int columnIndex = requiredColumnIndex[i];
+    // allocate memory buffer
+    char* dataBuffer;
+    switch (fileMetaData->schema()->Column(columnIndex)->physical_type()) {
+      case parquet::Type::BOOLEAN:
+        dataBuffer = (char*) new bool[batchSize];
+        break;
+      case parquet::Type::INT32:
+        dataBuffer = (char*) new int32_t[batchSize];
+        break;
+      case parquet::Type::INT64:
+        dataBuffer = (char*) new int64_t[batchSize];
+        break;
+      case parquet::Type::INT96:
+        dataBuffer = (char*) new parquet::Int96[batchSize];
+        break;
+      case parquet::Type::FLOAT:
+        dataBuffer = (char*) new float[batchSize];
+        break;
+      case parquet::Type::DOUBLE:
+        dataBuffer = (char*) new double[batchSize];
+        break;
+      case parquet::Type::BYTE_ARRAY:
+        dataBuffer = (char*) new parquet::ByteArray[batchSize];
+        break;
+      case parquet::Type::FIXED_LEN_BYTE_ARRAY:
+        dataBuffer = (char*) new parquet::FixedLenByteArray[batchSize];
+        break;
+      default:
+        ARROW_LOG(WARNING) << "Unsupported Type!";
+        continue;
+    }
+
+    char* nullBuffer = new char[batchSize];
+    aggDataBuffers.push_back(dataBuffer);
+    aggNullBuffers.push_back(nullBuffer);
+    extraBufferNum++;
+  }
+
+  ARROW_LOG(INFO) << "create extra agg buffers count: " << extraBufferNum;
+  return extraBufferNum;
+}
+
+void Reader::freeAggBuffers() {
+  for (auto ptr : aggDataBuffers) {
+    delete[] ptr;
+  }
+  aggDataBuffers.clear();
+  for (auto ptr : aggNullBuffers) {
+    delete[] ptr;
+  }
+  aggNullBuffers.clear();
+}
+
+void Reader::setAggColumnNames(std::shared_ptr<Expression> agg) {
+    auto expr = std::dynamic_pointer_cast<WithResultExpression>(agg);
+    if (typeid(*expr) == typeid(AttributeReferenceExpression)) {
+      std::string columnName = expr->getColumnName();
+      if (std::find(aggColumnNames.begin(), aggColumnNames.end(), columnName) ==
+            aggColumnNames.end()) {
+        aggColumnNames.push_back(columnName);
+      }
+    } else if (typeid(*expr) == typeid(RootAggExpression)) {
+      setAggColumnNames(std::dynamic_pointer_cast<RootAggExpression>(expr)->getChild());
+    } else if (std::dynamic_pointer_cast<AggExpression>(expr)) {
+      setAggColumnNames(std::dynamic_pointer_cast<AggExpression>(expr)->getChild());
+    } else if (std::dynamic_pointer_cast<ArithmeticExpression>(expr)) {
+      setAggColumnNames(std::dynamic_pointer_cast<ArithmeticExpression>(expr)->getLeftChild());
+      setAggColumnNames(std::dynamic_pointer_cast<ArithmeticExpression>(expr)->getRightChild());
+    }
+}
+
 void Reader::setAgg(std::string aggStr) {
   // do nothing now
   groupByExprs = JsonConvertor::parseToGroupByExpressions(aggStr);
   aggExprs = JsonConvertor::parseToAggExpressions(aggStr);
+  for (auto result : aggResults) {
+    result.clear();
+  }
+  aggResults.clear();
 
+  // get column names from expression
+  aggColumnNames.clear();
+  for (auto agg : aggExprs) {
+    setAggColumnNames(agg);
+  }
+
+  // reset required columns to initial size
+  requiredColumnIndex.resize(initRequiredColumnCount + filterColumnNames.size());
+  requiredColumnNames.resize(initRequiredColumnCount + filterColumnNames.size());
+  schema.erase(schema.begin() + initRequiredColumnCount + filterColumnNames.size(), schema.end());
+  columnReaders.resize(initRequiredColumnCount + filterColumnNames.size());
+
+  // Check with agg column names. Append column if not present in the initial required columns.
+  for (int i = 0; i < aggColumnNames.size(); i++) {
+    std::string columnName = aggColumnNames[i];
+    if (std::find(requiredColumnNames.begin(), requiredColumnNames.end(), columnName)
+      == requiredColumnNames.end()) {
+
+      int columnIndex = fileMetaData->schema()->ColumnIndex(columnName);
+
+      // append column
+      requiredColumnIndex.push_back(columnIndex);
+      requiredColumnNames.push_back(columnName);
+      schema.push_back(
+          Schema(columnName, fileMetaData->schema()->Column(columnIndex)->physical_type()));
+      columnReaders.resize(requiredColumnIndex.size());
+    }
+  }
+
+  for (auto agg : aggExprs) {
+    agg->setSchema(schema);
+    aggResults.push_back(std::vector<ApeDecimal128Ptr>());
+  }
+
+  aggReset = true;
 }
 
 void Reader::setPlasmaCacheEnabled(bool isEnabled) {

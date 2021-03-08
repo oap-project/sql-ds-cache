@@ -67,6 +67,8 @@ set(PARQUET_DEMO
     parquet-hdfs-test.cc)
 
 set(PARSE_SRC utils/FilterExpression.cc utils/jsonConvertor.cc utils/type.cc utils/UnaryFilter.cc)
+set(DECIMAL_SRC utils/utils/DecimalUtil.cc utils/DecimalConvertor.cc)
+set(AGG_SRC utils/AggExpression.cc)
 set(PARSE_TEST utils/convertorTest.cc)
 set(AGG_PARSE_TEST utils/aggParserTest.cc)
 
@@ -79,7 +81,7 @@ set(CACHE_SRC utils/PlasmaCacheManager.cc)
 add_executable(ape ${APE_SRCS})
 add_executable(parquet_test ${PARQUET_DEMO})
 # add_library(parquet_native SHARED ${PARQUET_NATIVE_SRC})
-add_library(parquet_jni SHARED ${JNI_LIB_SRC} ${PARSE_SRC} ${CACHE_SRC})
+add_library(parquet_jni SHARED ${JNI_LIB_SRC} ${PARSE_SRC} ${CACHE_SRC} ${DECIMAL_SRC} ${AGG_SRC})
 add_library(parse SHARED ${PARSE_SRC})
 add_executable(parse_test ${PARSE_SRC} ${PARSE_TEST})
 add_executable(agg_parse_test ${PARSE_SRC} ${AGG_PARSE_TEST})

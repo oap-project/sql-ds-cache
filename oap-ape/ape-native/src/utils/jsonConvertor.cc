@@ -162,10 +162,12 @@ std::shared_ptr<WithResultExpression> JsonConvertor::parseToAggExpressionsHelper
         root["columnName"], root["dataType"],
         root.contains("castType") ? root["castType"] : "",
         root.contains("promotePrecision") ? (bool)root["promotePrecision"] : false);
+    res->setType(name);
     return res;
   } else if (name.compare("Literal") == 0) {
     auto res = std::make_shared<LiteralExpression>();
     res->setAttribute(root["dataType"], root["value"]);
+    res->setType(name);
     return res;
   } else if (name.compare("Sum") == 0 || name.compare("Average") == 0 ||
              name.compare("Count") == 0 || name.compare("Max") == 0 ||
@@ -173,6 +175,7 @@ std::shared_ptr<WithResultExpression> JsonConvertor::parseToAggExpressionsHelper
     std::shared_ptr<AggExpression> res = Gen::genAggExpression(name);
     res->setDataType(root.contains("dataType") ? root["dataType"] : "");
     res->setChild(parseToAggExpressionsHelper(root["child"]));
+    res->setType(name);
     return res;
   } else if (name.compare("Add") == 0 || name.compare("Subtract") == 0 ||
              name.compare("Multiply") == 0 || name.compare("Divide") == 0 ||
@@ -187,6 +190,7 @@ std::shared_ptr<WithResultExpression> JsonConvertor::parseToAggExpressionsHelper
         root.contains("promotePrecision") ? (bool)root["promotePrecision"] : false,
         root.contains("checkOverflow") ? (bool)root["checkOverflow"] : false,
         root.contains("nullOnOverFlow") ? (bool)root["nullOnOverFlow"] : false);
+    res->setType(name);
     return res;
   } else if (name.compare("RootAgg") == 0) {
     auto res = std::make_shared<RootAggExpression>();
@@ -194,6 +198,7 @@ std::shared_ptr<WithResultExpression> JsonConvertor::parseToAggExpressionsHelper
     res->setChild(parseToAggExpressionsHelper(root["child"]));
     res->setAttribute(root.contains("isDistinct") ? (bool)root["isDistinct"] : false,
                       root.contains("aliasName") ? root["aliasName"] : "");
+    res->setType(name);
     return res;
   } else {
     ARROW_LOG(WARNING) << "Unsupported Expression " << name;

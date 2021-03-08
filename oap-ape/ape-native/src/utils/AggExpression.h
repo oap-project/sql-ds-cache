@@ -20,8 +20,23 @@
 #include <arrow/util/decimal.h>
 
 #include "expression.h"
+#include "ApeDecimal.h"
+#include "DecimalConvertor.h"
+#include "DecimalUtil.h"
 
 namespace ape {
+
+static int getPrecisionAndScaleFromDecimalType(std::string& decimalType,
+                                               int& precision,
+                                               int& scale) {
+  std::string decimal("DecimalType");
+  if (decimalType.compare(0, decimal.length(), decimal) == 0) {
+    char str [64];
+    sscanf(decimalType.c_str(), "%11s(%d,%d)", str, &precision, &scale);
+    return 0;
+  }
+  return -1;
+}
 
 class WithResultExpression : public Expression {
  public:
@@ -32,15 +47,20 @@ class WithResultExpression : public Expression {
   void Execute(){};
   ~WithResultExpression(){};
 
-  virtual std::vector<arrow::Decimal128> getResult() {
+  virtual ApeDecimal128Vector getResult() {
     // should never be called.
-    return {arrow::Decimal128(0, 0)};
+    return { std::make_shared<ApeDecimal128>() };
   };
 
   void setDataType(std::string dataType_) { dataType = dataType_; }
+  void setType(std::string type_) { type = type_; }
+
+  std::string getDataType() { return dataType; }
+  std::string getColumnName() { return columnName; }
 
  protected:
   std::string dataType;
+  std::string columnName;
   std::string castType;
   bool isDistinct = false;
 };
@@ -53,6 +73,21 @@ class RootAggExpression : public WithResultExpression {
     isDistinct = isDistinct_;
     aliasName = aliasName_;
   }
+  std::shared_ptr<Expression> getChild() {
+      return child;
+  }
+
+  int ExecuteWithParam(int batchSize, long* dataBuffers, long* nullBuffers,
+                       char* outBuffers);
+
+  void setSchema(std::vector<Schema> schema_) {
+    schema = schema_;
+    child->setSchema(schema);
+  }
+
+  ApeDecimal128Vector getResult() {
+      return child->getResult();
+  };
 
  private:
   bool isDistinct;
@@ -65,6 +100,15 @@ class AggExpression : public WithResultExpression {
   // Avg will have two elements for Sum and Count
   ~AggExpression(){};
   void setChild(std::shared_ptr<WithResultExpression> child_) { child = child_; }
+  std::shared_ptr<WithResultExpression> getChild() { return child; }
+
+  int ExecuteWithParam(int batchSize, long* dataBuffers, long* nullBuffers,
+                       char* outBuffers);
+
+  void setSchema(std::vector<Schema> schema_) {
+    schema = schema_;
+    child->setSchema(schema);
+  }
 
  protected:
   std::shared_ptr<WithResultExpression> child;
@@ -73,10 +117,15 @@ class AggExpression : public WithResultExpression {
 class Sum : public AggExpression {
  public:
   ~Sum(){};
-  std::vector<arrow::Decimal128> getResult() override {
+  ApeDecimal128Vector getResult() override {
     auto tmp = child->getResult();
-    arrow::Decimal128 sum(0, 0);
-    for (auto e : tmp) sum += e;
+    arrow::BasicDecimal128 out;
+    for (auto e : tmp) {
+        out += e->value();
+    }
+    ApeDecimal128Ptr sum = std::make_shared<ApeDecimal128>(out,
+                                                           tmp[0]->precision(),
+                                                           tmp[0]->scale());
     return {sum};
   };
 };
@@ -84,10 +133,13 @@ class Sum : public AggExpression {
 class Min : public AggExpression {
  public:
   ~Min(){};
-  std::vector<arrow::Decimal128> getResult() override {
+  ApeDecimal128Vector getResult() override {
     auto tmp = child->getResult();
-    arrow::Decimal128 min = tmp[0];
-    for (auto e : tmp) min = min < e ? min : e;
+    arrow::BasicDecimal128 out(tmp[0]->value());
+    for (auto e : tmp) out = out < e->value() ? out : e->value();
+    ApeDecimal128Ptr min = std::make_shared<ApeDecimal128>(out,
+                                                           tmp[0]->precision(),
+                                                           tmp[0]->scale());
     return {min};
   };
 };
@@ -95,10 +147,13 @@ class Min : public AggExpression {
 class Max : public AggExpression {
  public:
   ~Max(){};
-  std::vector<arrow::Decimal128> getResult() override {
+  ApeDecimal128Vector getResult() override {
     auto tmp = child->getResult();
-    arrow::Decimal128 max = tmp[0];
-    for (auto e : tmp) max = max > e ? max : e;
+    arrow::BasicDecimal128 out(tmp[0]->value());
+    for (auto e : tmp) out = out > e->value() ? out : e->value();
+    ApeDecimal128Ptr max = std::make_shared<ApeDecimal128>(out,
+                                                           tmp[0]->precision(),
+                                                           tmp[0]->scale());
     return {max};
   };
 };
@@ -106,23 +161,29 @@ class Max : public AggExpression {
 class Count : public AggExpression {
  public:
   ~Count(){};
-  std::vector<arrow::Decimal128> getResult() override {
+  ApeDecimal128Vector getResult() override {
     auto tmp = child->getResult();
-    arrow::Decimal128 res(0, tmp.size());
-    return {res};
+    ApeDecimal128Ptr count = std::make_shared<ApeDecimal128>(tmp.size());
+    return {count};
   };
 };
 
 class Avg : public AggExpression {
  public:
   ~Avg(){};
-  std::vector<arrow::Decimal128> getResult() override {
+  ApeDecimal128Vector getResult() override {
     auto tmp = child->getResult();
-    arrow::Decimal128 count(0, tmp.size());
-    arrow::Decimal128 sum(0, 0);
-    for (auto e : tmp) sum += e;
-
-    return {sum, count};
+    arrow::BasicDecimal128 sum;
+    arrow::BasicDecimal128 avg;
+    for (auto e : tmp) {
+        sum += e->value();
+    }
+    if (tmp.size()) {
+      avg = sum / tmp.size();
+    }
+    return {std::make_shared<ApeDecimal128>(avg,
+                                            tmp[0]->precision(),
+                                            tmp[0]->scale())};
   };
 };
 
@@ -133,6 +194,17 @@ class ArithmeticExpression : public WithResultExpression {
   void setRight(std::shared_ptr<WithResultExpression> right) { rightChild = right; };
   void setAttribute(std::string checkOverFlowType_, std::string castType_,
                     bool promotePrecision_, bool checkOverflow_, bool nullOnOverFlow_){};
+  std::shared_ptr<WithResultExpression> getLeftChild() { return leftChild; }
+  std::shared_ptr<WithResultExpression> getRightChild() { return rightChild; }
+
+  void setSchema(std::vector<Schema> schema_) {
+    schema = schema_;
+    leftChild->setSchema(schema);
+    rightChild->setSchema(schema);
+  }
+
+  int ExecuteWithParam(int batchSize, long* dataBuffers, long* nullBuffers,
+                       char* outBuffers);
 
  protected:
   std::shared_ptr<WithResultExpression> leftChild;
@@ -148,8 +220,9 @@ class Add : public ArithmeticExpression {
  public:
   ~Add(){};
 
+#if 0
   // Add result will not change row number
-  std::vector<arrow::Decimal128> getResult() override {
+  ApeDecimal128Vector getResult() override {
     auto left = leftChild->getResult();
     auto right = rightChild->getResult();
     std::vector<arrow::Decimal128> res;
@@ -170,7 +243,10 @@ class Add : public ArithmeticExpression {
     }
 
     return res;
+    return { ApeDecimal128(); }
   }
+#endif
+
 };
 
 class Sub : public ArithmeticExpression {
@@ -194,7 +270,10 @@ class AttributeReferenceExpression : public WithResultExpression {
  public:
   ~AttributeReferenceExpression(){};
   // TODO: get value buffer and trans to Decimal()
-  std::vector<arrow::Decimal128> getResult() override { return result; }
+  ApeDecimal128Vector getResult() {
+      return result;
+  };
+
   void setAttribute(std::string columnName_, std::string dataType_, std::string castType_,
                     bool PromotePrecision_) {
     columnName = columnName_;
@@ -203,16 +282,23 @@ class AttributeReferenceExpression : public WithResultExpression {
     PromotePrecision = PromotePrecision_;
   };
 
+  void setSchema(std::vector<Schema> schema_);
+
+  int ExecuteWithParam(int batchSize, long* dataBuffers, long* nullBuffers,
+                       char* outBuffers);
+
  private:
-  std::vector<arrow::Decimal128> result;
-  std::string columnName;
+  ApeDecimal128Vector result;
   bool PromotePrecision;
+  int columnIndex;
 };
 
 class LiteralExpression : public WithResultExpression {
  public:
   ~LiteralExpression(){};
-  std::vector<arrow::Decimal128> getResult() override { return {value}; }
+#if 0
+  ApeDecimal128Vector& getResult() { reutn {ApeDecimal128()}; }
+#endif
   void setAttribute(std::string dataType_, std::string valueString_) {
     dataType = dataType_;
     valueString = valueString_;
