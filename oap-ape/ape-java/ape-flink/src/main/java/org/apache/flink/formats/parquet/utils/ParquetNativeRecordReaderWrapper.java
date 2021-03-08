@@ -106,23 +106,17 @@ public class ParquetNativeRecordReaderWrapper {
 
         boolean cacheLocalityEnabled = hadoopConfig.getBoolean("fs.ape.reader.cacheLocalityEnabled", false);
         if (cacheLocalityEnabled) {
-            setRedisToNativeReader(hadoopConfig);
+            ParquetReaderJNI.setPlasmaCacheRedis(
+                    reader,
+                    hadoopConfig.get(Constants.CONF_KEY_FS_APE_HCFS_REDIS_HOST, Constants.DEFAULT_REDIS_HOST),
+                    hadoopConfig.getInt(Constants.CONF_KEY_FS_APE_HCFS_REDIS_PORT, Constants.DEFAULT_REDIS_PORT),
+                    hadoopConfig.get(Constants.CONF_KEY_FS_APE_HCFS_REDIS_AUTH, Constants.DEFAULT_REDIS_AUTH));
         }
 
         LOG.info("native parquet reader initialized, plasma cache: {}, cache locality: {}",
                 plasmaCacheEnabled, cacheLocalityEnabled);
 
         return reader;
-
-    }
-
-    private void setRedisToNativeReader(Configuration hadoopConfig) {
-
-        String host = hadoopConfig.get(Constants.CONF_KEY_FS_APE_HCFS_REDIS_HOST, Constants.DEFAULT_REDIS_HOST);
-        int port = hadoopConfig.getInt(Constants.CONF_KEY_FS_APE_HCFS_REDIS_PORT, Constants.DEFAULT_REDIS_PORT);
-        String password = hadoopConfig.get(Constants.CONF_KEY_FS_APE_HCFS_REDIS_AUTH, Constants.DEFAULT_REDIS_AUTH);
-
-        ParquetReaderJNI.setPlasmaCacheRedis(reader, host, port, password);
 
     }
 
