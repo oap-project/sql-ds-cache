@@ -43,7 +43,7 @@ class DecimalConvertor {
       const auto value = static_cast<int64_t>(values[i]);
       low = arrow::BitUtil::FromLittleEndian(static_cast<uint64_t>(value));
       high = static_cast<uint64_t>(value < 0 ? -1 : 0);
-      out.push_back(std::make_shared<ApeDecimal128>(high, low, precision, scale);
+      out.push_back(std::make_shared<ApeDecimal128>(high, low, precision, scale));
     }
 
     return;

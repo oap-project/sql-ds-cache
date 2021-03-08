@@ -36,6 +36,13 @@ class ApeDecimal128 {
   constexpr ApeDecimal128(int32_t precision, int32_t scale)
       : precision_(precision), scale_(scale) {}
 
+  template <typename T,
+           typename = typename std::enable_if<
+               std::is_integral<T>::value && (sizeof(T) <= sizeof(uint64_t)), T>::type>
+  constexpr ApeDecimal128(T value) noexcept
+      : value_(arrow::BasicDecimal128(value >= T{0} ? 0 : -1, static_cast<uint64_t>(value))),
+      precision_(18), scale_(0) {}
+
   constexpr ApeDecimal128()
       : precision_(18), scale_(0) {}
 

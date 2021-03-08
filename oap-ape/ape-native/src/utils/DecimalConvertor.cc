@@ -26,6 +26,13 @@
 
 namespace ape {
 
+/// Signed left shift with well-defined behaviour on negative numbers or overflow
+template <typename SignedInt, typename Shift>
+SignedInt SafeLeftShift(SignedInt u, Shift shift) {
+  using UnsignedInt = typename std::make_unsigned<SignedInt>::type;
+  return static_cast<SignedInt>(static_cast<UnsignedInt>(u) << shift);
+}
+
 //TODO: Code copy from arrow::Decimal128::FromBigEndian, should think how to use this function directly.
 static inline uint64_t UInt64FromBigEndian(const uint8_t* bytes, int32_t length) {
   // We don't bounds check the length here because this is called by
@@ -65,7 +72,7 @@ static void FromBigEndian(const uint8_t *bytes, int32_t length,
   } else {
     high = -1 * (is_negative && length < kMaxDecimalBytes);
     // Shift left enough bits to make room for the incoming int64_t
-    high = arrow::internal::SafeLeftShift(high, high_bits_offset * CHAR_BIT);
+    high = SafeLeftShift(high, high_bits_offset * CHAR_BIT);
     // Preserve the upper bits by inplace OR-ing the int64_t
     high |= high_bits;
   }
@@ -83,7 +90,7 @@ static void FromBigEndian(const uint8_t *bytes, int32_t length,
     // Sign extend the low bits if necessary
     low = -1 * (is_negative && length < 8);
     // Shift left enough bits to make room for the incoming int64_t
-    low = arrow::internal::SafeLeftShift(low, low_bits_offset * CHAR_BIT);
+    low = SafeLeftShift(low, low_bits_offset * CHAR_BIT);
     // Preserve the upper bits by inplace OR-ing the int64_t
     low |= low_bits;
   }
@@ -109,7 +116,7 @@ void DecimalConvertor::ConvertFixLengthByteArrayToDecimal128(
   for (int32_t i = 0; i < num_values; ++i) {
     parquet::FixedLenByteArray value = fixed_length_byte_array[i];
     FromBigEndian(value.ptr, type_length,  &high, &low);
-    out.push_back(std::make_shared<ApeDecimal128>(high, low, precision, scale);
+    out.push_back(std::make_shared<ApeDecimal128>(high, low, precision, scale));
   }
 
   return;
@@ -122,14 +129,13 @@ void DecimalConvertor::ConvertByteArrayToDecimal128(
     int32_t scale,
     ApeDecimal128Vector& out) {
 
-  parquet::ByteArray* fixed_length_byte_array =
-      (parquet::ByteArray *)(column);
+  parquet::ByteArray* byte_array = (parquet::ByteArray *)(column);
   int64_t high;
   uint64_t low;
   for (int32_t i = 0; i < num_values; ++i) {
-    parquet::ByteArray value = fixed_length_byte_array[i];
+    parquet::ByteArray value = byte_array[i];
     FromBigEndian(value.ptr, value.len,  &high, &low);
-    out.push_back(std::make_shared<ApeDecimal128>(high, low, precision, scale);
+    out.push_back(std::make_shared<ApeDecimal128>(high, low, precision, scale));
   }
 
   return;
