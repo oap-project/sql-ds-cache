@@ -25,3 +25,9 @@ derby.log
 metastore_db/
 null/
 conf/persistent-memory.xml
+
+# Vscode config files
+*.project
+*.settings
+*.classpath
+.vscode/

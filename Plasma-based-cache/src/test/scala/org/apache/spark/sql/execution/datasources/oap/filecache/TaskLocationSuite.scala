@@ -19,7 +19,8 @@ package org.apache.spark.sql.execution.datasources.oap.filecache
 
 import org.scalatest.BeforeAndAfterEach
 
-import org.apache.spark.scheduler.ExecutorCacheTaskLocation
+import org.apache.spark.SparkEnv
+import org.apache.spark.scheduler.{ExecutorCacheTaskLocation, HostTaskLocation}
 import org.apache.spark.sql.QueryTest
 import org.apache.spark.sql.execution.datasources.oap.utils.CacheStatusSerDe
 import org.apache.spark.sql.internal.oap.OapConf
@@ -76,5 +77,21 @@ class TaskLocationSuite extends QueryTest with SharedOapContext with BeforeAndAf
       assert(cachedLocations.forall(locations =>
         locations.forall(_.isInstanceOf[ExecutorCacheTaskLocation])))
     }
+  }
+
+  test("consistent hash scheduler - task locations of query job before and after cache column") {
+    val sparkenv = SparkEnv.get
+    sparkenv.conf.set("spark.sql.oap.cluster.consistenthash.scheduler.enabled", "true")
+    sparkenv.conf.set("spark.sql.oap.cluster.node.info", "0:host0;1:host1;2:host2")
+    val data: Seq[(Int, String, Int)] = (1 to 100).map { i => (i, s"this is test $i", i % 2) }
+    data.toDF("column_1", "column_2", "column_3").createOrReplaceTempView("t")
+    sql("insert overwrite table parquet_test select * from t")
+    val cacheRdd = spark.sql("SELECT * FROM parquet_test").rdd
+    val cacheLocations = cacheRdd.partitions.indices.map(
+      spark.sparkContext.dagScheduler.getPreferredLocs(cacheRdd, _))
+
+    assert(cacheLocations.forall(_.nonEmpty))
+    assert(cacheLocations.forall(locations =>
+      locations.forall(_.isInstanceOf[HostTaskLocation])))
   }
 }
