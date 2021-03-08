@@ -17,9 +17,8 @@
 
 #include "UnaryFilter.h"
 
-#ifdef APE_WITH_QPL
-#include <type_traits>
-#include "QplFilter.h"
+#ifdef USE_LIB_QPL
+#undef USE_LIB_QPL
 #endif
 
 #ifdef USE_AVX
@@ -93,18 +92,13 @@ void NotEq<NullStruct>::execute(NullStruct* buffer, NullStruct value, int batchS
 template <typename T>
 void Gt<T>::execute(T* buffer, T value, int batchSize, char* out) {
   ARROW_LOG(DEBUG) << "gt";
-#ifdef APE_WITH_QPL
-  if (std::is_same<T, int>::value) {
-    const auto *in = reinterpret_cast<const uint8_t *>(buffer);
-    QplFilter(qpl::greater, false, value, in, out, batchSize);
-  } else {
+#ifdef USE_LIB_QPL
+  // use QPL to evalute
 #elif USE_AVX
   // use AVX to evalute
-#endif
+#else
   for (int i = 0; i < batchSize; i++) {
     out[i] = (buffer[i] > value) ? 1 : 0;
-  }
-#ifdef APE_WITH_QPL
   }
 #endif
 };
@@ -112,90 +106,65 @@ void Gt<T>::execute(T* buffer, T value, int batchSize, char* out) {
 template <typename T>
 void GtEq<T>::execute(T* buffer, T value, int batchSize, char* out) {
   ARROW_LOG(DEBUG) << "gteq";
-#ifdef APE_WITH_QPL
-  if (std::is_same<T, int>::value) {
-    const auto *in = reinterpret_cast<const uint8_t *>(buffer);
-    QplFilter(qpl::greater, true, value, in, out, batchSize);
-  } else {
+#ifdef USE_LIB_QPL
+  // use QPL to evalute
 #elif USE_AVX
   // use AVX to evalute
-#endif
+#else
   for (int i = 0; i < batchSize; i++) {
     out[i] = (buffer[i] >= value) ? 1 : 0;
-  }
-#ifdef APE_WITH_QPL
   }
 #endif
 }
 
 template <typename T>
 void Eq<T>::execute(T* buffer, T value, int batchSize, char* out) {
-#ifdef APE_WITH_QPL
-  if (std::is_same<T, int>::value) {
-    const auto *in = reinterpret_cast<const uint8_t *>(buffer);
-    QplFilter(qpl::equals, true, value, in, out, batchSize);
-  } else {
+#ifdef USE_LIB_QPL
+  // use QPL to evalute
 #elif USE_AVX
   // use AVX to evalute
-#endif
+#else
   for (int i = 0; i < batchSize; i++) {
     out[i] = (buffer[i] == value) ? 1 : 0;
-  }
-#ifdef APE_WITH_QPL
   }
 #endif
 }
 
 template <typename T>
 void NotEq<T>::execute(T* buffer, T value, int batchSize, char* out) {
-#ifdef APE_WITH_QPL
-  if (std::is_same<T, int>::value) {
-    const auto *in = reinterpret_cast<const uint8_t *>(buffer);
-    QplFilter(qpl::not_equals, true, value, in, out, batchSize);
-  } else {
+#ifdef USE_LIB_QPL
+  // use QPL to evalute
 #elif USE_AVX
   // use AVX to evalute
-#endif
+#else
   for (int i = 0; i < batchSize; i++) {
     out[i] = (buffer[i] != value) ? 1 : 0;
-  }
-#ifdef APE_WITH_QPL
   }
 #endif
 }
 
 template <typename T>
 void Lt<T>::execute(T* buffer, T value, int batchSize, char* out) {
-#ifdef APE_WITH_QPL
-  if (std::is_same<T, int>::value) {
-    const auto *in = reinterpret_cast<const uint8_t *>(buffer);
-    QplFilter(qpl::less, false, value, in, out, batchSize);
-  } else {
+#ifdef USE_LIB_QPL
+  // use QPL to evalute
 #elif USE_AVX
   // use AVX to evalute
-#endif
+#else
   for (int i = 0; i < batchSize; i++) {
     out[i] = (buffer[i] < value) ? 1 : 0;
-  }
-#ifdef APE_WITH_QPL
   }
 #endif
 }
 
 template <typename T>
 void LtEq<T>::execute(T* buffer, T value, int batchSize, char* out) {
-#ifdef APE_WITH_QPL
-  if (std::is_same<T, int>::value) {
-    const auto *in = reinterpret_cast<const uint8_t *>(buffer);
-    QplFilter(qpl::less, true, value, in, out, batchSize);
-  } else {
+#ifdef USE_LIB_QPL
+  // use QPL to evalute
 #elif USE_AVX
   // use AVX to evalute
-#endif
+#else
   for (int i = 0; i < batchSize; i++) {
     out[i] = (buffer[i] <= value) ? 1 : 0;
-  }
-#ifdef APE_WITH_QPL
   }
 #endif
 }
