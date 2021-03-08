@@ -17,8 +17,8 @@
 
 #include "UnaryFilter.h"
 
-#ifdef USE_LIB_QPL
-#undef USE_LIB_QPL
+#ifdef USE_LIB_XXX
+#undef USE_LIB_XXX
 #endif
 
 #ifdef USE_AVX
@@ -88,12 +88,12 @@ void NotEq<NullStruct>::execute(NullStruct* buffer, NullStruct value, int batchS
 }
 
 // impl execute.
-// TODO: add AVX/LIBQPL integration.
+// TODO: add AVX/LIBXXX integration.
 template <typename T>
 void Gt<T>::execute(T* buffer, T value, int batchSize, char* out) {
   ARROW_LOG(DEBUG) << "gt";
-#ifdef USE_LIB_QPL
-  // use QPL to evalute
+#ifdef USE_LIB_XXX
+  // use XXX to evalute
 #elif USE_AVX
   // use AVX to evalute
 #else
@@ -106,8 +106,8 @@ void Gt<T>::execute(T* buffer, T value, int batchSize, char* out) {
 template <typename T>
 void GtEq<T>::execute(T* buffer, T value, int batchSize, char* out) {
   ARROW_LOG(DEBUG) << "gteq";
-#ifdef USE_LIB_QPL
-  // use QPL to evalute
+#ifdef USE_LIB_XXX
+  // use XXX to evalute
 #elif USE_AVX
   // use AVX to evalute
 #else
@@ -119,8 +119,8 @@ void GtEq<T>::execute(T* buffer, T value, int batchSize, char* out) {
 
 template <typename T>
 void Eq<T>::execute(T* buffer, T value, int batchSize, char* out) {
-#ifdef USE_LIB_QPL
-  // use QPL to evalute
+#ifdef USE_LIB_XXX
+  // use XXX to evalute
 #elif USE_AVX
   // use AVX to evalute
 #else
@@ -132,8 +132,8 @@ void Eq<T>::execute(T* buffer, T value, int batchSize, char* out) {
 
 template <typename T>
 void NotEq<T>::execute(T* buffer, T value, int batchSize, char* out) {
-#ifdef USE_LIB_QPL
-  // use QPL to evalute
+#ifdef USE_LIB_XXX
+  // use XXX to evalute
 #elif USE_AVX
   // use AVX to evalute
 #else
@@ -145,8 +145,8 @@ void NotEq<T>::execute(T* buffer, T value, int batchSize, char* out) {
 
 template <typename T>
 void Lt<T>::execute(T* buffer, T value, int batchSize, char* out) {
-#ifdef USE_LIB_QPL
-  // use QPL to evalute
+#ifdef USE_LIB_XXX
+  // use XXX to evalute
 #elif USE_AVX
   // use AVX to evalute
 #else
@@ -158,8 +158,8 @@ void Lt<T>::execute(T* buffer, T value, int batchSize, char* out) {
 
 template <typename T>
 void LtEq<T>::execute(T* buffer, T value, int batchSize, char* out) {
-#ifdef USE_LIB_QPL
-  // use QPL to evalute
+#ifdef USE_LIB_XXX
+  // use XXX to evalute
 #elif USE_AVX
   // use AVX to evalute
 #else
