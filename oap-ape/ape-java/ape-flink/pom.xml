@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>com.intel.oap</groupId>
+    <artifactId>oap-ape</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <relativePath>../pom.xml</relativePath>
+  </parent>
+
+  <groupId>com.intel.oap</groupId>
+  <artifactId>ape-flink</artifactId>
+  <version>0.0.1-SNAPSHOT</version>
+  <packaging>jar</packaging>
+  <name>OAP Project APE(Accelerator based Pmem Engine) for Flink</name>
+
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+    <flink.version>1.12.0</flink.version>
+    <scala.binary.version>2.11</scala.binary.version>
+    <hadoop.version>2.4.1</hadoop.version>
+    <flink.format.parquet.version>1.11.1</flink.format.parquet.version>
+  </properties>
+
+  <dependencies>
+    <!-- Flink dependencies -->
+
+    <dependency>
+      <groupId>org.apache.flink</groupId>
+      <artifactId>flink-table-common</artifactId>
+      <version>${flink.version}</version>
+      <scope>provided</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.flink</groupId>
+      <artifactId>flink-table-runtime-blink_${scala.binary.version}</artifactId>
+      <version>${flink.version}</version>
+      <scope>provided</scope>
+    </dependency>
+
+    <!-- APE Dependencies -->
+
+    <dependency>
+      <groupId>com.intel.oap</groupId>
+      <artifactId>ape-common</artifactId>
+      <version>0.0.1-SNAPSHOT</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.apache.spark</groupId>
+          <artifactId>spark-unsafe_2.12</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
+    <!-- Parquet Dependencies -->
+
+    <dependency>
+      <groupId>org.apache.parquet</groupId>
+      <artifactId>parquet-hadoop</artifactId>
+      <version>${flink.format.parquet.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.xerial.snappy</groupId>
+          <artifactId>snappy-java</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
+    <!-- Hadoop is needed by Parquet -->
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-common</artifactId>
+      <version>${hadoop.version}</version>
+      <scope>provided</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>com.google.protobuf</groupId>
+          <artifactId>protobuf-java</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-mapreduce-client-core</artifactId>
+      <version>${hadoop.version}</version>
+      <scope>provided</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>com.google.protobuf</groupId>
+          <artifactId>protobuf-java</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
+    <!-- slf4j -->
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-log4j12</artifactId>
+      <version>1.7.25</version>
+      <scope>provided</scope>
+    </dependency>
+
+    <!--gson-->
+    <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.8.6</version>
+    </dependency>
+  </dependencies>
+
+  <profiles>
+    <profile>
+      <id>no-shading</id>
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
+
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-compiler-plugin</artifactId>
+            <version>3.8.1</version>
+            <configuration>
+              <source>${java.version}</source>
+              <target>${java.version}</target>
+              <encoding>UTF-8</encoding>
+              <maxmem>1024m</maxmem>
+              <fork>true</fork>
+              <compilerArgs>
+                <arg>-Xlint:all,-serial,-path</arg>
+              </compilerArgs>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+
+    <profile>
+      <id>shading</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-compiler-plugin</artifactId>
+            <version>3.8.1</version>
+            <configuration>
+              <source>${java.version}</source>
+              <target>${java.version}</target>
+              <encoding>UTF-8</encoding>
+              <maxmem>1024m</maxmem>
+              <fork>true</fork>
+              <compilerArgs>
+                <arg>-Xlint:all,-serial,-path</arg>
+              </compilerArgs>
+            </configuration>
+          </plugin>
+
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-shade-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>shade-flink</id>
+                <phase>package</phase>
+                <goals>
+                  <goal>shade</goal>
+                </goals>
+                <configuration>
+                  <shadeTestJar>false</shadeTestJar>
+                  <artifactSet>
+                    <includes combine.children="append">
+                      <include>com.intel.oap:oap-common</include>
+                      <include>com.intel.oap:ape-common</include>
+                      <include>com.fasterxml.jackson.core:jackson-core</include>
+                      <include>com.fasterxml.jackson.core:jackson-annotations</include>
+                      <include>com.fasterxml.jackson.core:jackson-databind</include>
+                    </includes>
+                  </artifactSet>
+                  <relocations>
+                    <!-- relocate some packages to the same package locations as in Flink -->
+                    <relocation>
+                      <pattern>org.apache.flink.formats.parquet</pattern>
+                      <shadedPattern>org.apache.flink.hive.shaded.formats.parquet</shadedPattern>
+                    </relocation>
+                    <relocation>
+                      <pattern>org.apache.parquet</pattern>
+                      <shadedPattern>org.apache.flink.hive.shaded.parquet</shadedPattern>
+                    </relocation>
+                  </relocations>
+                  <filters>
+                  </filters>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+
+        </plugins>
+      </build>
+    </profile>
+
+  </profiles>
+
+</project>
