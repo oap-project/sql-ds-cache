@@ -65,7 +65,7 @@ public class CacheAwareFileSystem extends FileSystem {
         uri = name;
         hdfs = new DistributedFileSystem();
         hdfs.initialize(name, conf);
-        LOG.info("fs initialized.");
+        LOG.info("cache aware scheduler is initialized.");
         
         locationPolicy = getConf().get(
                 Constants.CONF_KEY_FS_APE_HCFS_BLOCK_LOCATION_POLICY,
@@ -91,23 +91,24 @@ public class CacheAwareFileSystem extends FileSystem {
 
         List<BlockLocation> result = new ArrayList<>();
 
-        if (start >= 0 && len > 0) {
-            switch (locationPolicy) {
-                case Constants.CACHE_LOCATION_POLICY_HDFS_ONLY:
-                    // get HDFS block locations
-                    LOG.debug("getFileBlockLocations with native HDFS, start: {}, len: {}", start, len);
-                    BlockLocation[] hdfsBlockLocations = hdfs.getFileBlockLocations(path, start, len);
-                    result.addAll(Arrays.asList(hdfsBlockLocations));
-                    break;
-                case Constants.CACHE_LOCATION_POLICY_OVER_HDFS:
-                    result.addAll(getFileBlockLocationsWithCacheChecking(path, start, len, false));
-                    break;
-                case Constants.CACHE_LOCATION_POLICY_DEFAULT:
-                case Constants.CACHE_LOCATION_POLICY_MERGING_HDFS:
-                default:
-                    result.addAll(getFileBlockLocationsWithCacheChecking(path, start, len, true));
-            }
+        if (start < 0 || len <= 0) {
+            return result.toArray(new BlockLocation[0]);
+        }
 
+        switch (locationPolicy) {
+            case Constants.CACHE_LOCATION_POLICY_HDFS_ONLY:
+                // get HDFS block locations
+                LOG.debug("getFileBlockLocations with native HDFS, start: {}, len: {}", start, len);
+                BlockLocation[] hdfsBlockLocations = hdfs.getFileBlockLocations(path, start, len);
+                result.addAll(Arrays.asList(hdfsBlockLocations));
+                break;
+            case Constants.CACHE_LOCATION_POLICY_OVER_HDFS:
+                result.addAll(getFileBlockLocationsWithCacheChecking(path, start, len, false));
+                break;
+            case Constants.CACHE_LOCATION_POLICY_DEFAULT:
+            case Constants.CACHE_LOCATION_POLICY_MERGING_HDFS:
+            default:
+                result.addAll(getFileBlockLocationsWithCacheChecking(path, start, len, true));
         }
 
         return result.toArray(new BlockLocation[0]);

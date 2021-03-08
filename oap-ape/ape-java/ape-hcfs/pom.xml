@@ -16,10 +16,6 @@
     <packaging>jar</packaging>
     <name>A hadoop compatible file system that wraps HDFS API and ape cache locality</name>
 
-    <properties>
-        <hadoop.version>2.4.1</hadoop.version>
-    </properties>
-
     <dependencies>
         <dependency>
             <groupId>org.apache.hadoop</groupId>
