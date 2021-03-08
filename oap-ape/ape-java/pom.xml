@@ -41,5 +41,6 @@
     <module>ape-spark</module>
     <module>ape-flink</module>
     <module>ape-common</module>
+    <module>ape-hcfs</module>
   </modules>
 </project>
