@@ -223,8 +223,8 @@ object FileSourceStrategy extends Strategy with Logging {
         groupingAttributes ++
           partialAggregateExpressions.flatMap(_.aggregateFunction.inputAggBufferAttributes)
 
-      val outAttributes: Seq[Attribute] = if(partialResultExpressions.length != 0) partialResultExpressions
-                              else outputAttributes
+      val outAttributes: Seq[Attribute] = if(!partialResultExpressions.isEmpty) partialResultExpressions
+                                          else outputAttributes
 
       val schema = outAttributes.toStructType
       logInfo(s"Output Data Schema after agg pd: ${schema.simpleString}")

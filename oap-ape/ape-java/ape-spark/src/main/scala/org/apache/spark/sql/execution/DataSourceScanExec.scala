@@ -393,6 +393,7 @@ case class FileSourceScanExec(
       if(relation.fileFormat.isInstanceOf[ParquetSource]) {
         val aggExpr = DataSourceStrategy.translateAggregate(
           relation.groupExpr.getOrElse(Seq[Expression]()), relation.resultExpr.getOrElse(Seq[AggregateExpression]()))
+        // relation will reuse, it will influence result if don't set to None.
         relation.groupExpr = None
         relation.resultExpr = None
 

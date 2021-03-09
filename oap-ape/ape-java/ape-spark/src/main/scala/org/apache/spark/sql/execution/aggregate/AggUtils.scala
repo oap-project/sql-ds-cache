@@ -121,7 +121,8 @@ object AggUtils {
     // projection:
     val finalAggregateAttributes = finalAggregateExpressions.map(_.resultAttribute)
 
-    // more case ?
+    // if agg expr could pushdown, we will ignore partial aggregate
+    // TODO: match more case?
     child match {
       case later: PlanLater =>
         later.plan match {
@@ -129,7 +130,6 @@ object AggUtils {
             proj.child match {
                case LogicalRelation (fsRelation: HadoopFsRelation, _, _, _) =>
                  if(!fsRelation.resultExpr.isEmpty) {
-                   println("!!!!!!!!!!!! reach here 1.")
                    val agg = createAggregate(
                      requiredChildDistributionExpressions = Some(groupingAttributes),
                      groupingExpressions = groupingAttributes,
@@ -144,7 +144,6 @@ object AggUtils {
                 filter.child match {
                   case LogicalRelation (fsRelation: HadoopFsRelation, _, _, _) =>
                     if(!fsRelation.resultExpr.isEmpty) {
-                      println("!!!!!!!!!!!! reach here 2.")
                       val agg = createAggregate(
                         requiredChildDistributionExpressions = Some(groupingAttributes),
                         groupingExpressions = groupingAttributes,
@@ -161,7 +160,7 @@ object AggUtils {
           case _ =>
         }
       case exec: SparkPlan =>
-        println("!!!!!!!!!!!! plan type: " + exec.nodeName)
+        // do nothing
     }
 
     val finalAggregate = createAggregate(
