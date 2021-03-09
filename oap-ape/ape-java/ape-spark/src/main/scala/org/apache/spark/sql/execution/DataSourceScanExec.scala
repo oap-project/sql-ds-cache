@@ -29,6 +29,7 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.{InternalRow, TableIdentifier}
 import org.apache.spark.sql.catalyst.catalog.BucketSpec
 import org.apache.spark.sql.catalyst.expressions._
+import org.apache.spark.sql.catalyst.expressions.aggregate.AggregateExpression
 import org.apache.spark.sql.catalyst.plans.QueryPlan
 import org.apache.spark.sql.catalyst.plans.physical.{HashPartitioning, Partitioning, UnknownPartitioning}
 import org.apache.spark.sql.catalyst.util.truncatedString
@@ -164,7 +165,8 @@ case class FileSourceScanExec(
     partitionFilters: Seq[Expression],
     optionalBucketSet: Option[BitSet],
     dataFilters: Seq[Expression],
-    override val tableIdentifier: Option[TableIdentifier])
+    override val tableIdentifier: Option[TableIdentifier],
+    outputSchema: StructType)
   extends DataSourceScanExec {
 
   // Note that some vals referring the file-based relation are lazy intentionally
@@ -183,7 +185,7 @@ case class FileSourceScanExec(
 
   override def vectorTypes: Option[Seq[String]] =
     relation.fileFormat.vectorTypes(
-      requiredSchema = requiredSchema,
+      requiredSchema = outputSchema,
       partitionSchema = relation.partitionSchema,
       relation.sparkSession.sessionState.conf)
 
@@ -390,7 +392,10 @@ case class FileSourceScanExec(
     val readFile: (PartitionedFile) => Iterator[InternalRow] =
       if(relation.fileFormat.isInstanceOf[ParquetSource]) {
         val aggExpr = DataSourceStrategy.translateAggregate(
-          relation.groupExpr.getOrElse(null), relation.resultExpr.getOrElse(null))
+          relation.groupExpr.getOrElse(Seq[Expression]()), relation.resultExpr.getOrElse(Seq[AggregateExpression]()))
+        relation.groupExpr = None
+        relation.resultExpr = None
+
         relation.fileFormat.asInstanceOf[ParquetSource].buildParquetReader(
           sparkSession = relation.sparkSession,
           dataSchema = relation.dataSchema,
@@ -399,7 +404,8 @@ case class FileSourceScanExec(
           filters = pushedDownFilters,
           options = relation.options,
           hadoopConf = relation.sparkSession.sessionState.newHadoopConfWithOptions(relation.options),
-          aggExpr = aggExpr)
+          aggExpr = aggExpr,
+          outputSchema = outputSchema)
       } else {
         relation.fileFormat.buildReaderWithPartitionValues(
           sparkSession = relation.sparkSession,
@@ -611,6 +617,7 @@ case class FileSourceScanExec(
       QueryPlan.normalizePredicates(partitionFilters, output),
       optionalBucketSet,
       QueryPlan.normalizePredicates(dataFilters, output),
-      None)
+      None,
+      requiredSchema)
   }
 }

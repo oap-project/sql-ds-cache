@@ -21,7 +21,7 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.catalog.CatalogStatistics
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.expressions.aggregate.AggregateExpression
-import org.apache.spark.sql.catalyst.planning.{PhysicalOperation, ScanOperation}
+import org.apache.spark.sql.catalyst.planning.{PhysicalAggregation, PhysicalOperation}
 import org.apache.spark.sql.catalyst.plans.logical.{Aggregate, Filter, LeafNode, LogicalPlan, Project}
 import org.apache.spark.sql.catalyst.rules.Rule
 import org.apache.spark.sql.execution.datasources.v2.{DataSourceV2ScanRelation, FileScan}
@@ -81,11 +81,16 @@ private[sql] object PruneFileSourcePartitions extends Rule[LogicalPlan] {
           LogicalRelation(fsRelation: HadoopFsRelation, _, _, _ )) =>
             // TODO: whether this agg could pushDown
             val PDEnable = true
-            val canPD = DataSourceStrategy.canAggExprPushDown(groupingExpressions, resultExpressions)
-            if (PDEnable && canPD) {
-              fsRelation.groupExpr = Some(groupingExpressions)
-              fsRelation.resultExpr = Some(resultExpressions)
+            op match {
+              case PhysicalAggregation(aggGroupingExpressions, aggExpressions, aggResultExpressions, child) =>
+                val canPD = DataSourceStrategy.canAggExprPushDown(groupingExpressions, resultExpressions)
+                if (PDEnable && canPD) {
+                  fsRelation.groupExpr = Some(aggGroupingExpressions)
+                  fsRelation.resultExpr = Some(aggExpressions.map(expr => expr.asInstanceOf[AggregateExpression]))
+                }
+              case _ => throw new UnsupportedOperationException("not supported agg type!")
             }
+
             op
         case _ => op
       }

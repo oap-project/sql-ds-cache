@@ -34,6 +34,7 @@ import org.apache.spark.sql.catalyst.catalog._
 import org.apache.spark.sql.catalyst.encoders.RowEncoder
 import org.apache.spark.sql.catalyst.expressions
 import org.apache.spark.sql.catalyst.expressions._
+import org.apache.spark.sql.catalyst.expressions.aggregate.AggregateExpression
 import org.apache.spark.sql.catalyst.planning.ScanOperation
 import org.apache.spark.sql.catalyst.plans.logical.{InsertIntoDir, InsertIntoStatement, LogicalPlan, Project}
 import org.apache.spark.sql.catalyst.rules.Rule
@@ -544,7 +545,7 @@ object DataSourceStrategy {
    * @return a Json String for downstream(native) to parse.
    */
   protected[sql] def translateAggregate(groupingExpressions: Seq[Expression],
-                                        aggregateExpressions: Seq[NamedExpression]): String = {
+                                        aggregateExpressions: Seq[AggregateExpression]): String = {
     AggregateConvertor.toJsonString(
       scala.collection.JavaConverters.seqAsJavaList(groupingExpressions),
       scala.collection.JavaConverters.seqAsJavaList(aggregateExpressions))

@@ -196,7 +196,7 @@ class ParquetFileFormat
       options: Map[String, String],
       hadoopConf: Configuration): (PartitionedFile) => Iterator[InternalRow] = {
     buildParquetReader(sparkSession, dataSchema, partitionSchema, requiredSchema, filters, options,
-      hadoopConf, "")
+      hadoopConf, "", requiredSchema)
   }
 
   def buildParquetReader(
@@ -207,11 +207,12 @@ class ParquetFileFormat
       filters: Seq[Filter],
       options: Map[String, String],
       hadoopConf: Configuration,
-      aggExpr: String): (PartitionedFile) => Iterator[InternalRow] = {
+      aggExpr: String,
+      outputSchema: StructType): (PartitionedFile) => Iterator[InternalRow] = {
     hadoopConf.set(ParquetInputFormat.READ_SUPPORT_CLASS, classOf[ParquetReadSupport].getName)
     hadoopConf.set(
       ParquetReadSupport.SPARK_ROW_REQUESTED_SCHEMA,
-      requiredSchema.json)
+      outputSchema.json)
     hadoopConf.set(
       ParquetWriteSupport.SPARK_ROW_SCHEMA,
       requiredSchema.json)
@@ -241,7 +242,7 @@ class ParquetFileFormat
     // TODO: if you move this into the closure it reverts to the default values.
     // If true, enable using the custom RecordReader for parquet. This only works for
     // a subset of the types (no complex types).
-    val resultSchema = StructType(partitionSchema.fields ++ requiredSchema.fields)
+    val resultSchema = StructType(partitionSchema.fields ++ outputSchema.fields)
     val sqlConf = sparkSession.sessionState.conf
     val enableOffHeapColumnVector = sqlConf.offHeapColumnVectorEnabled
     val enableVectorizedReader: Boolean =

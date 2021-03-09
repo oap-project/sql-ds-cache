@@ -23,6 +23,7 @@ import scala.collection.mutable
 
 import org.apache.spark.sql.{SparkSession, SQLContext}
 import org.apache.spark.sql.catalyst.catalog.BucketSpec
+import org.apache.spark.sql.catalyst.expressions.aggregate.AggregateExpression
 import org.apache.spark.sql.catalyst.expressions.{Expression, NamedExpression}
 import org.apache.spark.sql.execution.FileRelation
 import org.apache.spark.sql.sources.{BaseRelation, DataSourceRegister}
@@ -49,8 +50,8 @@ case class HadoopFsRelation(
     bucketSpec: Option[BucketSpec],
     fileFormat: FileFormat,
     options: Map[String, String],
-    var groupExpr: Option[Seq[Expression]] = None,
-    var resultExpr: Option[Seq[NamedExpression]] = None)(val sparkSession: SparkSession)
+    var groupExpr: Option[Seq[NamedExpression]] = None,
+    var resultExpr: Option[Seq[AggregateExpression]] = None)(val sparkSession: SparkSession)
   extends BaseRelation with FileRelation {
 
   override def sqlContext: SQLContext = sparkSession.sqlContext
