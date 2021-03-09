@@ -29,4 +29,4 @@ jobs:
       - name: oap-common dependency
         run: git clone https://github.com/Intel-bigdata/OAP.git; cd OAP; git checkout v0.9.0-spark-3.0.0;export ONEAPI_ROOT=/ ; mvn install -pl oap-common -am -q;
       - name: Build with Maven
-        run: cd oap-ape/ape-java; mvn clean package -am --batch-mode
+        run: cd oap-ape/ape-java; mvn clean package -am --batch-mode -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
