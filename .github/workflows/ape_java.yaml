@@ -4,9 +4,11 @@ on:
   push:
     paths:
       - 'oap-ape/**'
+      - '.github/**'
   pull_request:
     paths:
       - 'oap-ape/**'
+      - '.github/**'
 
 jobs:
   build:
