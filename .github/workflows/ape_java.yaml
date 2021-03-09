@@ -20,7 +20,13 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: 1.8
+      - name: Cache Maven packages
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }} # todo: which pom.xml?
+          restore-keys: ${{ runner.os }}-m2
       - name: oap-common dependency
-        run: git clone https://github.com/Intel-bigdata/OAP.git; cd OAP; git checkout v0.9.0-spark-3.0.0;export ONEAPI_ROOT=/ ; mvn install -pl oap-common -am;
+        run: git clone https://github.com/Intel-bigdata/OAP.git; cd OAP; git checkout v0.9.0-spark-3.0.0;export ONEAPI_ROOT=/ ; mvn install -pl oap-common -am -q;
       - name: Build with Maven
-        run: cd oap-ape/ape-java; mvn clean package -am
+        run: cd oap-ape/ape-java; mvn clean package -am --batch-mode
