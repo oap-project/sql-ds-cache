@@ -200,7 +200,9 @@ public class RedisPMemBlockLocationStore implements PMemBlockLocationStore {
                 if (parts.length >= 3) {
                     long offset = Long.parseLong(parts[0]);
                     long length = Long.parseLong(parts[1]);
-                    String host = parts[2];
+                    // hostname may contains delimiter. So we don't use parts[2] as hostname.
+                    String host = t.getElement().substring(
+                            parts[0].length() + parts[1].length() + 2 * REDIS_ZSET_VALUE_DELIM.length());
 
                     // check cached block's offset and length
                     if (offset == block.getOffset() && length == block.getLength()) {

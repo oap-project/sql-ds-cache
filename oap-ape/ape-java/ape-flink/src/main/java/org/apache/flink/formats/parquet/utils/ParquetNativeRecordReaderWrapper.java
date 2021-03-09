@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import com.intel.oap.fs.hadoop.ape.hcfs.Constants;
 import com.intel.ape.ParquetReaderJNI;
 import com.intel.ape.util.ParquetFilterPredicateConvertor;
 import org.apache.flink.connector.file.src.FileSourceSplit;
@@ -99,10 +100,21 @@ public class ParquetNativeRecordReaderWrapper {
         }
 
         ConvertToJson message = new ConvertToJson(fieldTypeList, projectedFields);
+        boolean plasmaCacheEnabled = hadoopConfig.getBoolean("fs.ape.reader.plasmaCacheEnabled", false);
         reader = ParquetReaderJNI.init(fileName, hdfsHost, hdfsPort, message.toJson(), inputSplitRowGroupStartIndex,
-                inputSplitRowGroupNum);
+                inputSplitRowGroupNum, plasmaCacheEnabled);
 
-        LOG.info("native parquet reader initialized");
+        boolean cacheLocalityEnabled = hadoopConfig.getBoolean("fs.ape.reader.cacheLocalityEnabled", false);
+        if (cacheLocalityEnabled) {
+            ParquetReaderJNI.setPlasmaCacheRedis(
+                    reader,
+                    hadoopConfig.get(Constants.CONF_KEY_FS_APE_HCFS_REDIS_HOST, Constants.DEFAULT_REDIS_HOST),
+                    hadoopConfig.getInt(Constants.CONF_KEY_FS_APE_HCFS_REDIS_PORT, Constants.DEFAULT_REDIS_PORT),
+                    hadoopConfig.get(Constants.CONF_KEY_FS_APE_HCFS_REDIS_AUTH, Constants.DEFAULT_REDIS_AUTH));
+        }
+
+        LOG.info("native parquet reader initialized, plasma cache: {}, cache locality: {}",
+                plasmaCacheEnabled, cacheLocalityEnabled);
 
         return reader;
 

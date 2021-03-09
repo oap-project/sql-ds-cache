@@ -36,7 +36,7 @@ PlasmaCacheManager::PlasmaCacheManager(std::string file_path) : file_path_(file_
 
     char buff[1024];
     gethostname(buff, sizeof(buff));
-    std::string hostname = buff;
+    hostname = buff;
   } else {
     ARROW_LOG(WARNING) << "plasma, Connect failed: " << status.message();
   }

@@ -7,13 +7,13 @@
   <parent>
     <groupId>com.intel.oap</groupId>
     <artifactId>oap-ape</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>1.1.0-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
 
   <groupId>com.intel.oap</groupId>
   <artifactId>ape-flink</artifactId>
-  <version>0.0.1-SNAPSHOT</version>
+  <version>${ape.version}</version>
   <packaging>jar</packaging>
   <name>OAP Project APE(Accelerator based Pmem Engine) for Flink</name>
 
@@ -49,13 +49,19 @@
     <dependency>
       <groupId>com.intel.oap</groupId>
       <artifactId>ape-common</artifactId>
-      <version>0.0.1-SNAPSHOT</version>
+      <version>${ape.version}</version>
       <exclusions>
         <exclusion>
           <groupId>org.apache.spark</groupId>
           <artifactId>spark-unsafe_2.12</artifactId>
         </exclusion>
       </exclusions>
+    </dependency>
+
+    <dependency>
+      <groupId>com.intel.oap</groupId>
+      <artifactId>ape-hcfs</artifactId>
+      <version>${ape.version}</version>
     </dependency>
 
     <!-- Parquet Dependencies -->
@@ -179,6 +185,7 @@
                     <includes combine.children="append">
                       <include>com.intel.oap:oap-common</include>
                       <include>com.intel.oap:ape-common</include>
+                      <include>com.intel.oap:ape-hcfs</include>
                       <include>com.fasterxml.jackson.core:jackson-core</include>
                       <include>com.fasterxml.jackson.core:jackson-annotations</include>
                       <include>com.fasterxml.jackson.core:jackson-databind</include>
