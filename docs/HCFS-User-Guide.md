@@ -28,8 +28,8 @@ spark.driver.extraClassPath       /path/to/hcfs-sql-ds-cache-<version>.jar
 Add the following configuration to `$SPARK_HOME/conf/spark-defaults.conf`.
 
 ```
-spark hadoop.fs.cachedFs.redis.host
-spark hadoop.fs.cachedFs.redis.port
+spark hadoop.fs.cachedFs.redis.host $HOST
+spark hadoop.fs.cachedFs.redis.port $PORT
 ```
 
 ### Configuration for HCFS cache location policy
@@ -53,12 +53,14 @@ spark hadoop.fs.cachedFs.blockLocation.policy  default or cache_over_hdfs or hdf
 We provide HCFS cache patterns for paths to determine wherthe path will be cached
 * whitelist
 The path match the pattens will be cached. An empty regexp results in matching everything.
+eg. cachedFs://localhost:9000/dir/
 * blacklist
 The path match the pattens will not be cached. An empty regexp results in no matching of black list.
+eg. io_data|io_control
 
 Add the following configuration to `$SPARK_HOME/conf/spark-defaults.conf`.
 
 ```
-spark.hadoop.fs.cachedFs.whiteList.regexp
-spark.hadoop.fs.cachedFs.blacklist.regexp
+spark.hadoop.fs.cachedFs.whiteList.regexp  $PATTERN
+spark.hadoop.fs.cachedFs.blacklist.regexp  $PATTERN
 ```
