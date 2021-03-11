@@ -327,8 +327,7 @@ class Multiply : public ArithmeticExpression {
     auto right = rightChild->getResult();
     int32_t scale;
     int32_t precision;
-    //if (!checkOverFlowType.empty()) {
-    if (0) {
+    if (!checkOverFlowType.empty()) {
       getPrecisionAndScaleFromDecimalType(checkOverFlowType, precision, scale);
     } else {
       std::shared_ptr<arrow::Decimal128Type> t1 =

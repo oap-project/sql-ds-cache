@@ -28,7 +28,6 @@ class DecimalConvertor {
  public:
   template <typename ParquetIntegerType>
   static void ConvertIntegerToDecimal128(const uint8_t *values,
-                                         const uint8_t *nulls,
                                          int32_t num_values,
                                          int32_t precision, int32_t scale,
                                          ApeDecimal128Vector& out) {
@@ -42,19 +41,16 @@ class DecimalConvertor {
     uint64_t high;
     uint64_t low;
     for (int32_t i = 0; i < num_values; ++i) {
-      if (nulls[i]) {
-        const auto value = static_cast<int64_t>(elements[i]);
-        low = arrow::BitUtil::FromLittleEndian(static_cast<uint64_t>(value));
-        high = static_cast<uint64_t>(value < 0 ? -1 : 0);
-        out.push_back(std::make_shared<ApeDecimal128>(high, low, precision, scale));
-      }
+      const auto value = static_cast<int64_t>(elements[i]);
+      low = arrow::BitUtil::FromLittleEndian(static_cast<uint64_t>(value));
+      high = static_cast<uint64_t>(value < 0 ? -1 : 0);
+      out.push_back(std::make_shared<ApeDecimal128>(high, low, precision, scale));
     }
 
     return;
   }
 
   static void ConvertFixLengthByteArrayToDecimal128(const uint8_t *values,
-                                                    const uint8_t *nulls,
                                                     int32_t num_values,
                                                     int32_t type_length,
                                                     int32_t precision,
@@ -62,7 +58,6 @@ class DecimalConvertor {
                                                     ApeDecimal128Vector& out);
 
   static void ConvertByteArrayToDecimal128(const uint8_t *values,
-                                           const uint8_t *nulls,
                                            int32_t num_values,
                                            int32_t precision, int32_t scale,
                                            ApeDecimal128Vector& out);
