@@ -449,20 +449,20 @@ class LiteralExpression : public WithResultExpression {
 
 class Gen {
  public:
-   static std::shared_ptr<ArithmeticExpression> genArithmeticExpression(std::string name) {
-     if (name.compare("Add") == 0)
-       return std::make_shared<Add>();
-     else if (name.compare("Subtract") == 0)
-       return std::make_shared<Sub>();
-     else if (name.compare("Multiply") == 0)
-       return std::make_shared<Multiply>();
-     else if (name.compare("Divide") == 0)
-       return std::make_shared<Divide>();
-     else if (name.compare("Mod") == 0)
-       return std::make_shared<Mod>();
-     ARROW_LOG(ERROR) << "not support arithmetic expression:" << name;
-     return nullptr;
-   };
+  static std::shared_ptr<ArithmeticExpression> genArithmeticExpression(std::string name) {
+    if (name.compare("Add") == 0)
+      return std::make_shared<Add>();
+    else if (name.compare("Subtract") == 0)
+      return std::make_shared<Sub>();
+    else if (name.compare("Multiply") == 0)
+      return std::make_shared<Multiply>();
+    else if (name.compare("Divide") == 0)
+      return std::make_shared<Divide>();
+    else if (name.compare("Mod") == 0)
+      return std::make_shared<Mod>();
+    ARROW_LOG(ERROR) << "not support arithmetic expression:" << name;
+    return nullptr;
+  };
 
   static std::shared_ptr<AggExpression> genAggExpression(std::string name) {
     if (name.compare("Sum") == 0)
