@@ -23,7 +23,7 @@
   </parent>
   <artifactId>plasma-sql-ds-cache</artifactId>
   <version>1.1.0</version>
-  <name>Plasma Based SQL DS Cacahe</name>
+  <name>Plasma Based SQL DS Cache</name>
   <packaging>jar</packaging>
 
 
