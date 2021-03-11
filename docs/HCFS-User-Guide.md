@@ -28,8 +28,8 @@ spark.driver.extraClassPath       /path/to/hcfs-sql-ds-cache-<version>.jar
 Add the following configuration to `$SPARK_HOME/conf/spark-defaults.conf`.
 
 ```
-spark hadoop.fs.cachedFs.redis.host $HOST
-spark hadoop.fs.cachedFs.redis.port $PORT
+spark.hadoop.fs.cachedFs.redis.host $HOST
+spark.hadoop.fs.cachedFs.redis.port $PORT
 ```
 
 ### Configuration for HCFS cache location policy
@@ -45,7 +45,7 @@ This policy will ignoring cached blocks when finding file block locations
 Add the following configuration to `$SPARK_HOME/conf/spark-defaults.conf`.
 
 ```
-spark hadoop.fs.cachedFs.blockLocation.policy  default or cache_over_hdfs or hdfs_only
+spark.hadoop.fs.cachedFs.blockLocation.policy  default or cache_over_hdfs or hdfs_only
 ```
 
 ## Configuration for HCFS cache path patten
