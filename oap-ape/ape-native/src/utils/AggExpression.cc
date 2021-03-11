@@ -82,17 +82,21 @@ int AttributeReferenceExpression::ExecuteWithParam(int batchSize, long* dataBuff
     }
     if (columnType == parquet::Type::INT64) {
       DecimalConvertor::ConvertIntegerToDecimal128<parquet::Int64Type>(
-          (const uint8_t *)(dataPtr), batchSize, precision, scale, result);
+          (const uint8_t *)(dataPtr), (const uint8_t *)(nullPtr),
+          batchSize, precision, scale, result);
     } else if (columnType == parquet::Type::INT32) {
       DecimalConvertor::ConvertIntegerToDecimal128<parquet::Int32Type>(
-          (const uint8_t *)(dataPtr), batchSize, precision, scale, result);
+          (const uint8_t *)(dataPtr), (const uint8_t *)(nullPtr),
+          batchSize, precision, scale, result);
     } else if (columnType == parquet::Type::FIXED_LEN_BYTE_ARRAY) {
       //TODO: get flba length from column desc
       //DecimalConvertor::ConvertFixLengthByteArrayToDecimal128(
-      //    (const uint8_t*)(dataPtr), batchSize, type_length, precision, scale, result);
+      //    (const uint8_t *)(dataPtr), (const uint8_t *)(nullPtr),
+      //    batchSize, type_length, precision, scale, result);
     } else if (columnType == parquet::Type::BYTE_ARRAY) {
       DecimalConvertor::ConvertByteArrayToDecimal128(
-            (const uint8_t*)(dataPtr), batchSize, precision, scale, result);
+          (const uint8_t *)(dataPtr), (const uint8_t *)(nullPtr),
+          batchSize, precision, scale, result);
     }
 
   } else {

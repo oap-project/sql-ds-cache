@@ -18,6 +18,7 @@
 #pragma once
 
 #include <arrow/util/decimal.h>
+#include <arrow/util/logging.h>
 
 #include "expression.h"
 #include "ApeDecimal.h"
@@ -193,7 +194,13 @@ class ArithmeticExpression : public WithResultExpression {
   void setLeft(std::shared_ptr<WithResultExpression> left) { leftChild = left; };
   void setRight(std::shared_ptr<WithResultExpression> right) { rightChild = right; };
   void setAttribute(std::string checkOverFlowType_, std::string castType_,
-                    bool promotePrecision_, bool checkOverflow_, bool nullOnOverFlow_){};
+                    bool promotePrecision_, bool checkOverflow_, bool nullOnOverFlow_){
+    checkOverFlowType = checkOverFlowType_;
+    castType = castType_;
+    promotePrecision = promotePrecision_;
+    checkOverflow = checkOverflow_;
+    nullOnOverFlow = nullOnOverFlow_;
+  };
   std::shared_ptr<WithResultExpression> getLeftChild() { return leftChild; }
   std::shared_ptr<WithResultExpression> getRightChild() { return rightChild; }
 
@@ -219,51 +226,168 @@ class ArithmeticExpression : public WithResultExpression {
 class Add : public ArithmeticExpression {
  public:
   ~Add(){};
-
-#if 0
-  // Add result will not change row number
   ApeDecimal128Vector getResult() override {
     auto left = leftChild->getResult();
     auto right = rightChild->getResult();
-    std::vector<arrow::Decimal128> res;
+    int32_t scale;
+    int32_t precision;
+    if (!checkOverFlowType.empty()) {
+      getPrecisionAndScaleFromDecimalType(checkOverFlowType, precision, scale);
+    } else {
+      std::shared_ptr<arrow::Decimal128Type> t1 =
+          std::dynamic_pointer_cast<arrow::Decimal128Type>(
+              arrow::decimal(left[0]->precision(), left[0]->scale()));
+      std::shared_ptr<arrow::Decimal128Type> t2 =
+          std::dynamic_pointer_cast<arrow::Decimal128Type>(
+              arrow::decimal(right[0]->precision(), right[0]->scale()));
+      std::shared_ptr<arrow::Decimal128Type> type;
+      DecimalUtil::GetResultType(DecimalUtil::kOpAdd, {t1, t2}, &type);
+      precision = type->precision();
+      scale = type->scale();
+    }
+    ApeDecimal128Vector add;
     if (left.size() == 1) {
       for (int i = 0; i < right.size(); i++) {
-        res.push_back(left[0] + right[i]);
+        arrow::BasicDecimal128 out = left[0]->value() + right[i]->value();
+        add.push_back(std::make_shared<ApeDecimal128>(out, precision, scale));
       }
-    } else if (right.size() == 1) {
-      for (int i = 0; i < left.size(); i++) {
-        res.push_back(left[i] + right[0]);
-      }
-    } else if (left.size() == right.size()) {
-      for (int i = 0; i < left.size(); i++) {
-        res.push_back(left[i] + right[i]);
-      }
-    } else {
-      // should not reach here.
     }
-
-    return res;
-    return { ApeDecimal128(); }
-  }
-#endif
-
+    else if (right.size() == 1) {
+      for (int i = 0; i < left.size(); i++) {
+        arrow::BasicDecimal128 out = left[i]->value() + right[0]->value();
+        add.push_back(std::make_shared<ApeDecimal128>(out, precision, scale));
+      }
+    }
+    else if (left.size() == right.size()) {
+      for (int i = 0; i < left.size(); i++) {
+        arrow::BasicDecimal128 out = left[i]->value() + right[i]->value();
+        add.push_back(std::make_shared<ApeDecimal128>(out, precision, scale));
+      }
+    }
+    else {
+      ARROW_LOG(ERROR) << "Oops...why left and right has different size?";
+    }
+    return add;
+  };
 };
 
 class Sub : public ArithmeticExpression {
  public:
   ~Sub(){};
+  ApeDecimal128Vector getResult() override {
+    auto left = leftChild->getResult();
+    auto right = rightChild->getResult();
+    int32_t scale;
+    int32_t precision;
+    if (!checkOverFlowType.empty()) {
+      getPrecisionAndScaleFromDecimalType(checkOverFlowType, precision, scale);
+    } else {
+      std::shared_ptr<arrow::Decimal128Type> t1 =
+          std::dynamic_pointer_cast<arrow::Decimal128Type>(
+              arrow::decimal(left[0]->precision(), left[0]->scale()));
+      std::shared_ptr<arrow::Decimal128Type> t2 =
+          std::dynamic_pointer_cast<arrow::Decimal128Type>(
+              arrow::decimal(right[0]->precision(), right[0]->scale()));
+      std::shared_ptr<arrow::Decimal128Type> type;
+      DecimalUtil::GetResultType(DecimalUtil::kOpSubtract, {t1, t2}, &type);
+      precision = type->precision();
+      scale = type->scale();
+    }
+    ApeDecimal128Vector substract;
+    if (left.size() == 1) {
+      for (int i = 0; i < right.size(); i++) {
+        arrow::BasicDecimal128 out = left[0]->value() - right[i]->value();
+        substract.push_back(std::make_shared<ApeDecimal128>(out, precision, scale));
+      }
+    }
+    else if (right.size() == 1) {
+      for (int i = 0; i < left.size(); i++) {
+        arrow::BasicDecimal128 out = left[i]->value() - right[0]->value();
+        substract.push_back(std::make_shared<ApeDecimal128>(out, precision, scale));
+      }
+    }
+    else if (left.size() == right.size()) {
+      for (int i = 0; i < left.size(); i++) {
+        arrow::BasicDecimal128 out = left[i]->value() - right[i]->value();
+        substract.push_back(std::make_shared<ApeDecimal128>(out, precision, scale));
+      }
+    }
+    else {
+      ARROW_LOG(ERROR) << "Oops...why left and right has different size?";
+    }
+    return substract;
+  };
 };
+
 class Multiply : public ArithmeticExpression {
  public:
   ~Multiply(){};
+  ApeDecimal128Vector getResult() override {
+    auto left = leftChild->getResult();
+    auto right = rightChild->getResult();
+    int32_t scale;
+    int32_t precision;
+    //if (!checkOverFlowType.empty()) {
+    if (0) {
+      getPrecisionAndScaleFromDecimalType(checkOverFlowType, precision, scale);
+    } else {
+      std::shared_ptr<arrow::Decimal128Type> t1 =
+          std::dynamic_pointer_cast<arrow::Decimal128Type>(
+              arrow::decimal(left[0]->precision(), left[0]->scale()));
+      std::shared_ptr<arrow::Decimal128Type> t2 =
+          std::dynamic_pointer_cast<arrow::Decimal128Type>(
+              arrow::decimal(right[0]->precision(), right[0]->scale()));
+      std::shared_ptr<arrow::Decimal128Type> type;
+      DecimalUtil::GetResultType(DecimalUtil::kOpMultiply, {t1, t2}, &type);
+      precision = type->precision();
+      scale = type->scale();
+    }
+    ApeDecimal128Vector multiply;
+    if (left.size() == 1) {
+      for (int i = 0; i < right.size(); i++) {
+        arrow::BasicDecimal128 out = left[0]->value() * right[i]->value();
+        multiply.push_back(std::make_shared<ApeDecimal128>(out, precision, scale));
+      }
+    }
+    else if (right.size() == 1) {
+      for (int i = 0; i < left.size(); i++) {
+        arrow::BasicDecimal128 out = left[i]->value() * right[0]->value();
+        multiply.push_back(std::make_shared<ApeDecimal128>(out, precision, scale));
+      }
+    }
+    else if (left.size() == right.size()) {
+      for (int i = 0; i < left.size(); i++) {
+        arrow::BasicDecimal128 out = left[i]->value() * right[i]->value();
+        multiply.push_back(std::make_shared<ApeDecimal128>(out, precision, scale));
+      }
+    }
+    else {
+      ARROW_LOG(ERROR) << "Oops...why left and right has different size?";
+    }
+    return multiply;
+  };
 };
+
 class Divide : public ArithmeticExpression {
  public:
   ~Divide(){};
+  ApeDecimal128Vector getResult() override {
+    auto left = leftChild->getResult();
+    auto right = rightChild->getResult();
+    ApeDecimal128Ptr sum = std::make_shared<ApeDecimal128>();
+    return {sum};
+  };
 };
+
 class Mod : public ArithmeticExpression {
  public:
   ~Mod(){};
+  ApeDecimal128Vector getResult() override {
+    auto left = leftChild->getResult();
+    auto right = rightChild->getResult();
+    ApeDecimal128Ptr sum = std::make_shared<ApeDecimal128>();
+    return {sum};
+  };
 };  // ...
 
 class AttributeReferenceExpression : public WithResultExpression {
@@ -296,36 +420,49 @@ class AttributeReferenceExpression : public WithResultExpression {
 class LiteralExpression : public WithResultExpression {
  public:
   ~LiteralExpression(){};
-#if 0
-  ApeDecimal128Vector& getResult() { reutn {ApeDecimal128()}; }
-#endif
+  ApeDecimal128Vector getResult() override {
+    return {value};
+  }
   void setAttribute(std::string dataType_, std::string valueString_) {
     dataType = dataType_;
     valueString = valueString_;
-    // value = valueString;
+    arrow::Decimal128 decimal;
+    int32_t scaleFromValue;
+    int32_t scaleFromType;
+    int32_t precision;
+    arrow::Decimal128::FromString(valueString, &decimal, &precision, &scaleFromValue);
+    if (!dataType.empty()) {
+      getPrecisionAndScaleFromDecimalType(dataType, precision, scaleFromType);
+      if (scaleFromType != scaleFromValue) {
+        decimal = decimal.Rescale(scaleFromValue, scaleFromType).ValueOrDie();
+      }
+    }
+    value = std::make_shared<ApeDecimal128>(decimal.high_bits(),
+                                            decimal.low_bits(),
+                                            precision, scaleFromType);
   };
 
  private:
   std::string valueString;
-  arrow::Decimal128 value;  // build this in consturctor
+  ApeDecimal128Ptr value;  // build this in consturctor
 };
 
 class Gen {
  public:
-  static std::shared_ptr<ArithmeticExpression> genArithmeticExpression(std::string name) {
-    if (name.compare("Add"))
-      return std::make_shared<Add>();
-    else if (name.compare("Sub"))
-      return std::make_shared<Sub>();
-    else if (name.compare("Multiply"))
-      return std::make_shared<Multiply>();
-    else if (name.compare("Divide"))
-      return std::make_shared<Divide>();
-    else if (name.compare("Mod"))
-      return std::make_shared<Mod>();
-    std::cerr << "not support!" << std::endl;
-    return nullptr;
-  };
+   static std::shared_ptr<ArithmeticExpression> genArithmeticExpression(std::string name) {
+     if (name.compare("Add") == 0)
+       return std::make_shared<Add>();
+     else if (name.compare("Subtract") == 0)
+       return std::make_shared<Sub>();
+     else if (name.compare("Multiply") == 0)
+       return std::make_shared<Multiply>();
+     else if (name.compare("Divide") == 0)
+       return std::make_shared<Divide>();
+     else if (name.compare("Mod") == 0)
+       return std::make_shared<Mod>();
+     ARROW_LOG(ERROR) << "not support arithmetic expression:" << name;
+     return nullptr;
+   };
 
   static std::shared_ptr<AggExpression> genAggExpression(std::string name) {
     if (name.compare("Sum") == 0)
@@ -339,7 +476,7 @@ class Gen {
     else if (name.compare("Count") == 0)
       return std::make_shared<Count>();
 
-    std::cerr << "not supported!" << std::endl;
+    ARROW_LOG(ERROR) << "not support agg expression:" << name;
     return nullptr;
   }
 };

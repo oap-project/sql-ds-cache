@@ -164,6 +164,7 @@ int Reader::readBatch(int batchSize, long* buffersPtr_, long* nullsPtr_) {
   int aggBufferCount = aggDataBuffers.size();
   if (filterBufferCount > 0 || aggBufferCount > 0) {
     ARROW_LOG(DEBUG) << "use extra filter buffers count: " << filterBufferCount;
+    ARROW_LOG(DEBUG) << "use extra agg buffers count: " << aggBufferCount;
 
     buffersPtr = new long[initRequiredColumnCount + filterBufferCount + aggBufferCount];
     nullsPtr = new long[initRequiredColumnCount + filterBufferCount + aggBufferCount];
@@ -623,10 +624,10 @@ void Reader::setAgg(std::string aggStr) {
   }
 
   // reset required columns to initial size
-  requiredColumnIndex.resize(initRequiredColumnCount + filterColumnNames.size());
-  requiredColumnNames.resize(initRequiredColumnCount + filterColumnNames.size());
-  schema.erase(schema.begin() + initRequiredColumnCount + filterColumnNames.size(), schema.end());
-  columnReaders.resize(initRequiredColumnCount + filterColumnNames.size());
+  requiredColumnIndex.resize(initPlusFilterRequiredColumnCount);
+  requiredColumnNames.resize(initPlusFilterRequiredColumnCount);
+  schema.erase(schema.begin() + initPlusFilterRequiredColumnCount, schema.end());
+  columnReaders.resize(initPlusFilterRequiredColumnCount);
 
   // Check with agg column names. Append column if not present in the initial required columns.
   for (int i = 0; i < aggColumnNames.size(); i++) {
