@@ -52,6 +52,8 @@ public class ParquetNativeRecordReaderWrapper extends RecordReader<Void, Object>
 
   long readTime = 0;
 
+  boolean cacheEnabled = false;
+
   private ColumnarBatch columnarBatch;
 
   private NativeColumnVector[] columnVectors;
@@ -81,7 +83,8 @@ public class ParquetNativeRecordReaderWrapper extends RecordReader<Void, Object>
     int hdfsPort = Integer.parseInt(res[2]);
     LOG.info("filename is " + fileName + " hdfs is " + hdfsHost + " " + hdfsPort);
     LOG.info("schema is " + sparkSchema.json());
-    reader = ParquetReaderJNI.init(fileName, hdfsHost, hdfsPort, sparkSchema.json(), inputSplitRowGroupStartIndex, inputSplitRowGroupNum);
+    reader = ParquetReaderJNI.init(fileName, hdfsHost, hdfsPort, sparkSchema.json(), inputSplitRowGroupStartIndex,
+            inputSplitRowGroupNum, cacheEnabled);
   }
 
   public void getRequiredSplitRowGroup(ParquetInputSplit split, Configuration configuration) throws IOException {
@@ -112,6 +115,10 @@ public class ParquetNativeRecordReaderWrapper extends RecordReader<Void, Object>
     }
   }
 
+  public void setCacheEnabled(boolean cacheEnabled) {
+    this.cacheEnabled = cacheEnabled;
+  }
+
   public void setFilter(FilterPredicate predicate) {
     String predicateStr = ParquetFilterPredicateConvertor.toJsonString(predicate);
     ParquetReaderJNI.setFilterStr(reader, predicateStr);
@@ -119,6 +126,10 @@ public class ParquetNativeRecordReaderWrapper extends RecordReader<Void, Object>
 
   public void setAgg(String aggExpresion) {
     ParquetReaderJNI.setAggStr(reader, aggExpresion);
+  }
+
+  public void setPlasmaCacheRedis(String host, int port, String password) {
+    ParquetReaderJNI.setPlasmaCacheRedis(reader, host, port, password);
   }
 
   @Override

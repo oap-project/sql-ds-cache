@@ -80,7 +80,7 @@ private[sql] object PruneFileSourcePartitions extends Rule[LogicalPlan] {
         logicalRelation @
           LogicalRelation(fsRelation: HadoopFsRelation, _, _, _ )) =>
             // TODO: whether this agg could pushDown
-            val PDEnable = true
+            val PDEnable = SparkSession.getActiveSession.get.sessionState.conf.apeAggPDEnabled
             op match {
               case PhysicalAggregation(aggGroupingExpressions, aggExpressions, aggResultExpressions, child) =>
                 val canPD = DataSourceStrategy.canAggExprPushDown(groupingExpressions, resultExpressions)
