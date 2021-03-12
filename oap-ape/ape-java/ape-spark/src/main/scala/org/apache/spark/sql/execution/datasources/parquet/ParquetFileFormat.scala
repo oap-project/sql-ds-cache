@@ -260,6 +260,7 @@ class ParquetFileFormat
     val pushDownStringStartWith = sqlConf.parquetFilterPushDownStringStartWith
     val pushDownInFilterThreshold = sqlConf.parquetFilterPushDownInFilterThreshold
     val isCaseSensitive = sqlConf.caseSensitiveAnalysis
+    val cacheEnabled = sqlConf.apeCacheEnabled
 
     (file: PartitionedFile) => {
       assert(file.partitionValues.numFields == partitionSchema.size)
@@ -328,6 +329,7 @@ class ParquetFileFormat
         val iter = new RecordReaderIterator(reader)
         // SPARK-23457 Register a task completion listener before `initialization`.
         taskContext.foreach(_.addTaskCompletionListener[Unit](_ => iter.close()))
+        reader.setCacheEnabled(cacheEnabled)
         reader.initialize(split, hadoopAttemptContext)
         if(enableParquetFilterPushDown && pushed.isDefined)
           reader.setFilter(pushed.get)

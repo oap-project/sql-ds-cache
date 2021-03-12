@@ -2576,6 +2576,12 @@ object SQLConf {
       .checkValue(_ > 0, "The timeout value must be positive")
       .createWithDefault(10L)
 
+  val APE_PARQUET_CACHE_ENABLED =
+    buildConf("spark.sql.ape.parquet.cache.enabled")
+      .doc("whether use ape parquet cache")
+      .booleanConf
+      .createWithDefault(false)
+
   /**
    * Holds information about keys that have been deprecated.
    *
@@ -2872,6 +2878,8 @@ class SQLConf extends Serializable with Logging {
   def legacyTimeParserPolicy: LegacyBehaviorPolicy.Value = {
     LegacyBehaviorPolicy.withName(getConf(SQLConf.LEGACY_TIME_PARSER_POLICY))
   }
+
+  def apeCacheEnabled: Boolean = getConf(APE_PARQUET_CACHE_ENABLED)
 
   /**
    * Returns the [[Resolver]] for the current configuration, which can be used to determine if two
