@@ -996,7 +996,7 @@ class ExternalCache(fiberType: FiberType) extends OapCache with Logging {
     val objectId = hash(fiberId.toString)
     val plasmaClient = plasmaClientPool(clientRoundRobin.getAndAdd(1) % clientPoolSize)
     try {
-      val buf: ByteBuffer = plasmaClient.create(objectId, fiberLength.toInt)
+      val buf: ByteBuffer = plasmaClient.create(objectId, fiberLength.toInt, null)
       ExternalDataFiber(buf, objectId, plasmaClient)
     }
     catch {
@@ -1065,19 +1065,18 @@ class ExternalCache(fiberType: FiberType) extends OapCache with Logging {
     val objectId = hash(fiberId.toString)
     if(contains(fiberId)) {
       var fiberCache : FiberCache = null
-      try{
-        logDebug(s"Cache hit, get from external cache.")
-        val plasmaClient = plasmaClientPool(clientRoundRobin.getAndAdd(1) % clientPoolSize)
-        val buf: ByteBuffer = plasmaClient.getObjAsByteBuffer(objectId, -1, false)
+      logDebug(s"Cache hit, get from external cache.")
+      val plasmaClient = plasmaClientPool(clientRoundRobin.getAndAdd(1) % clientPoolSize)
+      val buf: ByteBuffer = plasmaClient.getObjAsByteBuffer(objectId, -1, false)
+      if(buf.asInstanceOf[DirectBuffer].address() == 0) {
+        logWarning("Get return an invalid value.")
+        fiberCache = cache(fiberId)
+        cacheMissCount.addAndGet(1)
+      } else {
         cacheHitCount.addAndGet(1)
         fiberCache = ExternalDataFiber(buf, objectId, plasmaClient)
       }
-      catch {
-        case getException : plasma.exceptions.PlasmaGetException =>
-          logWarning("Get exception: " + getException.getMessage)
-          fiberCache = cache(fiberId)
-          cacheMissCount.addAndGet(1)
-      }
+
       fiberCache.fiberId = fiberId
       fiberCache.occupy()
       cacheGuardian.addRemovalFiber(fiberId, fiberCache)

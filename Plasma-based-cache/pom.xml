@@ -23,7 +23,7 @@
   </parent>
   <artifactId>plasma-sql-ds-cache</artifactId>
   <version>1.1.0</version>
-  <name>Plasma Based SQL DS Cacahe</name>
+  <name>Plasma Based SQL DS Cache</name>
   <packaging>jar</packaging>
 
 
@@ -274,6 +274,10 @@
       <type>test-jar</type>
       <scope>test</scope>
     </dependency>
+    <!--
+      We've changed something based on Apache Arrow. For mvn build, will use this dependency
+      since it's been published on central maven repo.
+    -->
     <dependency>
       <groupId>com.intel.arrow</groupId>
       <artifactId>arrow-plasma</artifactId>
