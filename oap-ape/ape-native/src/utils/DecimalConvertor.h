@@ -27,7 +27,8 @@ using ApeDecimal128Vector = std::vector<ApeDecimal128Ptr>;
 class DecimalConvertor {
  public:
   template <typename ParquetIntegerType>
-  static void ConvertIntegerToDecimal128(const uint8_t *column, int32_t num_values,
+  static void ConvertIntegerToDecimal128(const uint8_t *values,
+                                         int32_t num_values,
                                          int32_t precision, int32_t scale,
                                          ApeDecimal128Vector& out) {
     using ElementType = typename ParquetIntegerType::c_type;
@@ -35,12 +36,12 @@ class DecimalConvertor {
                       std::is_same<ElementType, int64_t>::value,
                   "ElementType must be int32_t or int64_t");
 
-    const auto values = reinterpret_cast<const ElementType*>(column);
+    const auto elements = reinterpret_cast<const ElementType*>(values);
 
     uint64_t high;
     uint64_t low;
     for (int32_t i = 0; i < num_values; ++i) {
-      const auto value = static_cast<int64_t>(values[i]);
+      const auto value = static_cast<int64_t>(elements[i]);
       low = arrow::BitUtil::FromLittleEndian(static_cast<uint64_t>(value));
       high = static_cast<uint64_t>(value < 0 ? -1 : 0);
       out.push_back(std::make_shared<ApeDecimal128>(high, low, precision, scale));
@@ -49,14 +50,15 @@ class DecimalConvertor {
     return;
   }
 
-  static void ConvertFixLengthByteArrayToDecimal128(const uint8_t *column,
+  static void ConvertFixLengthByteArrayToDecimal128(const uint8_t *values,
                                                     int32_t num_values,
                                                     int32_t type_length,
                                                     int32_t precision,
                                                     int32_t scale,
                                                     ApeDecimal128Vector& out);
 
-  static void ConvertByteArrayToDecimal128(const uint8_t *column, int32_t num_values,
+  static void ConvertByteArrayToDecimal128(const uint8_t *values,
+                                           int32_t num_values,
                                            int32_t precision, int32_t scale,
                                            ApeDecimal128Vector& out);
 
