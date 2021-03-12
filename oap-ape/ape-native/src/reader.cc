@@ -112,11 +112,13 @@ void Reader::convertSchema(std::string requiredColumnName) {
   for (int i = 0; i < filedsNum; i++) {
     std::string columnName = j["fields"][i]["name"];
     int columnIndex = fileMetaData->schema()->ColumnIndex(columnName);
-    requiredColumnIndex.push_back(columnIndex);
-    schema.push_back(Schema(columnName,
-                            fileMetaData->schema()->Column(columnIndex)->physical_type(),
-                            fileMetaData->schema()->Column(columnIndex)->type_length()));
-    requiredColumnNames.push_back(columnName);
+    if (columnIndex >= 0) {
+      requiredColumnIndex.push_back(columnIndex);
+      schema.push_back(
+          Schema(columnName, fileMetaData->schema()->Column(columnIndex)->physical_type(),
+                 fileMetaData->schema()->Column(columnIndex)->type_length()));
+      requiredColumnNames.push_back(columnName);
+    }
   }
 }
 
@@ -169,6 +171,11 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
     ARROW_LOG(DEBUG) << "use extra filter buffers count: " << filterBufferCount;
     ARROW_LOG(DEBUG) << "use extra agg buffers count: " << aggBufferCount;
 
+    ARROW_LOG(INFO) << "initRequiredColumnCount: " << initRequiredColumnCount
+                    << "filterBufferCount: " << filterBufferCount
+                    << "aggBufferCount: " << aggBufferCount;
+    // when enable agg pd, initRequiredColumnCount will be 0, because init column will
+    // be sum(col),
     buffersPtr.resize(initRequiredColumnCount + filterBufferCount + aggBufferCount);
     nullsPtr.resize(initRequiredColumnCount + filterBufferCount + aggBufferCount);
 
@@ -318,24 +325,40 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
     time += std::chrono::steady_clock::now() - start;
   }
 
-  if (aggExprs.size()) {
+  if (aggExprs.size() && rowsRet > 0) {  // if rows after filter is 0, no need to do agg.
     auto start = std::chrono::steady_clock::now();
+    int index = 0;
     for (int i = 0; i < aggExprs.size(); i++) {
       auto agg = aggExprs[i];
       if (typeid(*agg) == typeid(RootAggExpression)) {
-        std::vector<int8_t> tmp(0);
-        rowsRet = agg->ExecuteWithParam(rowsToRead, buffersPtr, nullsPtr, tmp);
+      std::vector<int8_t> tmp(0);
+        agg->ExecuteWithParam(rowsRet, buffersPtr, nullsPtr, tmp);
         auto result = std::dynamic_pointer_cast<RootAggExpression>(agg)->getResult();
-        if (result.size() == 1) {
+        if (result.size() == 1) {  // for aggregation with group by,
+                                   // it could be more than 1 result row.
           aggResults[i].push_back(result[0]);
         } else {
           ARROW_LOG(DEBUG) << "Oops... why return " << result.size() << " results";
         }
+        for (int j = 0; j < result.size(); j++) {
+          int64_t count = result[j]->toInt64();
+          ARROW_LOG(INFO) << j << " res count is: " << count;
+          if (j == 1) {
+            *((int64_t*)(buffersPtr_[index])) = count;
+          } else {
+            result[j]->toBytes((uint8_t*)(buffersPtr_[index]));
+          }
+          *((uint8_t*)(nullsPtr_[index])) = (uint8_t)1;
+          index++;
+        }
+
       } else if (typeid(*agg) == typeid(AttributeReferenceExpression)) {
         // TODO
       }
     }
+    rowsRet = 1;
     time += std::chrono::steady_clock::now() - start;
+  } else {
   }
 
   ARROW_LOG(DEBUG) << "ret rows " << rowsRet;

@@ -228,6 +228,8 @@ public class ParquetNativeRecordReaderWrapper extends RecordReader<Void, Object>
         bufferPtr = Platform.allocateMemory(batchSize * 4);
       } else if (DecimalType.is64BitDecimalType(type)) {
         bufferPtr = Platform.allocateMemory(batchSize * 8);
+      } else if(type instanceof DecimalType) {
+        bufferPtr = Platform.allocateMemory(batchSize * 16);
       } else {
         // TODO: will add byte and short type. Not sure about Map
         throw new UnsupportedOperationException("Type not support yet");

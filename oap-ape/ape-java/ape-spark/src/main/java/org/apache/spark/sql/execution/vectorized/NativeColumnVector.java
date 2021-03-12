@@ -1,5 +1,8 @@
 package org.apache.spark.sql.execution.vectorized;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
+
 import org.apache.spark.sql.types.DataType;
 import org.apache.spark.sql.types.Decimal;
 import org.apache.spark.sql.vectorized.ColumnVector;
@@ -107,7 +110,16 @@ public class NativeColumnVector extends ColumnVector {
     } else if (precision <= Decimal.MAX_LONG_DIGITS()) {
       return Decimal.createUnsafe(getLong(rowId), precision, scale);
     } else {
-      throw new UnsupportedOperationException("Not support yet");
+      // it didn't work for now,
+      // because we didn't convert arrowDecimal128 to parquet::FixedLenByteArray
+      byte[] bytes = getFixedLenBinary(rowId);
+      // return a Mocked value
+      // byte[] mockedBytes = new byte[16];
+      // mockedBytes[15] = 10;
+      BigInteger bigInteger = new BigInteger(bytes);
+      BigDecimal javaDecimal = new BigDecimal(bigInteger, scale);
+      System.err.println("precision: " + precision + " scale: " + scale);
+      return Decimal.apply(javaDecimal, precision, scale);
     }
   }
 
@@ -132,6 +144,14 @@ public class NativeColumnVector extends ColumnVector {
     byte[] str = new byte[size];
     long addr = Platform.getLong(null, bufferPtr + rowId * 16 + 8);
     Platform.copyMemory(null, addr, str, Platform.BYTE_ARRAY_OFFSET, size);
+    return str;
+  }
+
+  // this method is for parquet fixed length Byte array, and we know the length is 16.
+  public byte[] getFixedLenBinary(int rowId) {
+    int len = 16;
+    byte[] str = new byte[len];
+    Platform.copyMemory(null, bufferPtr + rowId * len, str, Platform.BYTE_ARRAY_OFFSET, len);
     return str;
   }
 
