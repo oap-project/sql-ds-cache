@@ -22,6 +22,7 @@ import org.apache.spark.sql._
 import org.apache.spark.sql.catalyst.catalog.BucketSpec
 import org.apache.spark.sql.catalyst.expressions
 import org.apache.spark.sql.catalyst.expressions._
+import org.apache.spark.sql.catalyst.expressions.aggregate.{AggregateExpression, Partial}
 import org.apache.spark.sql.catalyst.planning.ScanOperation
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import org.apache.spark.sql.execution.{FileSourceScanExec, SparkPlan}
@@ -211,24 +212,42 @@ object FileSourceStrategy extends Strategy with Logging {
 
       val outputAttributes = readDataColumns ++ partitionColumns
 
+      // output will change if agg expr pushdown
+      val gExpression = fsRelation.groupExpr.getOrElse(Seq[NamedExpression]())
+      val groupingAttributes = gExpression.map(_.toAttribute)
+      val aggExpressions = fsRelation.resultExpr.getOrElse(Seq[AggregateExpression]())
+      val partialAggregateExpressions = aggExpressions.map(_.copy(mode = Partial))
+      val partialAggregateAttributes =
+        partialAggregateExpressions.flatMap(_.aggregateFunction.aggBufferAttributes)
+      val partialResultExpressions =
+        groupingAttributes ++
+          partialAggregateExpressions.flatMap(_.aggregateFunction.inputAggBufferAttributes)
+
+      val outAttributes: Seq[Attribute] = if(!partialResultExpressions.isEmpty) partialResultExpressions
+                                          else outputAttributes
+
+      val schema = outAttributes.toStructType
+      logInfo(s"Output Data Schema after agg pd: ${schema.simpleString}")
+
       val scan =
         FileSourceScanExec(
           fsRelation,
-          outputAttributes,
+          outAttributes,
           outputSchema,
           partitionKeyFilters.toSeq,
           bucketSet,
           dataFilters,
-          table.map(_.identifier))
+          table.map(_.identifier),
+          schema)
 
       val afterScanFilter = afterScanFilters.toSeq.reduceOption(expressions.And)
       val withFilter = afterScanFilter.map(execution.FilterExec(_, scan)).getOrElse(scan)
-      val withProjections = if (projects == withFilter.output) {
+      val withProjections = if (projects == outputAttributes) {
         withFilter
       } else {
+        logWarning("should Not reach here!")
         execution.ProjectExec(projects, withFilter)
       }
-
       withProjections :: Nil
 
     case _ => Nil
