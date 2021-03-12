@@ -2582,6 +2582,26 @@ object SQLConf {
       .booleanConf
       .createWithDefault(false)
 
+  val APE_REDIS_ENABLED =
+    buildConf("spark.sql.ape.redis.enabled")
+      .doc("whether use redis for cache locality")
+      .booleanConf
+      .createWithDefault(false)
+
+  val APE_REDIS_HOSTNAME =
+    buildConf("spark.sql.ape.redis.hostname")
+      .stringConf
+      .createWithDefault("localhost")
+
+  val APE_REDIS_PORT =
+    buildConf("spark.sql.ape.redis.port")
+      .intConf
+      .createWithDefault(6379)
+
+  val APE_REDIS_PASSWORD =
+    buildConf("spark.sql.ape.redis.password")
+      .stringConf
+      .createWithDefault("")
   /**
    * Holds information about keys that have been deprecated.
    *
@@ -2880,6 +2900,10 @@ class SQLConf extends Serializable with Logging {
   }
 
   def apeCacheEnabled: Boolean = getConf(APE_PARQUET_CACHE_ENABLED)
+  def apeRedisEnabled: Boolean = getConf(APE_REDIS_ENABLED)
+  def apeRedisHostName: String = getConf(APE_REDIS_HOSTNAME)
+  def apeRedisPort: Int = getConf(APE_REDIS_PORT)
+  def apeRedisPasswd: String = getConf(APE_REDIS_PASSWORD)
 
   /**
    * Returns the [[Resolver]] for the current configuration, which can be used to determine if two

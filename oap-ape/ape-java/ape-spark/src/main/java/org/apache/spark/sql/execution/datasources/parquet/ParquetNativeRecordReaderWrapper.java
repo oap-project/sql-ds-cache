@@ -128,6 +128,10 @@ public class ParquetNativeRecordReaderWrapper extends RecordReader<Void, Object>
     ParquetReaderJNI.setAggStr(reader, aggExpresion);
   }
 
+  public void setPlasmaCacheRedis(String host, int port, String password) {
+    ParquetReaderJNI.setPlasmaCacheRedis(reader, host, port, password);
+  }
+
   @Override
   public boolean nextKeyValue() throws IOException, InterruptedException {
     if (columnarBatch == null) initBatch();

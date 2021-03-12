@@ -261,6 +261,12 @@ class ParquetFileFormat
     val pushDownInFilterThreshold = sqlConf.parquetFilterPushDownInFilterThreshold
     val isCaseSensitive = sqlConf.caseSensitiveAnalysis
     val cacheEnabled = sqlConf.apeCacheEnabled
+    val redisEnabled = sqlConf.apeRedisEnabled
+    val (redisHost: String, redisPort: Int, redisPasswd: String) = if(redisEnabled) {
+      (sqlConf.apeRedisHostName, sqlConf.apeRedisPort, sqlConf.apeRedisPasswd)
+    } else {
+      ("", 0, "")
+    }
 
     (file: PartitionedFile) => {
       assert(file.partitionValues.numFields == partitionSchema.size)
@@ -331,6 +337,9 @@ class ParquetFileFormat
         taskContext.foreach(_.addTaskCompletionListener[Unit](_ => iter.close()))
         reader.setCacheEnabled(cacheEnabled)
         reader.initialize(split, hadoopAttemptContext)
+        if(cacheEnabled && redisEnabled) {
+          reader.setPlasmaCacheRedis(redisHost, redisPort, redisPasswd)
+        }
         if(enableParquetFilterPushDown && pushed.isDefined)
           reader.setFilter(pushed.get)
         if (true) // TODO: config aggPushDownEnable
