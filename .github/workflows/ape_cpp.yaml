@@ -3,11 +3,11 @@ name: APE CPP CI
 on:
   push:
     paths:
-      - 'oap-ape/**'
+      - 'oap-ape/ape-native/**'
       - '.github/workflows/ape_cpp.yaml'
   pull_request:
     paths:
-      - 'oap-ape/**'
+      - 'oap-ape/ape-native/**'
       - '.github/workflows/ape_cpp.yaml'
 
 jobs:
