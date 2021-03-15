@@ -260,6 +260,7 @@ class ParquetFileFormat
     val pushDownStringStartWith = sqlConf.parquetFilterPushDownStringStartWith
     val pushDownInFilterThreshold = sqlConf.parquetFilterPushDownInFilterThreshold
     val isCaseSensitive = sqlConf.caseSensitiveAnalysis
+    val aggPdEnabled = sqlConf.apeAggPDEnabled
     val cacheEnabled = sqlConf.apeCacheEnabled
     val redisEnabled = sqlConf.apeRedisEnabled
     val (redisHost: String, redisPort: Int, redisPasswd: String) = if(redisEnabled) {
@@ -342,8 +343,7 @@ class ParquetFileFormat
         }
         if(enableParquetFilterPushDown && pushed.isDefined)
           reader.setFilter(pushed.get)
-        if (true) // TODO: config aggPushDownEnable
-          reader.setAgg(aggExpr)
+        if (aggPdEnabled) reader.setAgg(aggExpr)
         // UnsafeRowParquetRecordReader appends the columns internally to avoid another copy.
         iter.asInstanceOf[Iterator[InternalRow]]
       } else {
