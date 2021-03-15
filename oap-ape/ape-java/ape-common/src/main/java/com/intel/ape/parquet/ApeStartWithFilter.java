@@ -22,8 +22,8 @@ import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.PrimitiveComparator;
 
 
-public class ApeEndWithFilter extends ApeLikeFilter {
-  public ApeEndWithFilter(String value) {
+public class ApeStartWithFilter extends ApeLikeFilter {
+  public ApeStartWithFilter(String value) {
     super(value);
   }
 
@@ -34,24 +34,22 @@ public class ApeEndWithFilter extends ApeLikeFilter {
 
   @Override
   public boolean canDrop(Statistics<Binary> statistics) {
-    PrimitiveComparator<Binary> comparator = PrimitiveComparator.UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR;
+    PrimitiveComparator<Binary> comparator =
+            PrimitiveComparator.UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR;
     Binary max = statistics.getMax();
     Binary min = statistics.getMin();
-    int lenInMax = Math.min(size, max.length());
-    int lenInMin = Math.min(size, min.length());
-    return comparator.compare(max.slice(max.length() - lenInMax, lenInMax), strToBinary) < 0 ||
-            comparator.compare(min.slice(min.length() - lenInMin, lenInMin), strToBinary) > 0;
+    return comparator.compare(max.slice(0, Math.min(size, max.length())), strToBinary) < 0 ||
+            comparator.compare(min.slice(0, Math.min(size, min.length())), strToBinary) > 0;
   }
 
   @Override
   public boolean inverseCanDrop(Statistics<Binary> statistics) {
-    PrimitiveComparator<Binary> comparator = PrimitiveComparator.UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR;
+    PrimitiveComparator<Binary> comparator =
+            PrimitiveComparator.UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR;
     Binary max = statistics.getMax();
     Binary min = statistics.getMin();
-    int lenInMax = Math.min(size, max.length());
-    int lenInMin = Math.min(size, min.length());
-    return comparator.compare(max.slice(max.length() - lenInMax, lenInMax), strToBinary) == 0 &&
-            comparator.compare(min.slice(min.length() - lenInMin, lenInMin), strToBinary) == 0;
+    return comparator.compare(max.slice(0, Math.min(size, max.length())), strToBinary) == 0 &&
+            comparator.compare(min.slice(0, Math.min(size, min.length())), strToBinary) == 0;
   }
 
 }

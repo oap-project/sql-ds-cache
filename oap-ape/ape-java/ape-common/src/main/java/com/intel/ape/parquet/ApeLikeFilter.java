@@ -17,12 +17,10 @@
 
 package com.intel.ape.Parquet;
 
-import org.apache.parquet.filter2.predicate.Statistics;
+import java.io.Serializable;
+
 import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
 import org.apache.parquet.io.api.Binary;
-import org.apache.parquet.schema.PrimitiveComparator;
-
-import java.io.Serializable;
 
 public abstract class ApeLikeFilter extends UserDefinedPredicate<Binary> implements Serializable {
   public ApeLikeFilter(String value) {
