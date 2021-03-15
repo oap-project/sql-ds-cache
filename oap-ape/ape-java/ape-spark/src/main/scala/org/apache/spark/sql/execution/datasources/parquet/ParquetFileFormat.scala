@@ -23,6 +23,7 @@ import java.net.URI
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.util.{Failure, Try}
+
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileStatus, Path}
 import org.apache.hadoop.mapreduce._
@@ -35,6 +36,7 @@ import org.apache.parquet.hadoop.ParquetOutputFormat.JobSummaryLevel
 import org.apache.parquet.hadoop.codec.CodecConfig
 import org.apache.parquet.hadoop.util.ContextUtil
 import org.apache.parquet.schema.MessageType
+
 import org.apache.spark.{SparkException, TaskContext}
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql._
@@ -263,7 +265,7 @@ class ParquetFileFormat
     val aggPdEnabled = sqlConf.apeAggPDEnabled
     val cacheEnabled = sqlConf.apeCacheEnabled
     val redisEnabled = sqlConf.apeRedisEnabled
-    val (redisHost: String, redisPort: Int, redisPasswd: String) = if(redisEnabled) {
+    val (redisHost: String, redisPort: Int, redisPasswd: String) = if (redisEnabled) {
       (sqlConf.apeRedisHostName, sqlConf.apeRedisPort, sqlConf.apeRedisPasswd)
     } else {
       ("", 0, "")
@@ -341,8 +343,7 @@ class ParquetFileFormat
         if(cacheEnabled && redisEnabled) {
           reader.setPlasmaCacheRedis(redisHost, redisPort, redisPasswd)
         }
-        if(enableParquetFilterPushDown && pushed.isDefined)
-          reader.setFilter(pushed.get)
+        if (enableParquetFilterPushDown && pushed.isDefined) reader.setFilter(pushed.get)
         if (aggPdEnabled) reader.setAgg(aggExpr)
         // UnsafeRowParquetRecordReader appends the columns internally to avoid another copy.
         iter.asInstanceOf[Iterator[InternalRow]]
