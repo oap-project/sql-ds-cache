@@ -21,7 +21,6 @@ import java.util.Locale
 
 import scala.collection.mutable
 
-import org.apache.spark.sql.execution.datasources.util.AggregateConvertor
 import org.apache.hadoop.fs.Path
 
 import org.apache.spark.internal.Logging
@@ -40,6 +39,7 @@ import org.apache.spark.sql.catalyst.plans.logical.{InsertIntoDir, InsertIntoSta
 import org.apache.spark.sql.catalyst.rules.Rule
 import org.apache.spark.sql.execution.{RowDataSourceScanExec, SparkPlan}
 import org.apache.spark.sql.execution.command._
+import org.apache.spark.sql.execution.datasources.util.AggregateConvertor
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.internal.SQLConf.StoreAssignmentPolicy
 import org.apache.spark.sql.sources._

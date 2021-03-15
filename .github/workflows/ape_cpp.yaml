@@ -3,11 +3,11 @@ name: APE CPP CI
 on:
   push:
     paths:
-      - 'oap-ape/**'
+      - 'oap-ape/ape-native/**'
       - '.github/workflows/ape_cpp.yaml'
   pull_request:
     paths:
-      - 'oap-ape/**'
+      - 'oap-ape/ape-native/**'
       - '.github/workflows/ape_cpp.yaml'
 
 jobs:
@@ -18,6 +18,14 @@ jobs:
       - uses: actions/checkout@v2
       - name: Get CMake
         uses: lukka/get-cmake@v3.19.2
+      - name: install python
+        uses: actions/setup-python@v1
+      # - name: run cpp lint
+      #  run: cd oap-ape/ape-native/; python3 ./build-support/run_cpplint.py --cpplint_binary ./build-support/cpplint.py --source_dir ./src/
+      - name: install clang-format
+        run: sudo apt-get install clang-format -y
+      - name: run clang-format check
+        run: cd oap-ape/ape-native/; python3 ./build-support/run_clang_format.py --clang_format_binary clang-format --source_dir ./src/
       - name: Set up JDK 1.8
         uses: actions/setup-java@v1
         with:

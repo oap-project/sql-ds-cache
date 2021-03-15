@@ -17,34 +17,35 @@
 
 #pragma once
 
-#include <cstdint>
 #include <arrow/util/basic_decimal.h>
+#include <cstdint>
 
 namespace ape {
 
 /// Represents a 128-bit decimal value along with its precision and scale.
 class ApeDecimal128 {
  public:
-  constexpr ApeDecimal128(int64_t high_bits, uint64_t low_bits,
-                          int32_t precision, int32_t scale)
+  constexpr ApeDecimal128(int64_t high_bits, uint64_t low_bits, int32_t precision,
+                          int32_t scale)
       : value_(high_bits, low_bits), precision_(precision), scale_(scale) {}
 
-  constexpr ApeDecimal128(const arrow::BasicDecimal128& value,
-                          int32_t precision, int32_t scale)
+  constexpr ApeDecimal128(const arrow::BasicDecimal128& value, int32_t precision,
+                          int32_t scale)
       : value_(value), precision_(precision), scale_(scale) {}
 
   constexpr ApeDecimal128(int32_t precision, int32_t scale)
       : precision_(precision), scale_(scale) {}
 
   template <typename T,
-           typename = typename std::enable_if<
-               std::is_integral<T>::value && (sizeof(T) <= sizeof(uint64_t)), T>::type>
+            typename = typename std::enable_if<
+                std::is_integral<T>::value && (sizeof(T) <= sizeof(uint64_t)), T>::type>
   constexpr ApeDecimal128(T value) noexcept
-      : value_(arrow::BasicDecimal128(value >= T{0} ? 0 : -1, static_cast<uint64_t>(value))),
-      precision_(18), scale_(0) {}
+      : value_(
+            arrow::BasicDecimal128(value >= T{0} ? 0 : -1, static_cast<uint64_t>(value))),
+        precision_(18),
+        scale_(0) {}
 
-  constexpr ApeDecimal128()
-      : precision_(18), scale_(0) {}
+  constexpr ApeDecimal128() : precision_(18), scale_(0) {}
 
   int32_t scale() const { return scale_; }
 
@@ -58,8 +59,7 @@ class ApeDecimal128 {
   int32_t scale_;
 };
 
-inline bool operator==(const ApeDecimal128& left,
-                       const ApeDecimal128& right) {
+inline bool operator==(const ApeDecimal128& left, const ApeDecimal128& right) {
   return left.value() == right.value() && left.precision() == right.precision() &&
          left.scale() == right.scale();
 }

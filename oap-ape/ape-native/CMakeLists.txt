@@ -20,6 +20,8 @@ message(STATUS "Building using CMake version: ${CMAKE_VERSION}")
 
 project(APE)
 
+include_directories(${CMAKE_SOURCE_DIR})
+
 set(root_directory ${PROJECT_BINARY_DIR})
 
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)

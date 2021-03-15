@@ -71,6 +71,12 @@ cd build
 cmake ..
 make
 ```
+
+Before you commit cpp code, please run this command to keep code style clean(you need to install clang-format).
+```
+cd oap-ape/ape-native/ 
+python3 ./build-support/run_clang_format.py --clang_format_binary clang-format --source_dir ./src/  --fix
+```
 ## parquet-test demo
 For parquet-test demo, make sure you have installed libarrow, libparquet, etc. Arrow build and install command:
 ```

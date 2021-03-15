@@ -20,9 +20,9 @@
 
 package org.apache.flink.formats.parquet.utils;
 
-import com.google.gson.Gson;
-
 import java.util.List;
+
+import com.google.gson.Gson;
 
 public class ConvertToJson {
 

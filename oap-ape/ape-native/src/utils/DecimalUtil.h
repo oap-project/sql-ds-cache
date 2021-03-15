@@ -40,45 +40,33 @@ class DecimalUtil {
   using Decimal128TypePtr = std::shared_ptr<arrow::Decimal128Type>;
   using Decimal128TypeVector = std::vector<Decimal128TypePtr>;
 
-  static void GetResultType(Op op,
-                            const Decimal128TypeVector& in_types,
+  static void GetResultType(Op op, const Decimal128TypeVector& in_types,
                             Decimal128TypePtr* out_type);
 
   /// Sum of 'x' and 'y'.
-  static arrow::BasicDecimal128 Add(const ApeDecimal128& x,
-                                    const ApeDecimal128& y,
-                                    int32_t out_precision,
-                                    int32_t out_scale);
+  static arrow::BasicDecimal128 Add(const ApeDecimal128& x, const ApeDecimal128& y,
+                                    int32_t out_precision, int32_t out_scale);
   /// Subtract 'y' from 'x'.
-  arrow::BasicDecimal128 Subtract(const ApeDecimal128& x,
-                                  const ApeDecimal128& y,
-                                  int32_t out_precision,
-                                  int32_t out_scale);
+  arrow::BasicDecimal128 Subtract(const ApeDecimal128& x, const ApeDecimal128& y,
+                                  int32_t out_precision, int32_t out_scale);
 
   /// Multiply 'x' from 'y'.
-  arrow::BasicDecimal128 Multiply(const ApeDecimal128& x,
-                                  const ApeDecimal128& y,
-                                  int32_t out_precision,
-                                  int32_t out_scale);
+  arrow::BasicDecimal128 Multiply(const ApeDecimal128& x, const ApeDecimal128& y,
+                                  int32_t out_precision, int32_t out_scale);
 
   /// Divide 'x' by 'y'.
-  arrow::BasicDecimal128 Divide(const ApeDecimal128& x,
-                                const ApeDecimal128& y,
-                                int32_t out_precision,
-                                int32_t out_scale);
+  arrow::BasicDecimal128 Divide(const ApeDecimal128& x, const ApeDecimal128& y,
+                                int32_t out_precision, int32_t out_scale);
 
   /// Divide 'x' by 'y'.
-  arrow::BasicDecimal128 Mod(const ApeDecimal128& x,
-                             const ApeDecimal128& y,
-                             int32_t out_precision,
-                             int32_t out_scale);
+  arrow::BasicDecimal128 Mod(const ApeDecimal128& x, const ApeDecimal128& y,
+                             int32_t out_precision, int32_t out_scale);
 
   /// Compare two decimals. Returns :
   ///  0 if x == y
   ///  1 if x > y
   /// -1 if x < y
   int32_t Compare(const ApeDecimal128& x, const ApeDecimal128& y);
-
 };
 
 }  // namespace ape

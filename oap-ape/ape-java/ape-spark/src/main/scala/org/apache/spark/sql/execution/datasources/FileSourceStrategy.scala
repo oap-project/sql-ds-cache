@@ -191,12 +191,17 @@ object FileSourceStrategy extends Strategy with Logging {
 
       // pushedExpression will not do again in java layer
       val pushedExpression = dataFilters.flatMap(e =>
-        if (!APEFilterPDEnable || DataSourceStrategy.translateFilter(e, supportNestedPredicatePushdown).isEmpty) None
+        if (!APEFilterPDEnable ||
+          DataSourceStrategy.translateFilter(e, supportNestedPredicatePushdown).isEmpty) {
+          None
+        }
         else Some(e))
       logInfo(s"Pushed Expressions:  ${pushedExpression.mkString(",")}")
 
       // Predicates with both partition keys and attributes need to be evaluated after the scan.
-      val afterScanFilters = filterSet -- partitionKeyFilters.filter(_.references.nonEmpty) -- pushedExpression
+      val afterScanFilters = filterSet --
+        partitionKeyFilters.filter(_.references.nonEmpty) --
+        pushedExpression
       logInfo(s"Post-Scan Filters: ${afterScanFilters.mkString(",")}")
 
       val filterAttributes = AttributeSet(afterScanFilters)
@@ -223,8 +228,9 @@ object FileSourceStrategy extends Strategy with Logging {
         groupingAttributes ++
           partialAggregateExpressions.flatMap(_.aggregateFunction.inputAggBufferAttributes)
 
-      val outAttributes: Seq[Attribute] = if(!partialResultExpressions.isEmpty) partialResultExpressions
-                                          else outputAttributes
+      val outAttributes: Seq[Attribute] =
+        if (!partialResultExpressions.isEmpty) partialResultExpressions
+        else outputAttributes
 
       val schema = outAttributes.toStructType
       logInfo(s"Output Data Schema after agg pd: ${schema.simpleString}")

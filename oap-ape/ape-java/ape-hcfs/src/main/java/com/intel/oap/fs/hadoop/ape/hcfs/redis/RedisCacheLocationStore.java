@@ -17,13 +17,6 @@
 
 package com.intel.oap.fs.hadoop.ape.hcfs.redis;
 
-import com.intel.oap.fs.hadoop.ape.hcfs.CacheLocation;
-import com.intel.oap.fs.hadoop.ape.hcfs.CacheLocationStore;
-import com.intel.oap.fs.hadoop.ape.hcfs.Constants;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.Path;
-import redis.clients.jedis.Tuple;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -31,11 +24,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.intel.oap.fs.hadoop.ape.hcfs.CacheLocation;
+import com.intel.oap.fs.hadoop.ape.hcfs.CacheLocationStore;
+import com.intel.oap.fs.hadoop.ape.hcfs.Constants;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import redis.clients.jedis.Tuple;
+
 /**
  * Class for storage of block locations in redis.
  */
 public class RedisCacheLocationStore implements CacheLocationStore {
-    private final static String REDIS_ZSET_VALUE_DELIM = "_";
+    private static final String REDIS_ZSET_VALUE_DELIM = "_";
 
     private final Configuration conf;
 
@@ -55,7 +55,7 @@ public class RedisCacheLocationStore implements CacheLocationStore {
         // get locations with range
         Set<Tuple> locationStrings = RedisUtils
                 .getRedisClient(this.conf)
-                .zrangeByScoreWithScores(redisKeyPrefix + path.toString(), start,  start + len - 1);
+                .zrangeByScoreWithScores(redisKeyPrefix + path.toString(), start, start + len - 1);
 
         // parse and get location info
         List<CacheLocation> merged = mergeCacheLocationInfo(locationStrings);
@@ -94,7 +94,7 @@ public class RedisCacheLocationStore implements CacheLocationStore {
 
                 // hostname may contains delimiter. So we don't use parts[2] as hostname.
                 String host = t.getElement().substring(
-                        parts[0].length() + parts[1].length() + 2 * REDIS_ZSET_VALUE_DELIM.length());
+                    parts[0].length() + parts[1].length() + 2 * REDIS_ZSET_VALUE_DELIM.length());
 
                 // merge hosts of the same range
                 if (rangeHosts.containsKey(range)) {

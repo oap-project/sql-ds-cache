@@ -17,13 +17,14 @@
 
 package org.apache.spark.sql.execution.datasources.parquet;
 
+import java.io.IOException;
+import java.util.List;
+
 import com.intel.ape.ParquetReaderJNI;
 import com.intel.ape.util.ParquetFilterPredicateConvertor;
 
-import static org.apache.parquet.hadoop.ParquetFileReader.readFooter;
-
-import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
@@ -31,24 +32,25 @@ import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.hadoop.ParquetInputSplit;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import static org.apache.parquet.hadoop.ParquetFileReader.readFooter;
+
 import org.apache.spark.sql.execution.vectorized.NativeColumnVector;
 import org.apache.spark.sql.types.*;
 import org.apache.spark.sql.vectorized.ColumnarBatch;
 import org.apache.spark.unsafe.Platform;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.util.List;
 
 public class ParquetNativeRecordReaderWrapper extends RecordReader<Void, Object> {
-  private static final Logger LOG = LoggerFactory.getLogger(ParquetNativeRecordReaderWrapper.class);
+  private static final Logger LOG =
+          LoggerFactory.getLogger(ParquetNativeRecordReaderWrapper.class);
 
   long reader = 0;
   int batchSize = 0;
 
-  long bufferPtrs[];
-  long nullPtrs[];
+  long[] bufferPtrs;
+  long[] nullPtrs;
 
   long readTime = 0;
 
@@ -68,7 +70,8 @@ public class ParquetNativeRecordReaderWrapper extends RecordReader<Void, Object>
   }
 
   @Override
-  public void initialize(InputSplit inputSplit, TaskAttemptContext taskAttemptContext) throws IOException, InterruptedException {
+  public void initialize(InputSplit inputSplit, TaskAttemptContext taskAttemptContext)
+          throws IOException, InterruptedException {
     Configuration configuration = taskAttemptContext.getConfiguration();
     String reqSchema = configuration.get(ParquetReadSupport$.MODULE$.SPARK_ROW_REQUESTED_SCHEMA());
     sparkSchema = StructType$.MODULE$.fromString(reqSchema);
@@ -83,11 +86,12 @@ public class ParquetNativeRecordReaderWrapper extends RecordReader<Void, Object>
     int hdfsPort = Integer.parseInt(res[2]);
     LOG.info("filename is " + fileName + " hdfs is " + hdfsHost + " " + hdfsPort);
     LOG.info("schema is " + sparkSchema.json());
-    reader = ParquetReaderJNI.init(fileName, hdfsHost, hdfsPort, sparkSchema.json(), inputSplitRowGroupStartIndex,
-            inputSplitRowGroupNum, cacheEnabled);
+    reader = ParquetReaderJNI.init(fileName, hdfsHost, hdfsPort, sparkSchema.json(),
+            inputSplitRowGroupStartIndex, inputSplitRowGroupNum, cacheEnabled);
   }
 
-  public void getRequiredSplitRowGroup(ParquetInputSplit split, Configuration configuration) throws IOException {
+  public void getRequiredSplitRowGroup(ParquetInputSplit split, Configuration configuration)
+          throws IOException {
     long splitStart = split.getStart();
     long splitSize = split.getLength();
     Path file = split.getPath();
@@ -95,8 +99,8 @@ public class ParquetNativeRecordReaderWrapper extends RecordReader<Void, Object>
     ParquetMetadata footer = readFooter(configuration, file);
     List<BlockMetaData> blocks = footer.getBlocks();
 
-    Long currentOffset = 0l;
-    Long PARQUET_MAGIC_NUMBER = 4l;
+    Long currentOffset = 0L;
+    Long PARQUET_MAGIC_NUMBER = 4L;
     currentOffset += PARQUET_MAGIC_NUMBER;
 
     int rowGroupIndex = 0;

@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#include "UnaryFilter.h"
+#include "src/utils/UnaryFilter.h"
 
 #ifdef USE_LIB_XXX
 #undef USE_LIB_XXX
@@ -101,7 +101,7 @@ void Gt<T>::execute(T* buffer, T value, int batchSize, char* out) {
     out[i] = (buffer[i] > value) ? 1 : 0;
   }
 #endif
-};
+}
 
 template <typename T>
 void GtEq<T>::execute(T* buffer, T value, int batchSize, char* out) {

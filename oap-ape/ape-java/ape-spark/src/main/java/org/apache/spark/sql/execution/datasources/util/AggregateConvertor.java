@@ -17,15 +17,16 @@
 
 package org.apache.spark.sql.execution.datasources.util;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+
 import org.apache.spark.sql.catalyst.expressions.*;
 import org.apache.spark.sql.catalyst.expressions.aggregate.*;
-
-import java.util.ArrayList;
-import java.util.List;
 
 public class AggregateConvertor {
   public static String toJsonString(List<Expression> groupByExprs, List<Expression> aggExprs) {

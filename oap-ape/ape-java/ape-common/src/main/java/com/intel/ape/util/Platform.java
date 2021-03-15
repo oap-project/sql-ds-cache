@@ -319,7 +319,8 @@ public final class Platform {
           Field unalignedField =
                   bitsClass.getDeclaredField(majorVersion >= 11 ? "UNALIGNED" : "unaligned");
           _unaligned = _UNSAFE.getBoolean(
-                  _UNSAFE.staticFieldBase(unalignedField), _UNSAFE.staticFieldOffset(unalignedField));
+                  _UNSAFE.staticFieldBase(unalignedField),
+                  _UNSAFE.staticFieldOffset(unalignedField));
         } else {
           Method unalignedMethod = bitsClass.getDeclaredMethod("unaligned");
           unalignedMethod.setAccessible(true);

@@ -29,64 +29,67 @@ extern "C" {
  * Method:    init
  * Signature: (Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;IIZ)J
  */
-JNIEXPORT jlong JNICALL Java_com_intel_ape_ParquetReaderJNI_init
-  (JNIEnv *, jclass, jstring, jstring, jint, jstring, jint, jint, jboolean);
+JNIEXPORT jlong JNICALL Java_com_intel_ape_ParquetReaderJNI_init(JNIEnv*, jclass, jstring,
+                                                                 jstring, jint, jstring,
+                                                                 jint, jint, jboolean);
 
 /*
  * Class:     com_intel_ape_ParquetReaderJNI
  * Method:    readBatch
  * Signature: (JI[J[J)I
  */
-JNIEXPORT jint JNICALL Java_com_intel_ape_ParquetReaderJNI_readBatch
-  (JNIEnv *, jclass, jlong, jint, jlongArray, jlongArray);
+JNIEXPORT jint JNICALL Java_com_intel_ape_ParquetReaderJNI_readBatch(JNIEnv*, jclass,
+                                                                     jlong, jint,
+                                                                     jlongArray,
+                                                                     jlongArray);
 
 /*
  * Class:     com_intel_ape_ParquetReaderJNI
  * Method:    hasNext
  * Signature: (J)Z
  */
-JNIEXPORT jboolean JNICALL Java_com_intel_ape_ParquetReaderJNI_hasNext
-  (JNIEnv *, jclass, jlong);
+JNIEXPORT jboolean JNICALL Java_com_intel_ape_ParquetReaderJNI_hasNext(JNIEnv*, jclass,
+                                                                       jlong);
 
 /*
  * Class:     com_intel_ape_ParquetReaderJNI
  * Method:    skipNextRowGroup
  * Signature: (J)Z
  */
-JNIEXPORT jboolean JNICALL Java_com_intel_ape_ParquetReaderJNI_skipNextRowGroup
-  (JNIEnv *, jclass, jlong);
+JNIEXPORT jboolean JNICALL Java_com_intel_ape_ParquetReaderJNI_skipNextRowGroup(JNIEnv*,
+                                                                                jclass,
+                                                                                jlong);
 
 /*
  * Class:     com_intel_ape_ParquetReaderJNI
  * Method:    close
  * Signature: (J)V
  */
-JNIEXPORT void JNICALL Java_com_intel_ape_ParquetReaderJNI_close
-  (JNIEnv *, jclass, jlong);
+JNIEXPORT void JNICALL Java_com_intel_ape_ParquetReaderJNI_close(JNIEnv*, jclass, jlong);
 
 /*
  * Class:     com_intel_ape_ParquetReaderJNI
  * Method:    setFilterStr
  * Signature: (JLjava/lang/String;)V
  */
-JNIEXPORT void JNICALL Java_com_intel_ape_ParquetReaderJNI_setFilterStr
-  (JNIEnv *, jclass, jlong, jstring);
+JNIEXPORT void JNICALL Java_com_intel_ape_ParquetReaderJNI_setFilterStr(JNIEnv*, jclass,
+                                                                        jlong, jstring);
 
 /*
  * Class:     com_intel_ape_ParquetReaderJNI
  * Method:    setAggStr
  * Signature: (JLjava/lang/String;)V
  */
-JNIEXPORT void JNICALL Java_com_intel_ape_ParquetReaderJNI_setAggStr
-  (JNIEnv *, jclass, jlong, jstring);
+JNIEXPORT void JNICALL Java_com_intel_ape_ParquetReaderJNI_setAggStr(JNIEnv*, jclass,
+                                                                     jlong, jstring);
 
 /*
  * Class:     com_intel_ape_ParquetReaderJNI
  * Method:    setPlasmaCacheRedis
  * Signature: (JLjava/lang/String;ILjava/lang/String;)V
  */
-JNIEXPORT void JNICALL Java_com_intel_ape_ParquetReaderJNI_setPlasmaCacheRedis
-  (JNIEnv *, jclass, jlong, jstring, jint, jstring);
+JNIEXPORT void JNICALL Java_com_intel_ape_ParquetReaderJNI_setPlasmaCacheRedis(
+    JNIEnv*, jclass, jlong, jstring, jint, jstring);
 
 #ifdef __cplusplus
 }

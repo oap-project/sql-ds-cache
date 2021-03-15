@@ -3,11 +3,11 @@ name: APE Java CI
 on:
   push:
     paths:
-      - 'oap-ape/**'
+      - 'oap-ape/ape-java/**'
       - '.github/workflows/ape_java.yaml'
   pull_request:
     paths:
-      - 'oap-ape/**'
+      - 'oap-ape/ape-java/**'
       - '.github/workflows/ape_java.yaml'
 
 jobs:
@@ -26,7 +26,7 @@ jobs:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }} # todo: which pom.xml?
           restore-keys: ${{ runner.os }}-m2
-      - name: oap-common dependency
-        run: git clone https://github.com/Intel-bigdata/OAP.git; cd OAP; git checkout v0.9.0-spark-3.0.0;export ONEAPI_ROOT=/ ; mvn install -pl oap-common -am -q;
+      - name: pmem-common dependency
+        run: cd /tmp; git clone https://github.com/oap-project/pmem-common.git; cd pmem-common/; mvn install -am -q -DskipTests
       - name: Build with Maven
         run: cd oap-ape/ape-java; mvn clean package -am --batch-mode -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn

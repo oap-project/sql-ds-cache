@@ -16,11 +16,12 @@
 // under the License.
 
 #include <unistd.h>
-#include <arrow/util/logging.h>
 
 #include <openssl/sha.h>
 
-#include "PlasmaCacheManager.h"
+#include <arrow/util/logging.h>
+
+#include "src/utils/PlasmaCacheManager.h"
 
 namespace ape {
 
@@ -42,16 +43,12 @@ PlasmaCacheManager::PlasmaCacheManager(std::string file_path) : file_path_(file_
   }
 }
 
-PlasmaCacheManager::~PlasmaCacheManager() {
-  
-}
+PlasmaCacheManager::~PlasmaCacheManager() {}
 
-bool PlasmaCacheManager::connected() {
-  return client_ != nullptr;
-}
+bool PlasmaCacheManager::connected() { return client_ != nullptr; }
 
 void PlasmaCacheManager::release() {
-    ARROW_LOG(INFO) << "plasma, release objects";
+  ARROW_LOG(INFO) << "plasma, release objects";
 
   if (!client_) {
     return;
@@ -78,11 +75,11 @@ void PlasmaCacheManager::close() {
   setCacheInfoToRedis();
 
   // disconnct
-  arrow:Status status = client_->Disconnect();
+  arrow::Status status = client_->Disconnect();
   if (!status.ok()) {
     ARROW_LOG(WARNING) << "plasma, Disconnect failed: " << status.message();
   }
-  
+
   client_ = nullptr;
 }
 
@@ -96,7 +93,8 @@ void PlasmaCacheManager::setCacheInfoToRedis() {
       std::unordered_map<std::string, double> scores;
       char buff[1024];
       for (auto range : cached_ranges_) {
-        snprintf(buff, sizeof(buff), "%d_%d_%s", range.offset, range.length, hostname.c_str());
+        snprintf(buff, sizeof(buff), "%d_%d_%s", range.offset, range.length,
+                 hostname.c_str());
         std::string member = buff;
         scores.insert({member, range.offset});
       }
@@ -107,7 +105,7 @@ void PlasmaCacheManager::setCacheInfoToRedis() {
       cached_ranges_.clear();
 
       ARROW_LOG(INFO) << "plasma, saved cache info to redis";
-    } catch (const sw::redis::Error &e) {
+    } catch (const sw::redis::Error& e) {
       ARROW_LOG(WARNING) << "plasma, save cache info to redis failed: " << e.what();
     }
   }
@@ -115,7 +113,8 @@ void PlasmaCacheManager::setCacheInfoToRedis() {
 
 std::string PlasmaCacheManager::cacheKeyofColumnChunk(::arrow::io::ReadRange range) {
   char buff[1024];
-  snprintf(buff, sizeof(buff), "plasma_cache:parquet_chunk:%s:%d_%d", file_path_.c_str(), range.offset, range.length);
+  snprintf(buff, sizeof(buff), "plasma_cache:parquet_chunk:%s:%d_%d", file_path_.c_str(),
+           range.offset, range.length);
   std::string ret = buff;
   return ret;
 }
@@ -129,7 +128,8 @@ plasma::ObjectID PlasmaCacheManager::objectIdOfColumnChunk(::arrow::io::ReadRang
   return plasma::ObjectID::from_binary(std::string(hash, hash + sizeof(hash)));
 }
 
-void PlasmaCacheManager::setCacheRedis(std::shared_ptr<sw::redis::ConnectionOptions> options) {
+void PlasmaCacheManager::setCacheRedis(
+    std::shared_ptr<sw::redis::ConnectionOptions> options) {
   try {
     sw::redis::ConnectionOptions connection_options;
     connection_options.host = options->host;
@@ -138,8 +138,8 @@ void PlasmaCacheManager::setCacheRedis(std::shared_ptr<sw::redis::ConnectionOpti
 
     auto redis = std::make_shared<sw::redis::Redis>(connection_options);
     redis_ = redis;
-     ARROW_LOG(INFO) << "plasma, set cache redis: " << options->host;
-  } catch (const sw::redis::Error &e) {
+    ARROW_LOG(INFO) << "plasma, set cache redis: " << options->host;
+  } catch (const sw::redis::Error& e) {
     ARROW_LOG(WARNING) << "plasma, set redis failed: " << e.what();
   }
 }
@@ -169,7 +169,8 @@ std::shared_ptr<Buffer> PlasmaCacheManager::getColumnChunk(::arrow::io::ReadRang
 
   std::vector<plasma::ObjectBuffer> obufs(1);
 
-  arrow:Status status = client_->Get(oids.data(), 1, -1, obufs.data());
+arrow:
+  Status status = client_->Get(oids.data(), 1, -1, obufs.data());
   if (!status.ok()) {
     ARROW_LOG(WARNING) << "plasma, Get failed: " << status.message();
     cache_miss_count_ += 1;
@@ -182,12 +183,14 @@ std::shared_ptr<Buffer> PlasmaCacheManager::getColumnChunk(::arrow::io::ReadRang
   cache_hit_count_ += 1;
   cached_ranges_.push_back(range);
 
-  ARROW_LOG(DEBUG) << "plasma, get object from cache: " << file_path_ << ", " << range.offset << ", " << range.length;
+  ARROW_LOG(DEBUG) << "plasma, get object from cache: " << file_path_ << ", "
+                   << range.offset << ", " << range.length;
 
   return obufs[0].data;
 }
 
-bool PlasmaCacheManager::cacheColumnChunk(::arrow::io::ReadRange range, std::shared_ptr<Buffer> data) {
+bool PlasmaCacheManager::cacheColumnChunk(::arrow::io::ReadRange range,
+                                          std::shared_ptr<Buffer> data) {
   std::vector<plasma::ObjectID> oids;
   plasma::ObjectID oid = objectIdOfColumnChunk(range);
 
@@ -195,7 +198,8 @@ bool PlasmaCacheManager::cacheColumnChunk(::arrow::io::ReadRange range, std::sha
   std::shared_ptr<Buffer> saved_data;
   Status status = client_->Create(oid, data->size(), nullptr, 0, &saved_data);
   if (plasma::IsPlasmaObjectExists(status)) {
-    ARROW_LOG(WARNING) << "plasma, Create failed, PlasmaObjectExists: " << status.message();
+    ARROW_LOG(WARNING) << "plasma, Create failed, PlasmaObjectExists: "
+                       << status.message();
     return false;
   }
   if (plasma::IsPlasmaStoreFull(status)) {
@@ -220,10 +224,11 @@ bool PlasmaCacheManager::cacheColumnChunk(::arrow::io::ReadRange range, std::sha
     ARROW_LOG(WARNING) << "plasma, Seal failed: " << status.message();
     return false;
   }
-  
+
   cached_ranges_.push_back(range);
 
-  ARROW_LOG(DEBUG) << "plasma, object cached: " << file_path_ << ", " << range.offset << ", " << range.length;
+  ARROW_LOG(DEBUG) << "plasma, object cached: " << file_path_ << ", " << range.offset
+                   << ", " << range.length;
 
   return true;
 }
@@ -235,8 +240,9 @@ bool PlasmaCacheManager::deleteColumnChunk(::arrow::io::ReadRange range) {
     return false;
   }
 
-  ARROW_LOG(INFO) << "plasma, delete object from cache: " << file_path_ << ", " << range.offset << ", " << range.length;
+  ARROW_LOG(INFO) << "plasma, delete object from cache: " << file_path_ << ", "
+                  << range.offset << ", " << range.length;
   return true;
 }
 
-}
+}  // namespace ape

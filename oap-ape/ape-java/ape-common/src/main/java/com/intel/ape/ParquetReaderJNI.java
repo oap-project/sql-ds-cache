@@ -28,19 +28,22 @@ public class ParquetReaderJNI {
 
   public static long init(String fileName, String hdfsHost, int hdfsPort, String requiredSchema,
                           int firstRowGroupIndex, int totalGroupToRead) {
-    return init(fileName, hdfsHost, hdfsPort, requiredSchema, firstRowGroupIndex, totalGroupToRead, false);
+    return init(fileName, hdfsHost, hdfsPort, requiredSchema,
+            firstRowGroupIndex, totalGroupToRead, false);
   }
 
   // return a reader pointer
-  public static native long init(String fileName, String hdfsHost, int hdfsPort, String requiredSchema,
-                                 int firstRowGroupIndex, int totalGroupToRead, boolean plasmaCacheEnabled);
+  public static native long init(String fileName, String hdfsHost, int hdfsPort,
+                                 String requiredSchema, int firstRowGroupIndex,
+                                 int totalGroupToRead, boolean plasmaCacheEnabled);
 
   public static native int readBatch(long reader, int batchSize, long[] buffers, long[] nulls);
 
   public static native boolean hasNext(long reader);
 
   // This is for flink seek()
-  // Do not support usage like reader.readBatch(4096); reader.skipNextRowGroup(); reader.readBatch(4096)
+  // Do not support usage like
+  // reader.readBatch(4096); reader.skipNextRowGroup(); reader.readBatch(4096);
   public static native boolean skipNextRowGroup(long reader);
 
   public static native void close(long reader);
@@ -49,5 +52,6 @@ public class ParquetReaderJNI {
 
   public static native void setAggStr(long reader, String aggStr);
 
-  public static native void setPlasmaCacheRedis(long reader, String host, int port, String password);
+  public static native void setPlasmaCacheRedis(long reader, String host,
+                                                int port, String password);
 }

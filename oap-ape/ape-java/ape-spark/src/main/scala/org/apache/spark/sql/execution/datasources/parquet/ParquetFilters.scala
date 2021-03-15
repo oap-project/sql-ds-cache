@@ -24,7 +24,8 @@ import java.time.{Instant, LocalDate}
 import java.util.Locale
 
 import scala.collection.JavaConverters.asScalaBufferConverter
-import com.intel.ape.Parquet.{ApeContainsFilter, ApeEndWithFilter, ApeStartWithFilter}
+
+import com.intel.ape.parquet.{ApeContainsFilter, ApeEndWithFilter, ApeStartWithFilter}
 import org.apache.parquet.filter2.predicate._
 import org.apache.parquet.filter2.predicate.SparkFilterApi._
 import org.apache.parquet.io.api.Binary
@@ -32,6 +33,7 @@ import org.apache.parquet.schema.{DecimalMetadata, GroupType, MessageType, Origi
 import org.apache.parquet.schema.OriginalType._
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName._
+
 import org.apache.spark.sql.catalyst.util.{CaseInsensitiveMap, DateTimeUtils}
 import org.apache.spark.sql.catalyst.util.DateTimeUtils.SQLDate
 import org.apache.spark.sql.sources
@@ -509,15 +511,15 @@ class ParquetFilters(
   }
 
   /**
-   * @param predicate                   the input filter predicates. Not all the predicates can be pushed down.
+   * @param predicate the input filter predicates. Not all the predicates can be pushed down.
    * @param canPartialPushDownConjuncts whether a subset of conjuncts of predicates can be pushed
    *                                    down safely. Pushing ONLY one side of AND down is safe to
    *                                    do at the top level or none of its ancestors is NOT and OR.
    * @return the Parquet-native filter predicates that are eligible for pushdown.
    */
   private def createFilterHelper(
-                                  predicate: sources.Filter,
-                                  canPartialPushDownConjuncts: Boolean): Option[FilterPredicate] = {
+      predicate: sources.Filter,
+      canPartialPushDownConjuncts: Boolean): Option[FilterPredicate] = {
     // NOTE:
     //
     // For any comparison operator `cmp`, both `a cmp NULL` and `NULL cmp a` evaluate to `NULL`,

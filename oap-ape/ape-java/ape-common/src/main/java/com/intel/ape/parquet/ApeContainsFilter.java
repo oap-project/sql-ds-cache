@@ -15,15 +15,13 @@
  * limitations under the License.
  */
 
-package com.intel.ape.Parquet;
+package com.intel.ape.parquet;
 
 import org.apache.parquet.filter2.predicate.Statistics;
 import org.apache.parquet.io.api.Binary;
-import org.apache.parquet.schema.PrimitiveComparator;
 
-
-public class ApeStartWithFilter extends ApeLikeFilter {
-  public ApeStartWithFilter(String value) {
+public class ApeContainsFilter extends ApeLikeFilter {
+  public ApeContainsFilter(String value) {
     super(value);
   }
 
@@ -34,20 +32,12 @@ public class ApeStartWithFilter extends ApeLikeFilter {
 
   @Override
   public boolean canDrop(Statistics<Binary> statistics) {
-    PrimitiveComparator<Binary> comparator = PrimitiveComparator.UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR;
-    Binary max = statistics.getMax();
-    Binary min = statistics.getMin();
-    return comparator.compare(max.slice(0, Math.min(size, max.length())), strToBinary) < 0 ||
-            comparator.compare(min.slice(0, Math.min(size, min.length())), strToBinary) > 0;
+    return false;
   }
 
   @Override
   public boolean inverseCanDrop(Statistics<Binary> statistics) {
-    PrimitiveComparator<Binary> comparator = PrimitiveComparator.UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR;
-    Binary max = statistics.getMax();
-    Binary min = statistics.getMin();
-    return comparator.compare(max.slice(0, Math.min(size, max.length())), strToBinary) == 0 &&
-            comparator.compare(min.slice(0, Math.min(size, min.length())), strToBinary) == 0;
+    return false;
   }
 
 }

@@ -15,14 +15,12 @@
  * limitations under the License.
  */
 
-package com.intel.ape.Parquet;
-
-import org.apache.parquet.filter2.predicate.Statistics;
-import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
-import org.apache.parquet.io.api.Binary;
-import org.apache.parquet.schema.PrimitiveComparator;
+package com.intel.ape.parquet;
 
 import java.io.Serializable;
+
+import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
+import org.apache.parquet.io.api.Binary;
 
 public abstract class ApeLikeFilter extends UserDefinedPredicate<Binary> implements Serializable {
   public ApeLikeFilter(String value) {

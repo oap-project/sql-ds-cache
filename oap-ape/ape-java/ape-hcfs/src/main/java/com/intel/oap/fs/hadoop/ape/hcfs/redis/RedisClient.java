@@ -17,6 +17,9 @@
 
 package com.intel.oap.fs.hadoop.ape.hcfs.redis;
 
+import java.util.Map;
+import java.util.Set;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Jedis;
@@ -24,9 +27,6 @@ import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
 import redis.clients.jedis.Tuple;
 import redis.clients.jedis.exceptions.JedisException;
-
-import java.util.Map;
-import java.util.Set;
 
 /**
  * read and write data with redis.
@@ -39,7 +39,7 @@ public class RedisClient {
 
     private String password = "";
 
-    private volatile static RedisClient instance;
+    private static volatile RedisClient instance;
 
     private RedisClient(String host, int port, String auth, int maxTotal, int maxIdle) {
         JedisPoolConfig config = new JedisPoolConfig();
@@ -50,7 +50,8 @@ public class RedisClient {
         password = auth;
     }
 
-    public static RedisClient getInstance(String host, int port, String auth, int maxTotal, int maxIdle) {
+    public static RedisClient getInstance(String host, int port, String auth,
+                                          int maxTotal, int maxIdle) {
         if (instance == null) {
             synchronized (RedisClient.class) {
                 if (instance == null) {
@@ -342,7 +343,8 @@ public class RedisClient {
             jedis = getJedis();
             return jedis.zrangeByScoreWithScores(key, min, max);
         } catch (Exception e) {
-            LOG.error("redis exception: {}, when: {}, key: {}", e.toString(), "zrangeByScoreWithScores", key);
+            LOG.error("redis exception: {}, when: {}, key: {}",
+                    e.toString(), "zrangeByScoreWithScores", key);
             throw new JedisException(e.getMessage(), e);
         } finally {
             close(jedis);

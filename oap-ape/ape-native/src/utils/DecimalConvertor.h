@@ -17,18 +17,19 @@
 
 #pragma once
 
+#include <parquet/column_reader.h>
+
 #include "ApeDecimal.h"
 
 namespace ape {
 
-using ApeDecimal128Ptr    = std::shared_ptr<ApeDecimal128>;
+using ApeDecimal128Ptr = std::shared_ptr<ApeDecimal128>;
 using ApeDecimal128Vector = std::vector<ApeDecimal128Ptr>;
 
 class DecimalConvertor {
  public:
   template <typename ParquetIntegerType>
-  static void ConvertIntegerToDecimal128(const uint8_t *values,
-                                         int32_t num_values,
+  static void ConvertIntegerToDecimal128(const uint8_t* values, int32_t num_values,
                                          int32_t precision, int32_t scale,
                                          ApeDecimal128Vector& out) {
     using ElementType = typename ParquetIntegerType::c_type;
@@ -50,18 +51,15 @@ class DecimalConvertor {
     return;
   }
 
-  static void ConvertFixLengthByteArrayToDecimal128(const uint8_t *values,
+  static void ConvertFixLengthByteArrayToDecimal128(const uint8_t* values,
                                                     int32_t num_values,
                                                     int32_t type_length,
-                                                    int32_t precision,
-                                                    int32_t scale,
+                                                    int32_t precision, int32_t scale,
                                                     ApeDecimal128Vector& out);
 
-  static void ConvertByteArrayToDecimal128(const uint8_t *values,
-                                           int32_t num_values,
+  static void ConvertByteArrayToDecimal128(const uint8_t* values, int32_t num_values,
                                            int32_t precision, int32_t scale,
                                            ApeDecimal128Vector& out);
-
 };
 
 }  // namespace ape

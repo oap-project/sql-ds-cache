@@ -17,6 +17,13 @@
 
 package com.intel.oap.fs.hadoop.ape.hcfs;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 import com.intel.oap.fs.hadoop.ape.hcfs.redis.RedisCacheLocationStore;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.BlockLocation;
@@ -31,13 +38,6 @@ import org.apache.hadoop.util.Progressable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
 /**
  * A hadoop file system implementation that wraps HDFS data accessing
  * and provides locations of cached data.
@@ -51,7 +51,7 @@ import java.util.List;
 public class CacheAwareFileSystem extends FileSystem {
     private static final Logger LOG = LoggerFactory.getLogger(CacheAwareFileSystem.class);
 
-    private final static String SCHEME = "hdfs";
+    private static final String SCHEME = "hdfs";
 
     private URI uri;
 
@@ -66,7 +66,6 @@ public class CacheAwareFileSystem extends FileSystem {
         hdfs = new DistributedFileSystem();
         hdfs.initialize(name, conf);
         LOG.info("cache aware scheduler is initialized.");
-        
         locationPolicy = getConf().get(
                 Constants.CONF_KEY_FS_APE_HCFS_BLOCK_LOCATION_POLICY,
                 Constants.CACHE_LOCATION_POLICY_MERGING_HDFS);
@@ -74,7 +73,8 @@ public class CacheAwareFileSystem extends FileSystem {
     }
 
     @Override
-    public BlockLocation[] getFileBlockLocations(FileStatus file, long start, long len) throws IOException {
+    public BlockLocation[] getFileBlockLocations(FileStatus file, long start,
+                                                 long len) throws IOException {
         if (file == null) {
             throw new NullPointerException();
         }
@@ -83,11 +83,13 @@ public class CacheAwareFileSystem extends FileSystem {
     }
 
     @Override
-    public BlockLocation[] getFileBlockLocations(Path path, long start, long len) throws IOException {
+    public BlockLocation[] getFileBlockLocations(Path path, long start,
+                                                 long len) throws IOException {
         if (path == null) {
             throw new NullPointerException();
         }
-        LOG.debug("getFileBlockLocations with: {}, start: {}, len: {}", path.toString(), start, len);
+        LOG.debug("getFileBlockLocations with: {}, start: {}, len: {}",
+                path.toString(), start, len);
 
         List<BlockLocation> result = new ArrayList<>();
 
@@ -98,7 +100,8 @@ public class CacheAwareFileSystem extends FileSystem {
         switch (locationPolicy) {
             case Constants.CACHE_LOCATION_POLICY_HDFS_ONLY:
                 // get HDFS block locations
-                LOG.debug("getFileBlockLocations with native HDFS, start: {}, len: {}", start, len);
+                LOG.debug("getFileBlockLocations with native HDFS, start: {}, len: {}",
+                        start, len);
                 BlockLocation[] hdfsBlockLocations = hdfs.getFileBlockLocations(path, start, len);
                 result.addAll(Arrays.asList(hdfsBlockLocations));
                 break;
@@ -115,7 +118,8 @@ public class CacheAwareFileSystem extends FileSystem {
     }
 
     // Get block locations taking account of cache locations
-    private List<BlockLocation> getFileBlockLocationsWithCacheChecking(Path path, long start, long len, boolean merging)
+    private List<BlockLocation> getFileBlockLocationsWithCacheChecking(Path path, long start,
+                                                                       long len, boolean merging)
             throws IOException {
         CacheLocation[] cachedBlockLocations;
         BlockLocation[] hdfsBlockLocations;
@@ -129,11 +133,13 @@ public class CacheAwareFileSystem extends FileSystem {
 
         if (!checkLocationsCompleted(cachedBlockLocations, start, len)) {
             // get HDFS block locations
-            LOG.debug("getFileBlockLocations fell back to native HDFS, start: {}, len: {}", start, len);
+            LOG.debug("getFileBlockLocations fell back to native HDFS, start: {}, len: {}",
+                    start, len);
             hdfsBlockLocations = hdfs.getFileBlockLocations(path, start, len);
 
             if (merging) {
-                result.addAll(mergeBlockLocations(cachedBlockLocations, hdfsBlockLocations, start, len));
+                result.addAll(mergeBlockLocations(cachedBlockLocations, hdfsBlockLocations,
+                        start, len));
             } else {
                 result.addAll(Arrays.asList(hdfsBlockLocations));
             }
@@ -182,8 +188,9 @@ public class CacheAwareFileSystem extends FileSystem {
 
     // Merge cached block locations and HDFS block locations.
     // Cached block locations hold higher priority.
-    private List<BlockLocation> mergeBlockLocations(
-            CacheLocation[] cacheBlockLocations, BlockLocation[] hdfsBlockLocations, long start, long len) {
+    private List<BlockLocation> mergeBlockLocations(CacheLocation[] cacheBlockLocations,
+                                                    BlockLocation[] hdfsBlockLocations,
+                                                    long start, long len) {
 
         List<BlockLocation> result = new ArrayList<>();
 
@@ -205,7 +212,8 @@ public class CacheAwareFileSystem extends FileSystem {
             if (cacheOffset <= currentOffset) {
 
                 result.add(cacheBlockLocations[cacheIndex]);
-                currentOffset = cacheBlockLocations[cacheIndex].getOffset() + cacheBlockLocations[cacheIndex].getLength();
+                currentOffset = cacheBlockLocations[cacheIndex].getOffset() +
+                        cacheBlockLocations[cacheIndex].getLength();
                 cacheIndex ++;
 
             } else if (hdfsOffset <= currentOffset) {
@@ -251,13 +259,17 @@ public class CacheAwareFileSystem extends FileSystem {
     }
 
     @Override
-    public FSDataOutputStream create(Path path, FsPermission fsPermission, boolean overwrite, int bufferSize, short replication, long blockSize, Progressable progressable) throws IOException {
+    public FSDataOutputStream create(Path path, FsPermission fsPermission, boolean overwrite,
+                                     int bufferSize, short replication, long blockSize,
+                                     Progressable progressable) throws IOException {
         LOG.debug("create: {}", path.toString());
-        return hdfs.create(path, fsPermission, overwrite, bufferSize, replication, blockSize, progressable);
+        return hdfs.create(path, fsPermission, overwrite, bufferSize,
+                replication, blockSize, progressable);
     }
 
     @Override
-    public FSDataOutputStream append(Path path, int bufferSize, Progressable progressable) throws IOException {
+    public FSDataOutputStream append(Path path, int bufferSize,
+                                     Progressable progressable) throws IOException {
         return hdfs.append(path, bufferSize, progressable);
     }
 

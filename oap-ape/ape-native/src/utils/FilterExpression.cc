@@ -22,15 +22,15 @@
 
 #include <arrow/util/logging.h>
 
-#include "FilterExpression.h"
-#include "expression.h"
-#include "type.h"
+#include "src/utils/FilterExpression.h"
+#include "src/utils/expression.h"
+#include "src/utils/type.h"
 
 namespace ape {
 
 class finder {
  public:
-  finder(const std::string& cmp_str) : str(cmp_str) {}
+  explicit finder(const std::string& cmp_str) : str(cmp_str) {}
 
   bool operator()(Schema& v) { return v.getColName().compare(str) == 0; }
 
@@ -41,17 +41,17 @@ class finder {
 // Base class
 FilterExpression::FilterExpression(std::string type_) : Expression() { type = type_; }
 
-FilterExpression::~FilterExpression(){};
+FilterExpression::~FilterExpression() {}
 
 // RootFilterExpression
 RootFilterExpression::RootFilterExpression(std::string type_,
                                            std::shared_ptr<FilterExpression> child_)
     : FilterExpression(type_) {
   child = child_;
-};
+}
 
-int RootFilterExpression::ExecuteWithParam(int batchSize, long* dataBuffers,
-                                           long* nullBuffers, char* outBuffers) {
+int RootFilterExpression::ExecuteWithParam(int batchSize, int64_t* dataBuffers,
+                                           int64_t* nullBuffers, char* outBuffers) {
   // root node doesn't need outbuffer
   char* childBuffer = new char[batchSize];
   auto start1 = std::chrono::steady_clock::now();
@@ -94,7 +94,7 @@ int RootFilterExpression::ExecuteWithParam(int batchSize, long* dataBuffers,
   return hitIndex;
 }
 
-RootFilterExpression::~RootFilterExpression(){};
+RootFilterExpression::~RootFilterExpression() {}
 
 // NotFilterExpression
 NotFilterExpression::NotFilterExpression(std::string type_,
@@ -103,10 +103,10 @@ NotFilterExpression::NotFilterExpression(std::string type_,
   child = child_;
 }
 
-NotFilterExpression::~NotFilterExpression(){};
+NotFilterExpression::~NotFilterExpression() {}
 
-int NotFilterExpression::ExecuteWithParam(int batchSize, long* dataBuffers,
-                                          long* nullBuffers, char* outBuffers) {
+int NotFilterExpression::ExecuteWithParam(int batchSize, int64_t* dataBuffers,
+                                          int64_t* nullBuffers, char* outBuffers) {
   std::memset(outBuffers, 0, batchSize);
   char* childBuffer = new char[batchSize];
   child->ExecuteWithParam(batchSize, dataBuffers, nullBuffers, childBuffer);
@@ -140,10 +140,10 @@ BinaryFilterExpression::BinaryFilterExpression(std::string type_,
   }
 }
 
-BinaryFilterExpression::~BinaryFilterExpression(){};
+BinaryFilterExpression::~BinaryFilterExpression() {}
 
-int BinaryFilterExpression::ExecuteWithParam(int batchSize, long* dataBuffers,
-                                             long* nullBuffers, char* outBuffers) {
+int BinaryFilterExpression::ExecuteWithParam(int batchSize, int64_t* dataBuffers,
+                                             int64_t* nullBuffers, char* outBuffers) {
   // assert(outBuffers != nullptr);
   std::memset(outBuffers, 0, batchSize);
   char* leftBuffer = new char[batchSize];
@@ -173,15 +173,13 @@ void StringFilterExpression::setSchema(std::vector<Schema> schema_) {
   columnIndex = pos;
 }
 
-std::string StringFilterExpression::getColumnName() {
-  return columnName;
-}
+std::string StringFilterExpression::getColumnName() { return columnName; }
 
 // StartWithFilterExpression
-int StartWithFilterExpression::ExecuteWithParam(int batchSize, long* dataBuffers,
-                                                long* nullBuffers, char* outBuffers) {
+int StartWithFilterExpression::ExecuteWithParam(int batchSize, int64_t* dataBuffers,
+                                                int64_t* nullBuffers, char* outBuffers) {
   std::memset(outBuffers, 0, batchSize);
-  long dataPtr = *(dataBuffers + columnIndex);
+  int64_t dataPtr = *(dataBuffers + columnIndex);
   parquet::ByteArray* data = (parquet::ByteArray*)dataPtr;
   int len = value.length();
   for (int i = 0; i < batchSize; i++) {
@@ -194,10 +192,10 @@ int StartWithFilterExpression::ExecuteWithParam(int batchSize, long* dataBuffers
 }
 
 // EndWithFilterExpression
-int EndWithFilterExpression::ExecuteWithParam(int batchSize, long* dataBuffers,
-                                              long* nullBuffers, char* outBuffers) {
+int EndWithFilterExpression::ExecuteWithParam(int batchSize, int64_t* dataBuffers,
+                                              int64_t* nullBuffers, char* outBuffers) {
   std::memset(outBuffers, 0, batchSize);
-  long dataPtr = *(dataBuffers + columnIndex);
+  int64_t dataPtr = *(dataBuffers + columnIndex);
   parquet::ByteArray* data = (parquet::ByteArray*)dataPtr;
   int len = value.length();
   for (int i = 0; i < batchSize; i++) {
@@ -210,10 +208,10 @@ int EndWithFilterExpression::ExecuteWithParam(int batchSize, long* dataBuffers,
 }
 
 // ContainsFilterExpression
-int ContainsFilterExpression::ExecuteWithParam(int batchSize, long* dataBuffers,
-                                               long* nullBuffers, char* outBuffers) {
+int ContainsFilterExpression::ExecuteWithParam(int batchSize, int64_t* dataBuffers,
+                                               int64_t* nullBuffers, char* outBuffers) {
   std::memset(outBuffers, 0, batchSize);
-  long dataPtr = *(dataBuffers + columnIndex);
+  int64_t dataPtr = *(dataBuffers + columnIndex);
   parquet::ByteArray* data = (parquet::ByteArray*)dataPtr;
   int len = value.length();
   for (int i = 0; i < batchSize; i++) {
@@ -251,11 +249,11 @@ TypedUnaryFilterExpression<T>::TypedUnaryFilterExpression(std::string type_,
 
 template <>
 int TypedUnaryFilterExpression<NullStruct>::ExecuteWithParam(int batchSize,
-                                                             long* dataBuffers,
-                                                             long* nullBuffers,
+                                                             int64_t* dataBuffers,
+                                                             int64_t* nullBuffers,
                                                              char* outBuffers) {
   std::memset(outBuffers, 0, batchSize);
-  long nullPtr = *(nullBuffers + columnIndex);
+  int64_t nullPtr = *(nullBuffers + columnIndex);
   char* ptr = (char*)nullPtr;
   NullStruct nullSturct;
   filter->execute((NullStruct*)ptr, nullSturct, batchSize, outBuffers);
@@ -264,11 +262,12 @@ int TypedUnaryFilterExpression<NullStruct>::ExecuteWithParam(int batchSize,
 }
 
 template <typename T>
-int TypedUnaryFilterExpression<T>::ExecuteWithParam(int batchSize, long* dataBuffers,
-                                                    long* nullBuffers, char* outBuffers) {
+int TypedUnaryFilterExpression<T>::ExecuteWithParam(int batchSize, int64_t* dataBuffers,
+                                                    int64_t* nullBuffers,
+                                                    char* outBuffers) {
   std::memset(outBuffers, 0, batchSize);
-  long dataPtr = *(dataBuffers + columnIndex);
-  long nullPtr = *(nullBuffers + columnIndex);
+  int64_t dataPtr = *(dataBuffers + columnIndex);
+  int64_t nullPtr = *(nullBuffers + columnIndex);
   T* ptr = (T*)dataPtr;
 
   filter->execute(ptr, value, batchSize, outBuffers);
@@ -284,17 +283,15 @@ void TypedUnaryFilterExpression<T>::setSchema(std::vector<Schema> schema_) {
   columnIndex = pos;
 }
 
-std::string UnaryFilterExpression::getColumnName() {
-  return columnName;
-}
+std::string UnaryFilterExpression::getColumnName() { return columnName; }
 
 template <typename T>
-TypedUnaryFilterExpression<T>::~TypedUnaryFilterExpression(){};
+TypedUnaryFilterExpression<T>::~TypedUnaryFilterExpression() {}
 
 // Force compile these classes.
 template class TypedUnaryFilterExpression<bool>;
 template class TypedUnaryFilterExpression<int>;
-template class TypedUnaryFilterExpression<long>;
+template class TypedUnaryFilterExpression<int64_t>;
 template class TypedUnaryFilterExpression<float>;
 template class TypedUnaryFilterExpression<double>;
 template class TypedUnaryFilterExpression<NullStruct>;

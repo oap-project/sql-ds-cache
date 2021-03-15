@@ -1,6 +1,5 @@
 package org.apache.spark.sql.execution.vectorized;
 
-import org.apache.spark.sql.types.BooleanType;
 import org.apache.spark.sql.types.DataType;
 import org.apache.spark.sql.types.Decimal;
 import org.apache.spark.sql.vectorized.ColumnVector;

@@ -15,18 +15,15 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#include "com_intel_ape_ParquetReaderJNI.h"
-
-#include "reader.h"
-
-using namespace ape;
+#include "src/com_intel_ape_ParquetReaderJNI.h"
+#include "src/reader.h"
 
 JNIEXPORT jlong JNICALL Java_com_intel_ape_ParquetReaderJNI_init(
     JNIEnv* env, jclass cls, jstring fileName, jstring hdfsHost, jint hdfsPort,
     jstring requiredSchema, jint firstRowGroup, jint rowGroupToRead,
     jboolean plasmaCacheEnabled) {
   int i = 0;
-  Reader* reader = new Reader();
+  ape::Reader* reader = new ape::Reader();
 
   reader->setPlasmaCacheEnabled(plasmaCacheEnabled);
 
@@ -41,14 +38,14 @@ JNIEXPORT jlong JNICALL Java_com_intel_ape_ParquetReaderJNI_init(
 JNIEXPORT jboolean JNICALL Java_com_intel_ape_ParquetReaderJNI_hasNext(JNIEnv* env,
                                                                        jclass cls,
                                                                        jlong readerPtr) {
-  Reader* reader = reinterpret_cast<Reader*>(readerPtr);
+  ape::Reader* reader = reinterpret_cast<ape::Reader*>(readerPtr);
   return reader->hasNext();
 }
 
 JNIEXPORT jint JNICALL Java_com_intel_ape_ParquetReaderJNI_readBatch(
     JNIEnv* env, jclass cls, jlong readerPtr, jint batchSize, jlongArray buffers,
     jlongArray nulls) {
-  Reader* reader = reinterpret_cast<Reader*>(readerPtr);
+  ape::Reader* reader = reinterpret_cast<ape::Reader*>(readerPtr);
   jsize buffersLen = env->GetArrayLength(buffers);
   jsize nullsLen = env->GetArrayLength(nulls);
   assert(buffersLen == nullsLen);
@@ -65,20 +62,20 @@ JNIEXPORT jint JNICALL Java_com_intel_ape_ParquetReaderJNI_readBatch(
 
 JNIEXPORT jboolean JNICALL Java_com_intel_ape_ParquetReaderJNI_skipNextRowGroup(
     JNIEnv* env, jclass cls, jlong readerPtr) {
-  Reader* reader = reinterpret_cast<Reader*>(readerPtr);
+  ape::Reader* reader = reinterpret_cast<ape::Reader*>(readerPtr);
   return reader->skipNextRowGroup();
 }
 
 JNIEXPORT void JNICALL Java_com_intel_ape_ParquetReaderJNI_close(JNIEnv* env, jclass cls,
                                                                  jlong readerPtr) {
-  Reader* reader = reinterpret_cast<Reader*>(readerPtr);
+  ape::Reader* reader = reinterpret_cast<ape::Reader*>(readerPtr);
   reader->close();
   delete reader;
 }
 
 JNIEXPORT void JNICALL Java_com_intel_ape_ParquetReaderJNI_setFilterStr(
     JNIEnv* env, jclass cls, jlong readerPtr, jstring filterJsonStr) {
-  Reader* reader = reinterpret_cast<Reader*>(readerPtr);
+  ape::Reader* reader = reinterpret_cast<ape::Reader*>(readerPtr);
   std::string filterJsonStr_ = env->GetStringUTFChars(filterJsonStr, nullptr);
   reader->setFilter(filterJsonStr_);
 }
@@ -87,15 +84,15 @@ JNIEXPORT void JNICALL Java_com_intel_ape_ParquetReaderJNI_setAggStr(JNIEnv* env
                                                                      jclass cls,
                                                                      jlong readerPtr,
                                                                      jstring aggStr) {
-  Reader* reader = reinterpret_cast<Reader*>(readerPtr);
+  ape::Reader* reader = reinterpret_cast<ape::Reader*>(readerPtr);
   std::string aggStr_ = env->GetStringUTFChars(aggStr, nullptr);
   ARROW_LOG(INFO) << "agg str is: " << aggStr_;
   reader->setAgg(aggStr_);
 }
 
 JNIEXPORT void JNICALL Java_com_intel_ape_ParquetReaderJNI_setPlasmaCacheRedis(
-  JNIEnv* env, jclass cls, jlong readerPtr, jstring host, jint port, jstring password) {
-  Reader* reader = reinterpret_cast<Reader*>(readerPtr);
+    JNIEnv* env, jclass cls, jlong readerPtr, jstring host, jint port, jstring password) {
+  ape::Reader* reader = reinterpret_cast<ape::Reader*>(readerPtr);
   std::string host_ = env->GetStringUTFChars(host, nullptr);
   std::string password_ = env->GetStringUTFChars(password, nullptr);
   reader->setPlasmaCacheRedis(host_, port, password_);

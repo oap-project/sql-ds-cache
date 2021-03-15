@@ -17,7 +17,7 @@
 
 // Adapted from gandiva decimal_ops.cc
 
-#include "DecimalUtil.h"
+#include "src/utils/DecimalUtil.h"
 
 #include <algorithm>
 #include <cmath>
@@ -51,18 +51,19 @@ static constexpr int32_t kMinAdjustedScale = 6;
 // The maximum scale representable.
 static constexpr int32_t kMaxScale = kMaxPrecision;
 
-static std::shared_ptr<arrow::Decimal128Type> MakeAdjustedType(int32_t precision, int32_t scale) {
+static std::shared_ptr<arrow::Decimal128Type> MakeAdjustedType(int32_t precision,
+                                                               int32_t scale) {
   if (precision > kMaxPrecision) {
     int32_t min_scale = std::min(scale, kMinAdjustedScale);
     int32_t delta = precision - kMaxPrecision;
     precision = kMaxPrecision;
     scale = std::max(scale - delta, min_scale);
   }
-  return std::dynamic_pointer_cast<arrow::Decimal128Type>(arrow::decimal(precision, scale));
+  return std::dynamic_pointer_cast<arrow::Decimal128Type>(
+      arrow::decimal(precision, scale));
 }
 
-void DecimalUtil::GetResultType(Op op,
-                                const Decimal128TypeVector& in_types,
+void DecimalUtil::GetResultType(Op op, const Decimal128TypeVector& in_types,
                                 Decimal128TypePtr* out_type) {
   DCHECK_EQ(in_types.size(), 2);
 
@@ -141,8 +142,7 @@ inline int32_t MinLeadingZerosAfterScaling(int32_t num_lz, int32_t scale_by) {
 }
 
 // Returns the maximum possible number of bits required to represent num * 10^scale_by.
-inline int32_t MaxBitsRequiredAfterScaling(const ApeDecimal128& num,
-                                           int32_t scale_by) {
+inline int32_t MaxBitsRequiredAfterScaling(const ApeDecimal128& num, int32_t scale_by) {
   auto value = num.value();
   auto value_abs = value.Abs();
 
@@ -171,11 +171,8 @@ inline int32_t MinLeadingZeros(const ApeDecimal128& x, const ApeDecimal128& y) {
   return std::min(x_lz, y_lz);
 }
 
-BasicDecimal128 DecimalUtil::Add(const ApeDecimal128& x,
-                                 const ApeDecimal128& y,
-                                 int32_t out_precision,
-                                 int32_t out_scale) {
-
+BasicDecimal128 DecimalUtil::Add(const ApeDecimal128& x, const ApeDecimal128& y,
+                                 int32_t out_precision, int32_t out_scale) {
   DCHECK_LT(out_precision, kMaxPrecision);
   auto higher_scale = std::max(x.scale(), y.scale());
 
@@ -184,10 +181,8 @@ BasicDecimal128 DecimalUtil::Add(const ApeDecimal128& x,
   return x_scaled + y_scaled;
 }
 
-BasicDecimal128 DecimalUtil::Subtract(const ApeDecimal128& x,
-                                      const ApeDecimal128& y,
-                                      int32_t out_precision,
-                                      int32_t out_scale) {
+BasicDecimal128 DecimalUtil::Subtract(const ApeDecimal128& x, const ApeDecimal128& y,
+                                      int32_t out_precision, int32_t out_scale) {
   return Add(x, {-y.value(), y.precision(), y.scale()}, out_precision, out_scale);
 }
 
@@ -213,10 +208,8 @@ static BasicDecimal128 MultiplyMaxPrecisionNoScaleDown(const ApeDecimal128& x,
   return result;
 }
 
-BasicDecimal128 DecimalUtil::Multiply(const ApeDecimal128& x,
-                                      const ApeDecimal128& y,
-                                      int32_t out_precision,
-                                      int32_t out_scale) {
+BasicDecimal128 DecimalUtil::Multiply(const ApeDecimal128& x, const ApeDecimal128& y,
+                                      int32_t out_precision, int32_t out_scale) {
   BasicDecimal128 result;
   if (ARROW_PREDICT_TRUE(out_precision < kMaxPrecision)) {
     // fast-path multiply
@@ -234,10 +227,8 @@ BasicDecimal128 DecimalUtil::Multiply(const ApeDecimal128& x,
   return result;
 }
 
-BasicDecimal128 DecimalUtil::Divide(const ApeDecimal128& x,
-                                    const ApeDecimal128& y,
-                                    int32_t out_precision,
-                                    int32_t out_scale) {
+BasicDecimal128 DecimalUtil::Divide(const ApeDecimal128& x, const ApeDecimal128& y,
+                                    int32_t out_precision, int32_t out_scale) {
   if (y.value() == 0) {
     ARROW_LOG(FATAL) << "Divide by zero error";
     return 0;
@@ -267,10 +258,8 @@ BasicDecimal128 DecimalUtil::Divide(const ApeDecimal128& x,
   }
 }
 
-BasicDecimal128 DecimalUtil::Mod(const ApeDecimal128& x,
-                                 const ApeDecimal128& y,
-                                 int32_t out_precision,
-                                 int32_t out_scale) {
+BasicDecimal128 DecimalUtil::Mod(const ApeDecimal128& x, const ApeDecimal128& y,
+                                 int32_t out_precision, int32_t out_scale) {
   if (y.value() == 0) {
     ARROW_LOG(FATAL) << "Divide by zero error";
     return 0;
@@ -311,9 +300,8 @@ int32_t DecimalUtil::Compare(const ApeDecimal128& x, const ApeDecimal128& y) {
   }
 
   // Check if we'll need more than 256-bits after adjusting the scale.
-  bool need256 =
-      (delta_scale < 0 && x.precision() - delta_scale > kMaxPrecision) ||
-      (y.precision() + delta_scale > kMaxPrecision);
+  bool need256 = (delta_scale < 0 && x.precision() - delta_scale > kMaxPrecision) ||
+                 (y.precision() + delta_scale > kMaxPrecision);
   if (ARROW_PREDICT_FALSE(need256)) {
     ARROW_LOG(FATAL) << "Need 256-bits for Compare";
     return 0;

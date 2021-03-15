@@ -86,7 +86,8 @@ private[sql] object PruneFileSourcePartitions extends Rule[LogicalPlan] {
                 val canPD = DataSourceStrategy.canAggExprPushDown(groupingExpressions, resultExpressions)
                 if (PDEnable && canPD) {
                   fsRelation.groupExpr = Some(aggGroupingExpressions)
-                  fsRelation.resultExpr = Some(aggExpressions.map(expr => expr.asInstanceOf[AggregateExpression]))
+                  fsRelation.resultExpr = Some(aggExpressions
+                    .map(expr => expr.asInstanceOf[AggregateExpression]))
                 }
               case _ => throw new UnsupportedOperationException("not supported agg type!")
             }

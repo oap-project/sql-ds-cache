@@ -21,21 +21,20 @@
 #undef NDEBUG
 #include <assert.h>
 
-#include "reader.h"
+#include "src/reader.h"
 
-using namespace arrow::fs;
 namespace ape {
 
 Reader::Reader() {}
 
 void Reader::init(std::string fileName, std::string hdfsHost, int hdfsPort,
                   std::string requiredSchema, int firstRowGroup, int rowGroupToRead) {
-  options = new HdfsOptions();
+  options = new arrow::fs::HdfsOptions();
   ARROW_LOG(DEBUG) << "hdfsHost " << hdfsHost << " port " << hdfsPort;
 
   options->ConfigureEndPoint(hdfsHost, hdfsPort);
   // todo: if we delete `options`, it will core dump, seems like free twice.
-  auto result = HadoopFileSystem::Make(*options);
+  auto result = arrow::fs::HadoopFileSystem::Make(*options);
   if (!result.ok()) {
     ARROW_LOG(WARNING) << "HadoopFileSystem Make failed! err msg:"
                        << result.status().ToString();
@@ -45,7 +44,8 @@ void Reader::init(std::string fileName, std::string hdfsHost, int hdfsPort,
 
   // move and keep the result to prevent the FileSystem from destruction
   fsResult = result;
-  std::shared_ptr<FileSystem> fs = std::make_shared<SubTreeFileSystem>("", fsResult.ValueOrDie());
+  std::shared_ptr<arrow::fs::FileSystem> fs =
+      std::make_shared<arrow::fs::SubTreeFileSystem>("", fsResult.ValueOrDie());
   auto fileResult = fs->OpenInputFile(fileName);
   if (!fileResult.ok()) {
     ARROW_LOG(WARNING) << "Open hdfs file failed! err msg: "
@@ -94,10 +94,12 @@ void Reader::init(std::string fileName, std::string hdfsHost, int hdfsPort,
 
 void Reader::initCacheManager(std::string fileName, std::string hdfsHost, int hdfsPort) {
   char buff[1024];
-  snprintf(buff, sizeof(buff), "hdfs://%s:%d%s", hdfsHost.c_str(), hdfsPort, fileName.c_str());
+  snprintf(buff, sizeof(buff), "hdfs://%s:%d%s", hdfsHost.c_str(), hdfsPort,
+           fileName.c_str());
   std::string path = buff;
 
-  std::shared_ptr<PlasmaCacheManager> cacheManager = std::make_shared<PlasmaCacheManager>(path);
+  std::shared_ptr<PlasmaCacheManager> cacheManager =
+      std::make_shared<PlasmaCacheManager>(path);
   if (cacheManager->connected()) {
     plasmaCacheManager = cacheManager;
 
@@ -108,7 +110,6 @@ void Reader::initCacheManager(std::string fileName, std::string hdfsHost, int hd
     parquetReader->setCacheManager(cacheManager);
     ARROW_LOG(INFO) << "set cache manager in parquet reader";
   }
-
 }
 
 // TODO: need consider column sequence?
@@ -141,15 +142,15 @@ void convertBitMap(uint8_t* srcBitMap, uint8_t* dstByteMap, int len) {
   }
 }
 
-int Reader::readBatch(int batchSize, long* buffersPtr_, long* nullsPtr_) {
+int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr_) {
   // this reader have read all rows
   if (totalRowsRead >= totalRows) {
     return -1;
   }
   checkEndOfRowGroup();
 
-  long* buffersPtr = buffersPtr_;
-  long* nullsPtr = nullsPtr_;
+  int64_t* buffersPtr = buffersPtr_;
+  int64_t* nullsPtr = nullsPtr_;
 
   // allocate extra memory for filtered columns if needed
   if (filterExpression) {
@@ -166,8 +167,9 @@ int Reader::readBatch(int batchSize, long* buffersPtr_, long* nullsPtr_) {
     ARROW_LOG(DEBUG) << "use extra filter buffers count: " << filterBufferCount;
     ARROW_LOG(DEBUG) << "use extra agg buffers count: " << aggBufferCount;
 
-    buffersPtr = new long[initRequiredColumnCount + filterBufferCount + aggBufferCount];
-    nullsPtr = new long[initRequiredColumnCount + filterBufferCount + aggBufferCount];
+    buffersPtr =
+        new int64_t[initRequiredColumnCount + filterBufferCount + aggBufferCount];
+    nullsPtr = new int64_t[initRequiredColumnCount + filterBufferCount + aggBufferCount];
 
     for (int i = 0; i < initRequiredColumnCount; i++) {
       buffersPtr[i] = buffersPtr_[i];
@@ -175,15 +177,15 @@ int Reader::readBatch(int batchSize, long* buffersPtr_, long* nullsPtr_) {
     }
 
     for (int i = 0; i < filterBufferCount; i++) {
-      buffersPtr[initRequiredColumnCount + i] = (long)filterDataBuffers[i];
-      nullsPtr[initRequiredColumnCount + i] = (long)filterNullBuffers[i];
+      buffersPtr[initRequiredColumnCount + i] = (int64_t)filterDataBuffers[i];
+      nullsPtr[initRequiredColumnCount + i] = (int64_t)filterNullBuffers[i];
     }
 
     for (int i = 0; i < aggBufferCount; i++) {
-      buffersPtr[initRequiredColumnCount + filterBufferCount + i]
-          = (long)aggDataBuffers[i];
-      nullsPtr[initRequiredColumnCount + filterBufferCount + i]
-          = (long)aggNullBuffers[i];
+      buffersPtr[initRequiredColumnCount + filterBufferCount + i] =
+          (int64_t)aggDataBuffers[i];
+      nullsPtr[initRequiredColumnCount + filterBufferCount + i] =
+          (int64_t)aggNullBuffers[i];
     }
   }
 
@@ -312,11 +314,10 @@ int Reader::readBatch(int batchSize, long* buffersPtr_, long* nullsPtr_) {
 
   if (aggExprs.size()) {
     auto start = std::chrono::steady_clock::now();
-    for (int i = 0; i < aggExprs.size();i++) {
+    for (int i = 0; i < aggExprs.size(); i++) {
       auto agg = aggExprs[i];
       if (typeid(*agg) == typeid(RootAggExpression)) {
-        rowsRet =
-            agg->ExecuteWithParam(rowsToRead, buffersPtr, nullsPtr, nullptr);
+        rowsRet = agg->ExecuteWithParam(rowsToRead, buffersPtr, nullsPtr, nullptr);
         auto result = std::dynamic_pointer_cast<RootAggExpression>(agg)->getResult();
         if (result.size() == 1) {
           aggResults[i].push_back(result[0]);
@@ -324,7 +325,7 @@ int Reader::readBatch(int batchSize, long* buffersPtr_, long* nullsPtr_) {
           ARROW_LOG(DEBUG) << "Oops... why return " << result.size() << " results";
         }
       } else if (typeid(*agg) == typeid(AttributeReferenceExpression)) {
-          //TODO
+        // TODO
       }
     }
     time += std::chrono::steady_clock::now() - start;
@@ -410,19 +411,19 @@ void Reader::setFilter(std::string filterJsonStr) {
   schema.erase(schema.begin() + initRequiredColumnCount, schema.end());
   columnReaders.resize(initRequiredColumnCount);
 
-  // Check with filtered column names. Append column if not present in the initial required columns.
+  // Check with filtered column names. Append column if not present in the initial
+  // required columns.
   for (int i = 0; i < filterColumnNames.size(); i++) {
     std::string columnName = filterColumnNames[i];
-    if (std::find(requiredColumnNames.begin(), requiredColumnNames.end(), columnName)
-      == requiredColumnNames.end()) {
-
+    if (std::find(requiredColumnNames.begin(), requiredColumnNames.end(), columnName) ==
+        requiredColumnNames.end()) {
       int columnIndex = fileMetaData->schema()->ColumnIndex(columnName);
 
       // append column
       requiredColumnIndex.push_back(columnIndex);
       requiredColumnNames.push_back(columnName);
-      schema.push_back(
-          Schema(columnName, fileMetaData->schema()->Column(columnIndex)->physical_type()));
+      schema.push_back(Schema(
+          columnName, fileMetaData->schema()->Column(columnIndex)->physical_type()));
       columnReaders.resize(requiredColumnIndex.size());
     }
   }
@@ -449,28 +450,28 @@ int Reader::allocateFilterBuffers(int batchSize) {
     char* dataBuffer;
     switch (fileMetaData->schema()->Column(columnIndex)->physical_type()) {
       case parquet::Type::BOOLEAN:
-        dataBuffer = (char*) new bool[batchSize];
+        dataBuffer = (char*)new bool[batchSize];
         break;
       case parquet::Type::INT32:
-        dataBuffer = (char*) new int32_t[batchSize];
+        dataBuffer = (char*)new int32_t[batchSize];
         break;
       case parquet::Type::INT64:
-        dataBuffer = (char*) new int64_t[batchSize];
+        dataBuffer = (char*)new int64_t[batchSize];
         break;
       case parquet::Type::INT96:
-        dataBuffer = (char*) new parquet::Int96[batchSize];
+        dataBuffer = (char*)new parquet::Int96[batchSize];
         break;
       case parquet::Type::FLOAT:
-        dataBuffer = (char*) new float[batchSize];
+        dataBuffer = (char*)new float[batchSize];
         break;
       case parquet::Type::DOUBLE:
-        dataBuffer = (char*) new double[batchSize];
+        dataBuffer = (char*)new double[batchSize];
         break;
       case parquet::Type::BYTE_ARRAY:
-        dataBuffer = (char*) new parquet::ByteArray[batchSize];
+        dataBuffer = (char*)new parquet::ByteArray[batchSize];
         break;
       case parquet::Type::FIXED_LEN_BYTE_ARRAY:
-        dataBuffer = (char*) new parquet::FixedLenByteArray[batchSize];
+        dataBuffer = (char*)new parquet::FixedLenByteArray[batchSize];
         break;
       default:
         ARROW_LOG(WARNING) << "Unsupported Type!";
@@ -502,17 +503,21 @@ void Reader::setFilterColumnNames(std::shared_ptr<Expression> filter) {
   std::string type = filter->getType();
 
   if (type.compare("not") == 0) {
-    setFilterColumnNames(std::dynamic_pointer_cast<NotFilterExpression>(filter)->getChild());
+    setFilterColumnNames(
+        std::dynamic_pointer_cast<NotFilterExpression>(filter)->getChild());
   } else if (type.compare("and") == 0 || type.compare("or") == 0) {
-    setFilterColumnNames(std::dynamic_pointer_cast<BinaryFilterExpression>(filter)->getLeftChild());
-    setFilterColumnNames(std::dynamic_pointer_cast<BinaryFilterExpression>(filter)->getRightChild());
+    setFilterColumnNames(
+        std::dynamic_pointer_cast<BinaryFilterExpression>(filter)->getLeftChild());
+    setFilterColumnNames(
+        std::dynamic_pointer_cast<BinaryFilterExpression>(filter)->getRightChild());
   } else if (type.compare("lt") == 0 || type.compare("lteq") == 0 ||
              type.compare("gt") == 0 || type.compare("gteq") == 0 ||
              type.compare("eq") == 0 || type.compare("noteq") == 0 ||
              type.compare("apestartwithfilter") == 0 ||
              type.compare("apeendwithfilter") == 0 ||
              type.compare("apecontainsfilter") == 0) {
-    std::string columnName = std::dynamic_pointer_cast<UnaryFilterExpression>(filter)->getColumnName();
+    std::string columnName =
+        std::dynamic_pointer_cast<UnaryFilterExpression>(filter)->getColumnName();
     if (std::find(filterColumnNames.begin(), filterColumnNames.end(), columnName) ==
         filterColumnNames.end()) {
       filterColumnNames.push_back(columnName);
@@ -524,7 +529,6 @@ void Reader::setFilterColumnNames(std::shared_ptr<Expression> filter) {
 }
 
 int Reader::allocateAggBuffers(int batchSize) {
-
   if (!aggReset && batchSize <= currentBatchSize) {
     return 0;
   }
@@ -541,28 +545,28 @@ int Reader::allocateAggBuffers(int batchSize) {
     char* dataBuffer;
     switch (fileMetaData->schema()->Column(columnIndex)->physical_type()) {
       case parquet::Type::BOOLEAN:
-        dataBuffer = (char*) new bool[batchSize];
+        dataBuffer = (char*)new bool[batchSize];
         break;
       case parquet::Type::INT32:
-        dataBuffer = (char*) new int32_t[batchSize];
+        dataBuffer = (char*)new int32_t[batchSize];
         break;
       case parquet::Type::INT64:
-        dataBuffer = (char*) new int64_t[batchSize];
+        dataBuffer = (char*)new int64_t[batchSize];
         break;
       case parquet::Type::INT96:
-        dataBuffer = (char*) new parquet::Int96[batchSize];
+        dataBuffer = (char*)new parquet::Int96[batchSize];
         break;
       case parquet::Type::FLOAT:
-        dataBuffer = (char*) new float[batchSize];
+        dataBuffer = (char*)new float[batchSize];
         break;
       case parquet::Type::DOUBLE:
-        dataBuffer = (char*) new double[batchSize];
+        dataBuffer = (char*)new double[batchSize];
         break;
       case parquet::Type::BYTE_ARRAY:
-        dataBuffer = (char*) new parquet::ByteArray[batchSize];
+        dataBuffer = (char*)new parquet::ByteArray[batchSize];
         break;
       case parquet::Type::FIXED_LEN_BYTE_ARRAY:
-        dataBuffer = (char*) new parquet::FixedLenByteArray[batchSize];
+        dataBuffer = (char*)new parquet::FixedLenByteArray[batchSize];
         break;
       default:
         ARROW_LOG(WARNING) << "Unsupported Type!";
@@ -591,21 +595,23 @@ void Reader::freeAggBuffers() {
 }
 
 void Reader::setAggColumnNames(std::shared_ptr<Expression> agg) {
-    auto expr = std::dynamic_pointer_cast<WithResultExpression>(agg);
-    if (typeid(*expr) == typeid(AttributeReferenceExpression)) {
-      std::string columnName = expr->getColumnName();
-      if (std::find(aggColumnNames.begin(), aggColumnNames.end(), columnName) ==
-            aggColumnNames.end()) {
-        aggColumnNames.push_back(columnName);
-      }
-    } else if (typeid(*expr) == typeid(RootAggExpression)) {
-      setAggColumnNames(std::dynamic_pointer_cast<RootAggExpression>(expr)->getChild());
-    } else if (std::dynamic_pointer_cast<AggExpression>(expr)) {
-      setAggColumnNames(std::dynamic_pointer_cast<AggExpression>(expr)->getChild());
-    } else if (std::dynamic_pointer_cast<ArithmeticExpression>(expr)) {
-      setAggColumnNames(std::dynamic_pointer_cast<ArithmeticExpression>(expr)->getLeftChild());
-      setAggColumnNames(std::dynamic_pointer_cast<ArithmeticExpression>(expr)->getRightChild());
+  auto expr = std::dynamic_pointer_cast<WithResultExpression>(agg);
+  if (typeid(*expr) == typeid(AttributeReferenceExpression)) {
+    std::string columnName = expr->getColumnName();
+    if (std::find(aggColumnNames.begin(), aggColumnNames.end(), columnName) ==
+        aggColumnNames.end()) {
+      aggColumnNames.push_back(columnName);
     }
+  } else if (typeid(*expr) == typeid(RootAggExpression)) {
+    setAggColumnNames(std::dynamic_pointer_cast<RootAggExpression>(expr)->getChild());
+  } else if (std::dynamic_pointer_cast<AggExpression>(expr)) {
+    setAggColumnNames(std::dynamic_pointer_cast<AggExpression>(expr)->getChild());
+  } else if (std::dynamic_pointer_cast<ArithmeticExpression>(expr)) {
+    setAggColumnNames(
+        std::dynamic_pointer_cast<ArithmeticExpression>(expr)->getLeftChild());
+    setAggColumnNames(
+        std::dynamic_pointer_cast<ArithmeticExpression>(expr)->getRightChild());
+  }
 }
 
 void Reader::setAgg(std::string aggStr) {
@@ -629,19 +635,19 @@ void Reader::setAgg(std::string aggStr) {
   schema.erase(schema.begin() + initPlusFilterRequiredColumnCount, schema.end());
   columnReaders.resize(initPlusFilterRequiredColumnCount);
 
-  // Check with agg column names. Append column if not present in the initial required columns.
+  // Check with agg column names. Append column if not present in the initial required
+  // columns.
   for (int i = 0; i < aggColumnNames.size(); i++) {
     std::string columnName = aggColumnNames[i];
-    if (std::find(requiredColumnNames.begin(), requiredColumnNames.end(), columnName)
-      == requiredColumnNames.end()) {
-
+    if (std::find(requiredColumnNames.begin(), requiredColumnNames.end(), columnName) ==
+        requiredColumnNames.end()) {
       int columnIndex = fileMetaData->schema()->ColumnIndex(columnName);
 
       // append column
       requiredColumnIndex.push_back(columnIndex);
       requiredColumnNames.push_back(columnName);
-      schema.push_back(
-          Schema(columnName, fileMetaData->schema()->Column(columnIndex)->physical_type()));
+      schema.push_back(Schema(
+          columnName, fileMetaData->schema()->Column(columnIndex)->physical_type()));
       columnReaders.resize(requiredColumnIndex.size());
     }
   }
@@ -654,9 +660,7 @@ void Reader::setAgg(std::string aggStr) {
   aggReset = true;
 }
 
-void Reader::setPlasmaCacheEnabled(bool isEnabled) {
-  plasmaCacheEnabled = isEnabled;
-}
+void Reader::setPlasmaCacheEnabled(bool isEnabled) { plasmaCacheEnabled = isEnabled; }
 
 void Reader::setPlasmaCacheRedis(std::string host, int port, std::string password) {
   auto options = std::make_shared<sw::redis::ConnectionOptions>();

@@ -20,8 +20,8 @@ package org.apache.spark.sql.execution.aggregate
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.expressions.aggregate._
 import org.apache.spark.sql.catalyst.plans.logical.{Filter, Project}
-import org.apache.spark.sql.execution.datasources.{HadoopFsRelation, LogicalRelation}
 import org.apache.spark.sql.execution.{PlanLater, SparkPlan}
+import org.apache.spark.sql.execution.datasources.{HadoopFsRelation, LogicalRelation}
 import org.apache.spark.sql.execution.streaming.{StateStoreRestoreExec, StateStoreSaveExec}
 
 /**
@@ -129,7 +129,7 @@ object AggUtils {
           case proj: Project =>
             proj.child match {
                case LogicalRelation (fsRelation: HadoopFsRelation, _, _, _) =>
-                 if(!fsRelation.resultExpr.isEmpty) {
+                 if (!fsRelation.resultExpr.isEmpty) {
                    val agg = createAggregate(
                      requiredChildDistributionExpressions = Some(groupingAttributes),
                      groupingExpressions = groupingAttributes,
@@ -143,7 +143,7 @@ object AggUtils {
                case filter: Filter =>
                 filter.child match {
                   case LogicalRelation (fsRelation: HadoopFsRelation, _, _, _) =>
-                    if(!fsRelation.resultExpr.isEmpty) {
+                    if (!fsRelation.resultExpr.isEmpty) {
                       val agg = createAggregate(
                         requiredChildDistributionExpressions = Some(groupingAttributes),
                         groupingExpressions = groupingAttributes,
