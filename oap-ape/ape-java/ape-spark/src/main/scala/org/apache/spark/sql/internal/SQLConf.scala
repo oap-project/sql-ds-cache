@@ -2602,6 +2602,12 @@ object SQLConf {
     buildConf("spark.sql.ape.redis.password")
       .stringConf
       .createWithDefault("")
+
+  val APE_AGGREGATION_PUSHDOWN_ENABLED =
+    buildConf("spark.sql.ape.aggregation.pushdown.enabled")
+      .booleanConf
+      .createWithDefault(false)
+
   /**
    * Holds information about keys that have been deprecated.
    *
@@ -2904,6 +2910,7 @@ class SQLConf extends Serializable with Logging {
   def apeRedisHostName: String = getConf(APE_REDIS_HOSTNAME)
   def apeRedisPort: Int = getConf(APE_REDIS_PORT)
   def apeRedisPasswd: String = getConf(APE_REDIS_PASSWORD)
+  def apeAggPDEnabled: Boolean = getConf(APE_AGGREGATION_PUSHDOWN_ENABLED)
 
   /**
    * Returns the [[Resolver]] for the current configuration, which can be used to determine if two
