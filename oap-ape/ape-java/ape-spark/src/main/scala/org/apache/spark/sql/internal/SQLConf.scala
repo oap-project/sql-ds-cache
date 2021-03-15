@@ -2576,6 +2576,38 @@ object SQLConf {
       .checkValue(_ > 0, "The timeout value must be positive")
       .createWithDefault(10L)
 
+  val APE_PARQUET_CACHE_ENABLED =
+    buildConf("spark.sql.ape.parquet.cache.enabled")
+      .doc("whether use ape parquet cache")
+      .booleanConf
+      .createWithDefault(false)
+
+  val APE_REDIS_ENABLED =
+    buildConf("spark.sql.ape.redis.enabled")
+      .doc("whether use redis for cache locality")
+      .booleanConf
+      .createWithDefault(false)
+
+  val APE_REDIS_HOSTNAME =
+    buildConf("spark.sql.ape.redis.hostname")
+      .stringConf
+      .createWithDefault("localhost")
+
+  val APE_REDIS_PORT =
+    buildConf("spark.sql.ape.redis.port")
+      .intConf
+      .createWithDefault(6379)
+
+  val APE_REDIS_PASSWORD =
+    buildConf("spark.sql.ape.redis.password")
+      .stringConf
+      .createWithDefault("")
+
+  val APE_AGGREGATION_PUSHDOWN_ENABLED =
+    buildConf("spark.sql.ape.aggregation.pushdown.enabled")
+      .booleanConf
+      .createWithDefault(false)
+
   /**
    * Holds information about keys that have been deprecated.
    *
@@ -2872,6 +2904,13 @@ class SQLConf extends Serializable with Logging {
   def legacyTimeParserPolicy: LegacyBehaviorPolicy.Value = {
     LegacyBehaviorPolicy.withName(getConf(SQLConf.LEGACY_TIME_PARSER_POLICY))
   }
+
+  def apeCacheEnabled: Boolean = getConf(APE_PARQUET_CACHE_ENABLED)
+  def apeRedisEnabled: Boolean = getConf(APE_REDIS_ENABLED)
+  def apeRedisHostName: String = getConf(APE_REDIS_HOSTNAME)
+  def apeRedisPort: Int = getConf(APE_REDIS_PORT)
+  def apeRedisPasswd: String = getConf(APE_REDIS_PASSWORD)
+  def apeAggPDEnabled: Boolean = getConf(APE_AGGREGATION_PUSHDOWN_ENABLED)
 
   /**
    * Returns the [[Resolver]] for the current configuration, which can be used to determine if two
