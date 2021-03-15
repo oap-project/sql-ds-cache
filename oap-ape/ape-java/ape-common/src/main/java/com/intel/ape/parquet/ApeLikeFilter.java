@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package com.intel.ape.Parquet;
+package com.intel.ape.parquet;
 
 import java.io.Serializable;
 

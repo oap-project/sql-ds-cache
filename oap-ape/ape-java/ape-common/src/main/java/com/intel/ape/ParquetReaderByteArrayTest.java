@@ -19,13 +19,12 @@ package com.intel.ape;
 
 import java.nio.charset.StandardCharsets;
 
-import com.intel.ape.ParquetReaderJNI;
-
 import com.intel.ape.util.Platform;
 
 class ParquetReaderByteArrayTest {
   public static void main(String[] args) {
-    String fileName = "/tpcds_10g/item/part-00000-a48097a6-757d-4896-a5c5-0ed1db82fcbd-c000.snappy.parquet";
+    String fileName = "/tpcds_10g/item/" +
+            "part-00000-a48097a6-757d-4896-a5c5-0ed1db82fcbd-c000.snappy.parquet";
     String hdfsHost = "sr585";
     int hdfsPort = 9000;
     String schema = "{\"type\":\"struct\",\"fields\":[{\"name\":\"i_item_id\",\"type\":" +
@@ -41,12 +40,14 @@ class ParquetReaderByteArrayTest {
     // total size is 4(u32) + 4(padding) + 8(ptr) = 16 bytes
     int batchSize = 4096;
     long[] buffers = new long[8];
-    for (int i = 0; i < 8; i++)
+    for (int i = 0; i < 8; i++) {
       buffers[i] = Platform.allocateMemory(batchSize * 16);
+    }
 
     long[] nulls = new long[8];
-    for (int i = 0; i < 8; i++)
+    for (int i = 0; i < 8; i++) {
       nulls[i] = Platform.allocateMemory(batchSize);
+    }
 
     int rows = ParquetReaderJNI.readBatch(reader, batchSize, buffers, nulls);
 

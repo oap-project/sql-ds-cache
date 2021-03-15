@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package com.intel.ape.Parquet;
+package com.intel.ape.parquet;
 
 import org.apache.parquet.filter2.predicate.Statistics;
 import org.apache.parquet.io.api.Binary;
