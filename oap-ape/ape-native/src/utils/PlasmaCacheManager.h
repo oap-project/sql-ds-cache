@@ -25,7 +25,7 @@ namespace ape {
 
 class PlasmaCacheManager : public parquet::CacheManager {
  public:
-  PlasmaCacheManager(std::string file_path);
+  explicit PlasmaCacheManager(std::string file_path);
   ~PlasmaCacheManager();
   bool connected();
   void close();
@@ -37,7 +37,8 @@ class PlasmaCacheManager : public parquet::CacheManager {
   // override methods
   bool containsColumnChunk(::arrow::io::ReadRange range) override;
   std::shared_ptr<Buffer> getColumnChunk(::arrow::io::ReadRange range) override;
-  bool cacheColumnChunk(::arrow::io::ReadRange range, std::shared_ptr<Buffer> data) override;
+  bool cacheColumnChunk(::arrow::io::ReadRange range,
+                        std::shared_ptr<Buffer> data) override;
   bool deleteColumnChunk(::arrow::io::ReadRange range) override;
 
  protected:
@@ -56,5 +57,5 @@ class PlasmaCacheManager : public parquet::CacheManager {
   int cache_miss_count_ = 0;
   std::vector<::arrow::io::ReadRange> cached_ranges_;
 };
-    
-} // namespace ape
+
+}  // namespace ape

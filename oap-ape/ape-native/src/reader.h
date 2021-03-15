@@ -34,8 +34,6 @@
 #include "utils/type.h"
 #include "utils/PlasmaCacheManager.h"
 
-using namespace arrow::fs;
-
 namespace ape {
 class Reader {
  public:
@@ -46,7 +44,7 @@ class Reader {
 
   void initCacheManager(std::string fileName, std::string hdfsHost, int hdfsPort);
 
-  int readBatch(int batchSize, long* buffersPtr, long* nullsPtr);
+  int readBatch(int32_t batchSize, int64_t* buffersPtr, int64_t* nullsPtr);
 
   bool hasNext();
 
@@ -75,9 +73,9 @@ class Reader {
   int allocateAggBuffers(int batchSize);
   void freeAggBuffers();
 
-  arrow::Result<std::shared_ptr<HadoopFileSystem>> fsResult;
-  HdfsOptions* options;
-  std::shared_ptr<FileSystem> fs;
+  arrow::Result<std::shared_ptr<arrow::fs::HadoopFileSystem>> fsResult;
+  arrow::fs::HdfsOptions* options;
+  std::shared_ptr<arrow::fs::FileSystem> fs;
   std::shared_ptr<arrow::io::RandomAccessFile> file;
   std::unique_ptr<parquet::ParquetFileReader> parquetReader;
   std::shared_ptr<parquet::FileMetaData> fileMetaData;

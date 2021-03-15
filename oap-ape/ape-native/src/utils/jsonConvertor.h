@@ -24,9 +24,9 @@
 
 #include <nlohmann/json.hpp>
 
-#include "AggExpression.h"
-#include "FilterExpression.h"
-#include "expression.h"
+#include "src/utils/AggExpression.h"
+#include "src/utils/FilterExpression.h"
+#include "src/utils/expression.h"
 
 namespace ape {
 

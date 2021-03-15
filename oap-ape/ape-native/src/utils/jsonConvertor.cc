@@ -17,7 +17,7 @@
 
 #include <arrow/util/logging.h>
 
-#include "jsonConvertor.h"
+#include "src/utils/jsonConvertor.h"
 
 namespace ape {
 
@@ -26,7 +26,7 @@ std::shared_ptr<Expression> JsonConvertor::parseToFilterExpression(
   ARROW_LOG(INFO) << "json string " << jsonString;
   auto json = nlohmann::json::parse(jsonString);
   return parseToFilterExpression(json);
-};
+}
 
 std::shared_ptr<Expression> JsonConvertor::parseToFilterExpression(nlohmann::json root) {
   std::shared_ptr<Expression> ex;
@@ -96,7 +96,7 @@ std::shared_ptr<Expression> JsonConvertor::parseToFilterExpression(nlohmann::jso
   }
 
   return ex;
-};
+}
 
 std::vector<std::shared_ptr<Expression>> JsonConvertor::parseToGroupByExpressions(
     std::string jsonString) {
@@ -120,7 +120,7 @@ std::vector<std::shared_ptr<Expression>> JsonConvertor::parseToGroupByExpression
     auto expr = exprs[i];
     v.push_back(parseToAggExpressionsHelper(expr));
   }
-  std::chrono::duration<double>  duration = std::chrono::steady_clock::now() - start;
+  std::chrono::duration<double> duration = std::chrono::steady_clock::now() - start;
   ARROW_LOG(INFO) << "Parsing json takes " << duration.count() * 1000 << " ms.";
   return v;
 }

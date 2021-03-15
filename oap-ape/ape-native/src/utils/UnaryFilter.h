@@ -20,7 +20,7 @@
 #include <arrow/util/logging.h>
 #include <parquet/types.h>
 
-#include "type.h"
+#include "src/utils/type.h"
 
 namespace ape {
 
@@ -29,7 +29,7 @@ class UnaryFilter {
  public:
   virtual void execute(T* buffer, T value, int batchSize, char* out) {
     ARROW_LOG(WARNING) << "should never be called!";
-  };
+  }
 };
 
 template <typename T>
@@ -69,42 +69,42 @@ class LtEq : public UnaryFilter<T> {
 };
 
 template class Gt<int>;
-template class Gt<long>;
+template class Gt<int64_t>;
 template class Gt<float>;
 template class Gt<double>;
 template class Gt<bool>;
 // template class Gt<NullStuct>;
 
 template class GtEq<int>;
-template class GtEq<long>;
+template class GtEq<int64_t>;
 template class GtEq<float>;
 template class GtEq<double>;
 template class GtEq<bool>;
 // template class GtEq<NullStuct>;
 
 template class Eq<int>;
-template class Eq<long>;
+template class Eq<int64_t>;
 template class Eq<float>;
 template class Eq<double>;
 template class Eq<bool>;
 // template class Eq<NullStuct>;
 
 template class NotEq<int>;
-template class NotEq<long>;
+template class NotEq<int64_t>;
 template class NotEq<float>;
 template class NotEq<double>;
 template class NotEq<bool>;
 // template class NotEq<NullStuct>;
 
 template class Lt<int>;
-template class Lt<long>;
+template class Lt<int64_t>;
 template class Lt<float>;
 template class Lt<double>;
 template class Lt<bool>;
 // template class Lt<NullStuct>;
 
 template class LtEq<int>;
-template class LtEq<long>;
+template class LtEq<int64_t>;
 template class LtEq<float>;
 template class LtEq<double>;
 template class LtEq<bool>;

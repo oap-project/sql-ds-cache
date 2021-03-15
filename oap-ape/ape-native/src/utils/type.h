@@ -26,11 +26,11 @@ namespace ape {
 
 struct NullStruct {
   friend std::ostream& operator<<(std::ostream& os, const NullStruct& nullStruct);
-  NullStruct(){};
-  NullStruct(NullStruct&& nullStruct){};
-  NullStruct(NullStruct& nullStruct){};
-  NullStruct& operator=(NullStruct nullStruct) { return *this; };
-  NullStruct& operator=(NullStruct&& nullStruct) { return *this; };
+  NullStruct() {}
+  NullStruct(NullStruct&& nullStruct) {}
+  NullStruct(NullStruct& nullStruct) {}
+  NullStruct& operator=(NullStruct nullStruct) { return *this; }
+  NullStruct& operator=(NullStruct&& nullStruct) { return *this; }
   char valid;  // sizeof(NullStruct) = 1 byte
 };
 

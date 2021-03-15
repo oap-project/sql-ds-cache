@@ -16,7 +16,8 @@
 // under the License.
 
 #include <iostream>
-#include "type.h"
+
+#include "src/utils/type.h"
 
 namespace ape {
 

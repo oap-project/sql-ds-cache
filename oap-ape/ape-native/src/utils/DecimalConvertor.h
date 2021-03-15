@@ -17,6 +17,8 @@
 
 #pragma once
 
+#include <parquet/column_reader.h>
+
 #include "ApeDecimal.h"
 
 namespace ape {
@@ -61,7 +63,6 @@ class DecimalConvertor {
                                            int32_t num_values,
                                            int32_t precision, int32_t scale,
                                            ApeDecimal128Vector& out);
-
 };
 
 }  // namespace ape

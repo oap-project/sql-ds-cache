@@ -22,7 +22,7 @@
 #include <arrow/util/logging.h>
 #include <parquet/types.h>
 
-#include "DecimalConvertor.h"
+#include "src/utils/DecimalConvertor.h"
 
 namespace ape {
 
@@ -33,7 +33,8 @@ SignedInt SafeLeftShift(SignedInt u, Shift shift) {
   return static_cast<SignedInt>(static_cast<UnsignedInt>(u) << shift);
 }
 
-//TODO: Code copy from arrow::Decimal128::FromBigEndian, should think how to use this function directly.
+// TODO: Code copy from arrow::Decimal128::FromBigEndian, should think how to use this
+// function directly.
 static inline uint64_t UInt64FromBigEndian(const uint8_t* bytes, int32_t length) {
   // We don't bounds check the length here because this is called by
   // FromBigEndian that has a Decimal128 as its out parameters and
@@ -47,8 +48,8 @@ static inline uint64_t UInt64FromBigEndian(const uint8_t* bytes, int32_t length)
   return ::arrow::BitUtil::FromBigEndian(result);
 }
 
-static void FromBigEndian(const uint8_t *bytes, int32_t length,
-                          int64_t* out_high, uint64_t* out_low) {
+static void FromBigEndian(const uint8_t* bytes, int32_t length, int64_t* out_high,
+                          uint64_t* out_low) {
   static constexpr int32_t kMinDecimalBytes = 1;
   static constexpr int32_t kMaxDecimalBytes = 16;
 
@@ -102,39 +103,31 @@ static void FromBigEndian(const uint8_t *bytes, int32_t length,
 }
 
 void DecimalConvertor::ConvertFixLengthByteArrayToDecimal128(
-    const uint8_t *values,
-    int32_t num_values,
-    int32_t type_length,
-    int32_t precision,
-    int32_t scale,
-    ApeDecimal128Vector& out) {
-
+    const uint8_t* values, int32_t num_values, int32_t type_length, int32_t precision,
+    int32_t scale, ApeDecimal128Vector& out) {
   parquet::FixedLenByteArray* fixed_length_byte_array =
-      (parquet::FixedLenByteArray *)(values);
+      (parquet::FixedLenByteArray*)(values);
   int64_t high;
   uint64_t low;
   for (int32_t i = 0; i < num_values; ++i) {
     parquet::FixedLenByteArray value = fixed_length_byte_array[i];
-    FromBigEndian(value.ptr, type_length,  &high, &low);
+    FromBigEndian(value.ptr, type_length, &high, &low);
     out.push_back(std::make_shared<ApeDecimal128>(high, low, precision, scale));
   }
 
   return;
 }
 
-void DecimalConvertor::ConvertByteArrayToDecimal128(
-    const uint8_t *values,
-    int32_t num_values,
-    int32_t precision,
-    int32_t scale,
-    ApeDecimal128Vector& out) {
-
-  parquet::ByteArray* byte_array = (parquet::ByteArray *)(values);
+void DecimalConvertor::ConvertByteArrayToDecimal128(const uint8_t* values,
+                                                    int32_t num_values, int32_t precision,
+                                                    int32_t scale,
+                                                    ApeDecimal128Vector& out) {
+  parquet::ByteArray* byte_array = (parquet::ByteArray*)(values);
   int64_t high;
   uint64_t low;
   for (int32_t i = 0; i < num_values; ++i) {
     parquet::ByteArray value = byte_array[i];
-    FromBigEndian(value.ptr, value.len,  &high, &low);
+    FromBigEndian(value.ptr, value.len, &high, &low);
     out.push_back(std::make_shared<ApeDecimal128>(high, low, precision, scale));
   }
 

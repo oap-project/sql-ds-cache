@@ -21,7 +21,7 @@
 #include <string>
 #include <vector>
 
-#include "type.h"
+#include "src/utils/type.h"
 
 namespace ape {
 
@@ -32,12 +32,12 @@ class Expression {
   std::vector<Schema> schema;
 
  public:
-  std::string getType() { return type; };
+  std::string getType() { return type; }
   virtual void Execute() = 0;
-  virtual int ExecuteWithParam(int batchSize, long* dataBuffers, long* nullBuffers,
-                               char* outBuffers) = 0;
-  Expression(){};
+  virtual int ExecuteWithParam(int32_t batchSize, int64_t* dataBuffers,
+                               int64_t* nullBuffers, char* outBuffers) = 0;
+  Expression() {}
   virtual ~Expression() = default;
-  virtual void setSchema(std::vector<Schema> schema_){};
+  virtual void setSchema(std::vector<Schema> schema_) {}
 };
 }  // namespace ape

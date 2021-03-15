@@ -18,7 +18,7 @@
 namespace ape {
 class BinaryOp {
  public:
-  virtual void execute(int batchSize, const char* left, const char* right, char* out){};
+  virtual void execute(int batchSize, const char* left, const char* right, char* out) {}
 };
 
 class And : public BinaryOp {

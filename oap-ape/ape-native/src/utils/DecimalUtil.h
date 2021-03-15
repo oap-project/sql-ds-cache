@@ -78,7 +78,6 @@ class DecimalUtil {
   ///  1 if x > y
   /// -1 if x < y
   int32_t Compare(const ApeDecimal128& x, const ApeDecimal128& y);
-
 };
 
 }  // namespace ape
