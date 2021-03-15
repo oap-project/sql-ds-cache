@@ -91,7 +91,7 @@ JNIEXPORT void JNICALL Java_com_intel_ape_ParquetReaderJNI_setAggStr(JNIEnv* env
 }
 
 JNIEXPORT void JNICALL Java_com_intel_ape_ParquetReaderJNI_setPlasmaCacheRedis(
-  JNIEnv* env, jclass cls, jlong readerPtr, jstring host, jint port, jstring password) {
+    JNIEnv* env, jclass cls, jlong readerPtr, jstring host, jint port, jstring password) {
   ape::Reader* reader = reinterpret_cast<ape::Reader*>(readerPtr);
   std::string host_ = env->GetStringUTFChars(host, nullptr);
   std::string password_ = env->GetStringUTFChars(password, nullptr);

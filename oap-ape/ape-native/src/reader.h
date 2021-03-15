@@ -23,16 +23,16 @@
 #include <vector>
 
 #include <arrow/api.h>
-#include <arrow/result.h>
 #include <arrow/filesystem/api.h>
+#include <arrow/result.h>
 #include <arrow/util/logging.h>
 #include <parquet/api/reader.h>
 
 #include "utils/AggExpression.h"
 #include "utils/FilterExpression.h"
+#include "utils/PlasmaCacheManager.h"
 #include "utils/jsonConvertor.h"
 #include "utils/type.h"
-#include "utils/PlasmaCacheManager.h"
 
 namespace ape {
 class Reader {

@@ -15,7 +15,6 @@
 // specific language governing permissions and limitations
 // under the License.
 
-
 #include <unistd.h>
 
 #include <openssl/sha.h>

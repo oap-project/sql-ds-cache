@@ -41,8 +41,7 @@ class ApeDecimal128 {
                 std::is_integral<T>::value && (sizeof(T) <= sizeof(uint64_t)), T>::type>
   constexpr ApeDecimal128(T value) noexcept
       : value_(
-            arrow::BasicDecimal128(value >= T {0} ? 0 : -1,
-                                   static_cast<uint64_t>(value))),
+            arrow::BasicDecimal128(value >= T{0} ? 0 : -1, static_cast<uint64_t>(value))),
         precision_(18),
         scale_(0) {}
 
