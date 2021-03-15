@@ -24,7 +24,7 @@ import java.time.{Instant, LocalDate}
 import java.util.Locale
 
 import scala.collection.JavaConverters.asScalaBufferConverter
-import com.intel.ape.Parquet.{ApeContainsFilter, ApeEndWithFilter, ApeStartWithFilter}
+import com.intel.ape.parquet.{ApeContainsFilter, ApeEndWithFilter, ApeStartWithFilter}
 import org.apache.parquet.filter2.predicate._
 import org.apache.parquet.filter2.predicate.SparkFilterApi._
 import org.apache.parquet.io.api.Binary
