@@ -48,19 +48,19 @@ Add the following configuration to `$SPARK_HOME/conf/spark-defaults.conf`.
 spark.hadoop.fs.cachedFs.blockLocation.policy  default or cache_over_hdfs or hdfs_only
 ```
 
-## Configuration for HCFS cache path patten
+## Configuration for HCFS cache path pattern
 
 We provide HCFS cache patterns for paths to determine wherthe path will be cached
-* whitelist
+* allowlist
 The path match the pattens will be cached. An empty regexp results in matching everything.
 eg. cachedFs://localhost:9000/dir/
-* blacklist
-The path match the pattens will not be cached. An empty regexp results in no matching of black list.
+* denylist
+The path match the pattens will not be cached. An empty regexp results in no matching of deny list.
 eg. io_data|io_control
 
 Add the following configuration to `$SPARK_HOME/conf/spark-defaults.conf`.
 
 ```
-spark.hadoop.fs.cachedFs.whiteList.regexp  $PATTERN
-spark.hadoop.fs.cachedFs.blacklist.regexp  $PATTERN
+spark.hadoop.fs.cachedFs.allowList.regexp  $PATTEN
+spark.hadoop.fs.cachedFs.denylist.regexp  $PATTERN
 ```
