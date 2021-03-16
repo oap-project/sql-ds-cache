@@ -18,8 +18,8 @@
 
 package org.apache.flink.formats.parquet.vector.nativevector;
 
-import org.apache.flink.table.data.vector.heap.HeapDoubleVector;
 import org.apache.flink.formats.parquet.utils.Platform;
+import org.apache.flink.table.data.vector.heap.HeapDoubleVector;
 
 public class NativeDoubleVector extends HeapDoubleVector implements NativeVector {
 

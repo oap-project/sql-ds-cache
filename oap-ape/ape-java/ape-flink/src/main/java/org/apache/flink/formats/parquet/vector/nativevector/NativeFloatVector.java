@@ -32,15 +32,15 @@ public class NativeFloatVector extends HeapFloatVector implements NativeVector {
     private long nullPtr = 0;
 
     public NativeFloatVector(int len, int typeLength) {
-		super(len);
-		typeSize = typeLength;
-	}
+      super(len);
+      typeSize = typeLength;
+    }
 
-	public void setPtr(long bufferPtr_, long nullPtr_, int size_) {
+    public void setPtr(long bufferPtr_, long nullPtr_, int size_) {
         bufferPtr = bufferPtr_;
         nullPtr = nullPtr_;
         capacity = size_;
-	}
+    }
 
     @Override
     public long getBufferPtr() {
@@ -57,8 +57,8 @@ public class NativeFloatVector extends HeapFloatVector implements NativeVector {
         return !Platform.getBoolean(null, nullPtr + i);
     }
 
-	@Override
-	public float getFloat(int i){
-		return Platform.getFloat(null, bufferPtr + i * typeSize);
-	}
+    @Override
+    public float getFloat(int i){
+      return Platform.getFloat(null, bufferPtr + i * typeSize);
+    }
 }

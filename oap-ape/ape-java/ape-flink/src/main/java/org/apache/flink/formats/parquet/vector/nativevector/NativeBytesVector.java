@@ -21,26 +21,25 @@ package org.apache.flink.formats.parquet.vector.nativevector;
 import org.apache.flink.formats.parquet.utils.Platform;
 import org.apache.flink.table.data.vector.heap.HeapBytesVector;
 
-
 public class NativeBytesVector extends HeapBytesVector implements NativeVector {
 
-	private static final long serialVersionUID = 7216045902943789034L;
+    private static final long serialVersionUID = 7216045902943789034L;
 
     private long bufferPtr = 0;
     private long nullPtr = 0;
     private int typeSize = 0;
     private int capacity = 0;
 
-	public NativeBytesVector(int len, int typeLength) {
-		super(len);
+    public NativeBytesVector(int len, int typeLength) {
+        super(len);
         this.typeSize = typeLength;
-	}
+    }
 
     public void setPtr(long bufferPtr_, long nullPtr_, int size_) {
         this.bufferPtr = bufferPtr_;
         this.nullPtr = nullPtr_;
         this.capacity = size_;
-      }
+    }
 
     @Override
     public long getBufferPtr() {
@@ -57,12 +56,12 @@ public class NativeBytesVector extends HeapBytesVector implements NativeVector {
         return !Platform.getBoolean(null, nullPtr + i);
     }
 
-	@Override
-	public Bytes getBytes(int i){
+    @Override
+    public Bytes getBytes(int i){
         int size = Platform.getInt(null, bufferPtr + i * 16);
         byte[] str = new byte[size];
         long addr = Platform.getLong(null, bufferPtr + i * 16 + 8);
         Platform.copyMemory(null, addr, str, Platform.BYTE_ARRAY_OFFSET, size);
-		return new Bytes(str, 0, str.length); 
-	}
+        return new Bytes(str, 0, str.length);
+    }
 }
