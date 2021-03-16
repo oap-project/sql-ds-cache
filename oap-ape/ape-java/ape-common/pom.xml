@@ -61,9 +61,9 @@
           <sourceDirectories>
             <directory>src/main/java</directory>
           </sourceDirectories>
-<!--          <testSourceDirectories>-->
-<!--            <directory>src/test/java</directory>-->
-<!--          </testSourceDirectories>-->
+          <testSourceDirectories>
+            <directory>src/test/java</directory>
+          </testSourceDirectories>
           <configLocation>${basedir}/../dev/checkstyle.xml</configLocation>
           <outputFile>${basedir}/target/checkstyle-output.xml</outputFile>
           <inputEncoding>${project.build.sourceEncoding}</inputEncoding>
