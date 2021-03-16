@@ -120,8 +120,9 @@ void Reader::convertSchema(std::string requiredColumnName) {
     std::string columnName = j["fields"][i]["name"];
     int columnIndex = fileMetaData->schema()->ColumnIndex(columnName);
     requiredColumnIndex.push_back(columnIndex);
-    schema.push_back(
-        Schema(columnName, fileMetaData->schema()->Column(columnIndex)->physical_type()));
+    schema.push_back(Schema(columnName,
+                            fileMetaData->schema()->Column(columnIndex)->physical_type(),
+                            fileMetaData->schema()->Column(columnIndex)->type_length()));
     requiredColumnNames.push_back(columnName);
   }
 }
@@ -422,8 +423,9 @@ void Reader::setFilter(std::string filterJsonStr) {
       // append column
       requiredColumnIndex.push_back(columnIndex);
       requiredColumnNames.push_back(columnName);
-      schema.push_back(Schema(
-          columnName, fileMetaData->schema()->Column(columnIndex)->physical_type()));
+      schema.push_back(
+          Schema(columnName, fileMetaData->schema()->Column(columnIndex)->physical_type(),
+                 fileMetaData->schema()->Column(columnIndex)->type_length()));
       columnReaders.resize(requiredColumnIndex.size());
     }
   }
@@ -646,8 +648,9 @@ void Reader::setAgg(std::string aggStr) {
       // append column
       requiredColumnIndex.push_back(columnIndex);
       requiredColumnNames.push_back(columnName);
-      schema.push_back(Schema(
-          columnName, fileMetaData->schema()->Column(columnIndex)->physical_type()));
+      schema.push_back(
+          Schema(columnName, fileMetaData->schema()->Column(columnIndex)->physical_type(),
+                 fileMetaData->schema()->Column(columnIndex)->type_length()));
       columnReaders.resize(requiredColumnIndex.size());
     }
   }

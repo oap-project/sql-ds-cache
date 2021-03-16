@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include <arrow/type.h>
 #include <arrow/util/basic_decimal.h>
 #include <cstdint>
 
@@ -52,6 +53,54 @@ class ApeDecimal128 {
   int32_t precision() const { return precision_; }
 
   const arrow::BasicDecimal128& value() const { return value_; }
+
+  int32_t ToInt32() { return static_cast<int32_t>(value_.low_bits()); }
+
+  int64_t ToInt64() { return static_cast<int64_t>(value_.low_bits()); }
+
+  void ToBytes(uint8_t* out) {
+    int h = 0;
+    int l = 0;
+    int highShift = 0;
+    int lowShift = 0;
+    int8_t decimalBuffer[16];
+
+    int numBytes = arrow::DecimalType::DecimalSize(precision_);
+
+    if (numBytes > 8) {
+      highShift = 8 * (numBytes - 8 - 1);
+      lowShift = 56;
+    } else {
+      lowShift = 8 * (numBytes - 1);
+    }
+
+    if (numBytes > 8) {
+      while (h < numBytes - 8) {
+        decimalBuffer[h] = (value_.high_bits() >> highShift) & 0xFF;
+        h++;
+        highShift -= 8;
+      }
+      numBytes = 8;
+    }
+    while (l < numBytes) {
+      decimalBuffer[h + l] = (value_.low_bits() >> lowShift) & 0xFF;
+      l++;
+      lowShift -= 8;
+    }
+
+    int index = 0;
+    int8_t signByte;
+    if (decimalBuffer[0] < 0)
+      signByte = -1;
+    else
+      signByte = 0;
+    for (int i = 0; i < 16 - numBytes; i++) {
+      out[index++] = signByte;
+    }
+    for (int i = 0; i < numBytes; i++) {
+      out[index++] = decimalBuffer[i];
+    }
+  }
 
  private:
   arrow::BasicDecimal128 value_;
