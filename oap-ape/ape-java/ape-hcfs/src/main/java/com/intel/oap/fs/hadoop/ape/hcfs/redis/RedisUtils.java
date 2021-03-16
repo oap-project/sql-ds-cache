@@ -32,11 +32,16 @@ public class RedisUtils {
      * @return RedisClient
      */
     public static RedisClient getRedisClient(Configuration configuration) {
-        String host = configuration.get(Constants.CONF_KEY_FS_APE_HCFS_REDIS_HOST, Constants.DEFAULT_REDIS_HOST);
-        int port = configuration.getInt(Constants.CONF_KEY_FS_APE_HCFS_REDIS_PORT, Constants.DEFAULT_REDIS_PORT);
-        String auth = configuration.get(Constants.CONF_KEY_FS_APE_HCFS_REDIS_AUTH, Constants.DEFAULT_REDIS_AUTH);
-        int maxTotal = configuration.getInt(Constants.CONF_KEY_FS_APE_HCFS_REDIS_MAX_TOTAL, Constants.DEFAULT_REDIS_POOL_MAX_TOTAL);
-        int maxIdle = configuration.getInt(Constants.CONF_KEY_FS_APE_HCFS_REDIS_MAX_IDLE, Constants.DEFAULT_REDIS_POOL_MAX_IDLE);
+        String host = configuration.get(Constants.CONF_KEY_FS_APE_HCFS_REDIS_HOST,
+                Constants.DEFAULT_REDIS_HOST);
+        int port = configuration.getInt(Constants.CONF_KEY_FS_APE_HCFS_REDIS_PORT,
+                Constants.DEFAULT_REDIS_PORT);
+        String auth = configuration.get(Constants.CONF_KEY_FS_APE_HCFS_REDIS_AUTH,
+                Constants.DEFAULT_REDIS_AUTH);
+        int maxTotal = configuration.getInt(Constants.CONF_KEY_FS_APE_HCFS_REDIS_MAX_TOTAL,
+                Constants.DEFAULT_REDIS_POOL_MAX_TOTAL);
+        int maxIdle = configuration.getInt(Constants.CONF_KEY_FS_APE_HCFS_REDIS_MAX_IDLE,
+                Constants.DEFAULT_REDIS_POOL_MAX_IDLE);
 
         return RedisClient.getInstance(host, port, auth, maxTotal, maxIdle);
     }

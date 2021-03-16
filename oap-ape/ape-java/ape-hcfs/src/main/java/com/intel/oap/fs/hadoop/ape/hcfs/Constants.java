@@ -19,16 +19,20 @@ package com.intel.oap.fs.hadoop.ape.hcfs;
 
 public class Constants {
 
-    public static final String CONF_KEY_FS_APE_HCFS_BLOCK_LOCATION_POLICY = "fs.ape.hcfs.blockLocation.policy";
+    public static final String CONF_KEY_FS_APE_HCFS_BLOCK_LOCATION_POLICY =
+            "fs.ape.hcfs.blockLocation.policy";
 
-    // default policy. file block locations consist of cached blocks and hdfs blocks (if cached blocks are incomplete)
+    // default policy. file block locations consist of cached blocks
+    // and hdfs blocks (if cached blocks are incomplete)
     public static final String CACHE_LOCATION_POLICY_DEFAULT = "default";
     public static final String CACHE_LOCATION_POLICY_MERGING_HDFS = "cache_merging_hdfs";
 
-    // use cached block location only if all requested content is cached, otherwise use HDFS block locations.
+    // use cached block location only if all requested content is cached,
+    // otherwise use HDFS block locations.
     public static final String CACHE_LOCATION_POLICY_OVER_HDFS = "cache_over_hdfs";
 
-    // use HDFS file block locations directly. ignoring cached blocks when finding file block locations
+    // use HDFS file block locations directly.
+    // ignoring cached blocks when finding file block locations
     public static final String CACHE_LOCATION_POLICY_HDFS_ONLY = "hdfs_only";
 
     public static final String DEFAULT_REDIS_HOST = "localhost";
@@ -52,7 +56,8 @@ public class Constants {
     public static final String CONF_KEY_FS_APE_HCFS_REDIS_MAX_IDLE = "fs.ape.hcfs.redis.maxIdle";
 
     // configuration name of cache key prefix in redis for column chunk cache.
-    public static final String CONF_KEY_REDIS_KEY_PREFIX_COLUMN_CHUNK = "fs.ape.hcfs.redis.keyPrefix.columnChunk";
+    public static final String CONF_KEY_REDIS_KEY_PREFIX_COLUMN_CHUNK =
+            "fs.ape.hcfs.redis.keyPrefix.columnChunk";
 
     // default value of cache key prefix in redis for column chunk cache.
     public static final String DEFAULT_REDIS_KEY_PREFIX_COLUMN_CHUNK = "";
