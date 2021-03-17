@@ -772,4 +772,11 @@ object OapConf {
       .stringConf
       .createWithDefault("RedisClient")
 
+  val OAP_EXTERNAL_CACHE_TIMEOUT_INSECONDS =
+    SqlConfAdapter.buildConf("spark.sql.oap.external.cache.timeout.inseconds")
+      .internal()
+      .doc("external cache methods timeout in seconds")
+      .intConf
+      .createWithDefault(3)
+
 }
