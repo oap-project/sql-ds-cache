@@ -72,8 +72,7 @@ int AttributeReferenceExpression::ExecuteWithParam(int batchSize, int64_t* dataB
                                                    char* outBuffers) {
   int64_t dataPtr = *(dataBuffers + columnIndex);
   int64_t nullPtr = *(nullBuffers + columnIndex);
-  std::string decimalType("DecimalType");
-  if (dataType.compare(0, decimalType.length(), decimalType) == 0) {
+  if (isDecimalType(dataType)) {
     int precision, scale;
     getPrecisionAndScaleFromDecimalType(dataType, precision, scale);
     parquet::Type::type columnType = schema[columnIndex].getColType();
@@ -88,10 +87,9 @@ int AttributeReferenceExpression::ExecuteWithParam(int batchSize, int64_t* dataB
       DecimalConvertor::ConvertIntegerToDecimal128<parquet::Int32Type>(
           (const uint8_t*)(dataPtr), batchSize, precision, scale, result);
     } else if (columnType == parquet::Type::FIXED_LEN_BYTE_ARRAY) {
-      // TODO: get flba length from column desc
-      // DecimalConvertor::ConvertFixLengthByteArrayToDecimal128(
-      //    (const uint8_t *)(dataPtr),
-      //    batchSize, type_length, precision, scale, result);
+      int typeLength = schema[columnIndex].getTypeLength();
+      DecimalConvertor::ConvertFixLengthByteArrayToDecimal128(
+          (const uint8_t*)(dataPtr), batchSize, typeLength, precision, scale, result);
     } else if (columnType == parquet::Type::BYTE_ARRAY) {
       DecimalConvertor::ConvertByteArrayToDecimal128((const uint8_t*)(dataPtr), batchSize,
                                                      precision, scale, result);

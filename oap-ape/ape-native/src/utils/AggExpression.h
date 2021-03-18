@@ -27,10 +27,18 @@
 
 namespace ape {
 
+static inline bool isDecimalType(std::string& dataType) {
+  bool isDecimal = false;
+  std::string decimalType("DecimalType");
+  if (dataType.compare(0, decimalType.length(), decimalType) == 0) {
+    isDecimal = true;
+  }
+  return isDecimal;
+}
+
 static int getPrecisionAndScaleFromDecimalType(std::string& decimalType, int& precision,
                                                int& scale) {
-  std::string decimal("DecimalType");
-  if (decimalType.compare(0, decimal.length(), decimal) == 0) {
+  if (isDecimalType(decimalType)) {
     char str[64];
     sscanf(decimalType.c_str(), "%11s(%d,%d)", str, &precision, &scale);
     return 0;
@@ -402,19 +410,21 @@ class LiteralExpression : public WithResultExpression {
   void setAttribute(std::string dataType_, std::string valueString_) {
     dataType = dataType_;
     valueString = valueString_;
-    arrow::Decimal128 decimal;
-    int32_t scaleFromValue;
-    int32_t scaleFromType;
-    int32_t precision;
-    arrow::Decimal128::FromString(valueString, &decimal, &precision, &scaleFromValue);
-    if (!dataType.empty()) {
-      getPrecisionAndScaleFromDecimalType(dataType, precision, scaleFromType);
-      if (scaleFromType != scaleFromValue) {
-        decimal = decimal.Rescale(scaleFromValue, scaleFromType).ValueOrDie();
+    if (isDecimalType(dataType)) {
+      arrow::Decimal128 decimal;
+      int32_t scaleFromValue;
+      int32_t scaleFromType;
+      int32_t precision;
+      arrow::Decimal128::FromString(valueString, &decimal, &precision, &scaleFromValue);
+      if (!dataType.empty()) {
+        getPrecisionAndScaleFromDecimalType(dataType, precision, scaleFromType);
+        if (scaleFromType != scaleFromValue) {
+          decimal = decimal.Rescale(scaleFromValue, scaleFromType).ValueOrDie();
+        }
       }
+      value = std::make_shared<ApeDecimal128>(decimal.high_bits(), decimal.low_bits(),
+                                              precision, scaleFromType);
     }
-    value = std::make_shared<ApeDecimal128>(decimal.high_bits(), decimal.low_bits(),
-                                            precision, scaleFromType);
   }
 
  private:

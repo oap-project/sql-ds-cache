@@ -38,8 +38,8 @@ struct Int96Struct {};
 
 class Schema {
  public:
-  Schema(std::string colName_, parquet::Type::type colType_)
-      : colName(colName_), colType(colType_) {
+  Schema(std::string colName_, parquet::Type::type colType_, int typeLength_)
+      : colName(colName_), colType(colType_), typeLength(typeLength_) {
     switch (colType) {
       case parquet::Type::BOOLEAN: {
         defaultSize = 1;
@@ -82,11 +82,13 @@ class Schema {
   std::string getColName() { return colName; }
   parquet::Type::type getColType() { return colType; }
   int getDefaultSize() { return defaultSize; }
+  int getTypeLength() { return typeLength; }
 
  private:
   std::string colName;
   parquet::Type::type colType;
   int defaultSize;
+  int typeLength;
 };
 
 }  // namespace ape

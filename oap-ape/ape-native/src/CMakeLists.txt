@@ -71,6 +71,7 @@ set(DECIMAL_SRC utils/DecimalUtil.cc utils/DecimalConvertor.cc)
 set(AGG_SRC utils/AggExpression.cc)
 set(PARSE_TEST utils/convertorTest.cc)
 set(AGG_PARSE_TEST utils/aggParserTest.cc)
+set(DECIMAL_TEST utils/decimalTest.cc)
 
 file(GLOB JNI_LIB_SRC
     com_intel_ape_ParquetReaderJNI.cc reader.cc)
@@ -85,6 +86,7 @@ add_library(parquet_jni SHARED ${JNI_LIB_SRC} ${PARSE_SRC} ${CACHE_SRC} ${DECIMA
 add_library(parse SHARED ${PARSE_SRC} ${DECIMAL_SRC} ${AGG_SRC})
 add_executable(parse_test ${PARSE_SRC} ${PARSE_TEST})
 add_executable(agg_parse_test ${PARSE_SRC} ${AGG_SRC} ${AGG_PARSE_TEST})
+add_executable(decimal_test ${DECIMAL_TEST})
 
 add_compile_options("-I$ENV{JAVA_HOME}/include/")
 add_compile_options("-I$ENV{JAVA_HOME}/include/linux")
@@ -98,4 +100,5 @@ target_link_libraries(ape ${ARROW_LIB} ${PARQUET_LIB} parquet_jni)
 target_link_libraries(parse nlohmann_json::nlohmann_json ${ARROW_LIB})
 target_link_libraries(parse_test parse)
 target_link_libraries(agg_parse_test parse)
+target_link_libraries(decimal_test ${ARROW_LIB} parquet_jni)
 

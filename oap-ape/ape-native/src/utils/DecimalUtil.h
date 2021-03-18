@@ -47,26 +47,26 @@ class DecimalUtil {
   static arrow::BasicDecimal128 Add(const ApeDecimal128& x, const ApeDecimal128& y,
                                     int32_t out_precision, int32_t out_scale);
   /// Subtract 'y' from 'x'.
-  arrow::BasicDecimal128 Subtract(const ApeDecimal128& x, const ApeDecimal128& y,
-                                  int32_t out_precision, int32_t out_scale);
+  static arrow::BasicDecimal128 Subtract(const ApeDecimal128& x, const ApeDecimal128& y,
+                                         int32_t out_precision, int32_t out_scale);
 
   /// Multiply 'x' from 'y'.
-  arrow::BasicDecimal128 Multiply(const ApeDecimal128& x, const ApeDecimal128& y,
-                                  int32_t out_precision, int32_t out_scale);
+  static arrow::BasicDecimal128 Multiply(const ApeDecimal128& x, const ApeDecimal128& y,
+                                         int32_t out_precision, int32_t out_scale);
 
   /// Divide 'x' by 'y'.
-  arrow::BasicDecimal128 Divide(const ApeDecimal128& x, const ApeDecimal128& y,
-                                int32_t out_precision, int32_t out_scale);
+  static arrow::BasicDecimal128 Divide(const ApeDecimal128& x, const ApeDecimal128& y,
+                                       int32_t out_precision, int32_t out_scale);
 
   /// Divide 'x' by 'y'.
-  arrow::BasicDecimal128 Mod(const ApeDecimal128& x, const ApeDecimal128& y,
-                             int32_t out_precision, int32_t out_scale);
+  static arrow::BasicDecimal128 Mod(const ApeDecimal128& x, const ApeDecimal128& y,
+                                    int32_t out_precision, int32_t out_scale);
 
   /// Compare two decimals. Returns :
   ///  0 if x == y
   ///  1 if x > y
   /// -1 if x < y
-  int32_t Compare(const ApeDecimal128& x, const ApeDecimal128& y);
+  static int32_t Compare(const ApeDecimal128& x, const ApeDecimal128& y);
 };
 
 }  // namespace ape
