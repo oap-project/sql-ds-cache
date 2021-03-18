@@ -54,11 +54,11 @@ class ApeDecimal128 {
 
   const arrow::BasicDecimal128& value() const { return value_; }
 
-  int32_t ToInt32() { return static_cast<int32_t>(value_.low_bits()); }
+  int32_t toInt32() { return static_cast<int32_t>(value_.low_bits()); }
 
-  int64_t ToInt64() { return static_cast<int64_t>(value_.low_bits()); }
+  int64_t toInt64() { return static_cast<int64_t>(value_.low_bits()); }
 
-  void ToBytes(uint8_t* out) {
+  void toBytes(uint8_t* out) {
     int h = 0;
     int l = 0;
     int highShift = 0;
@@ -74,15 +74,16 @@ class ApeDecimal128 {
       lowShift = 8 * (numBytes - 1);
     }
 
+    int leftBytes = numBytes;
     if (numBytes > 8) {
       while (h < numBytes - 8) {
         decimalBuffer[h] = (value_.high_bits() >> highShift) & 0xFF;
         h++;
         highShift -= 8;
       }
-      numBytes = 8;
+      leftBytes = 8;
     }
-    while (l < numBytes) {
+    while (l < leftBytes) {
       decimalBuffer[h + l] = (value_.low_bits() >> lowShift) & 0xFF;
       l++;
       lowShift -= 8;
