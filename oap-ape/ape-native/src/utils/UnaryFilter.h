@@ -27,7 +27,7 @@ namespace ape {
 template <typename T>
 class UnaryFilter {
  public:
-  virtual void execute(T* buffer, T value, int batchSize, char* out) {
+  virtual void execute(T* dataBuffer, char* nullBuffer, T value, int batchSize, char* out) {
     ARROW_LOG(WARNING) << "should never be called!";
   }
 };
@@ -35,37 +35,37 @@ class UnaryFilter {
 template <typename T>
 class Gt : public UnaryFilter<T> {
  public:
-  void execute(T* buffer, T value, int batchSize, char* out);
+  void execute(T* dataBuffer, char* nullBuffer, T value, int batchSize, char* out);
 };
 
 template <typename T>
 class GtEq : public UnaryFilter<T> {
  public:
-  void execute(T* buffer, T value, int batchSize, char* out);
+  void execute(T* dataBuffer, char* nullBuffer, T value, int batchSize, char* out);
 };
 
 template <typename T>
 class Eq : public UnaryFilter<T> {
  public:
-  void execute(T* buffer, T value, int batchSize, char* out);
+  void execute(T* dataBuffer, char* nullBuffer, T value, int batchSize, char* out);
 };
 
 template <typename T>
 class NotEq : public UnaryFilter<T> {
  public:
-  void execute(T* buffer, T value, int batchSize, char* out);
+  void execute(T* dataBuffer, char* nullBuffer, T value, int batchSize, char* out);
 };
 
 template <typename T>
 class Lt : public UnaryFilter<T> {
  public:
-  void execute(T* buffer, T value, int batchSize, char* out);
+  void execute(T* dataBuffer, char* nullBuffer, T value, int batchSize, char* out);
 };
 
 template <typename T>
 class LtEq : public UnaryFilter<T> {
  public:
-  void execute(T* buffer, T value, int batchSize, char* out);
+  void execute(T* dataBuffer, char* nullBuffer, T value, int batchSize, char* out);
 };
 
 template class Gt<int>;

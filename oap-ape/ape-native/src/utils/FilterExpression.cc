@@ -181,8 +181,14 @@ int StartWithFilterExpression::ExecuteWithParam(int batchSize, int64_t* dataBuff
   std::memset(outBuffers, 0, batchSize);
   int64_t dataPtr = *(dataBuffers + columnIndex);
   parquet::ByteArray* data = (parquet::ByteArray*)dataPtr;
+  int64_t nullPtr = *(nullBuffers + columnIndex);
+  char* nullBuffer = (char*) nullPtr;
   int len = value.length();
   for (int i = 0; i < batchSize; i++) {
+    if (nullBuffer[i] == 0) {
+      continue;
+    }
+
     if (data[i].len >= value.length() &&
         std::memcmp(data[i].ptr, value.data(), len) == 0) {
       outBuffers[i] = 1;
@@ -197,8 +203,14 @@ int EndWithFilterExpression::ExecuteWithParam(int batchSize, int64_t* dataBuffer
   std::memset(outBuffers, 0, batchSize);
   int64_t dataPtr = *(dataBuffers + columnIndex);
   parquet::ByteArray* data = (parquet::ByteArray*)dataPtr;
+  int64_t nullPtr = *(nullBuffers + columnIndex);
+  char* nullBuffer = (char*) nullPtr;
   int len = value.length();
   for (int i = 0; i < batchSize; i++) {
+    if (nullBuffer[i] == 0) {
+      continue;
+    }
+
     if (data[i].len >= value.length() &&
         std::memcmp(data[i].ptr + (data[i].len - len), value.data(), len) == 0) {
       outBuffers[i] = 1;
@@ -213,8 +225,14 @@ int ContainsFilterExpression::ExecuteWithParam(int batchSize, int64_t* dataBuffe
   std::memset(outBuffers, 0, batchSize);
   int64_t dataPtr = *(dataBuffers + columnIndex);
   parquet::ByteArray* data = (parquet::ByteArray*)dataPtr;
+  int64_t nullPtr = *(nullBuffers + columnIndex);
+  char* nullBuffer = (char*) nullPtr;
   int len = value.length();
   for (int i = 0; i < batchSize; i++) {
+    if (nullBuffer[i] == 0) {
+      continue;
+    }
+
     std::string s = std::string((char*)data[i].ptr, data[i].len);
     if (data[i].len >= value.length() && s.find(value) != std::string::npos) {
       outBuffers[i] = 1;
@@ -256,7 +274,7 @@ int TypedUnaryFilterExpression<NullStruct>::ExecuteWithParam(int batchSize,
   int64_t nullPtr = *(nullBuffers + columnIndex);
   char* ptr = (char*)nullPtr;
   NullStruct nullSturct;
-  filter->execute((NullStruct*)ptr, nullSturct, batchSize, outBuffers);
+  filter->execute((NullStruct*)ptr, ptr, nullSturct, batchSize, outBuffers);
 
   return 0;
 }
@@ -270,7 +288,7 @@ int TypedUnaryFilterExpression<T>::ExecuteWithParam(int batchSize, int64_t* data
   int64_t nullPtr = *(nullBuffers + columnIndex);
   T* ptr = (T*)dataPtr;
 
-  filter->execute(ptr, value, batchSize, outBuffers);
+  filter->execute(ptr, (char*)nullPtr, value, batchSize, outBuffers);
 
   return 0;
 }
