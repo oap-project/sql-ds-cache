@@ -182,7 +182,7 @@ int StartWithFilterExpression::ExecuteWithParam(int batchSize, int64_t* dataBuff
   int64_t dataPtr = *(dataBuffers + columnIndex);
   parquet::ByteArray* data = (parquet::ByteArray*)dataPtr;
   int64_t nullPtr = *(nullBuffers + columnIndex);
-  char* nullBuffer = (char*) nullPtr;
+  char* nullBuffer = (char*)nullPtr;
   int len = value.length();
   for (int i = 0; i < batchSize; i++) {
     if (nullBuffer[i] == 0) {
@@ -204,7 +204,7 @@ int EndWithFilterExpression::ExecuteWithParam(int batchSize, int64_t* dataBuffer
   int64_t dataPtr = *(dataBuffers + columnIndex);
   parquet::ByteArray* data = (parquet::ByteArray*)dataPtr;
   int64_t nullPtr = *(nullBuffers + columnIndex);
-  char* nullBuffer = (char*) nullPtr;
+  char* nullBuffer = (char*)nullPtr;
   int len = value.length();
   for (int i = 0; i < batchSize; i++) {
     if (nullBuffer[i] == 0) {
@@ -226,7 +226,7 @@ int ContainsFilterExpression::ExecuteWithParam(int batchSize, int64_t* dataBuffe
   int64_t dataPtr = *(dataBuffers + columnIndex);
   parquet::ByteArray* data = (parquet::ByteArray*)dataPtr;
   int64_t nullPtr = *(nullBuffers + columnIndex);
-  char* nullBuffer = (char*) nullPtr;
+  char* nullBuffer = (char*)nullPtr;
   int len = value.length();
   for (int i = 0; i < batchSize; i++) {
     if (nullBuffer[i] == 0) {

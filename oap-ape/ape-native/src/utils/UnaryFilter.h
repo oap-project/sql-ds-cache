@@ -27,7 +27,8 @@ namespace ape {
 template <typename T>
 class UnaryFilter {
  public:
-  virtual void execute(T* dataBuffer, char* nullBuffer, T value, int batchSize, char* out) {
+  virtual void execute(T* dataBuffer, char* nullBuffer, T value, int batchSize,
+                       char* out) {
     ARROW_LOG(WARNING) << "should never be called!";
   }
 };

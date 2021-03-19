@@ -25,12 +25,11 @@
 #undef USE_AVX
 #endif
 
-#define NOT_SUPPORT(dataType, filterType)                                             \
-  template <>                                                                         \
-  void filterType<dataType>::execute(dataType* dataBuffer, char* nullBuffer,          \
-                                     dataType value, int batchSize,                   \
-                                     char* out) {                                     \
-    ARROW_LOG(WARNING) << "Not support!";                                             \
+#define NOT_SUPPORT(dataType, filterType)                                        \
+  template <>                                                                    \
+  void filterType<dataType>::execute(dataType* dataBuffer, char* nullBuffer,     \
+                                     dataType value, int batchSize, char* out) { \
+    ARROW_LOG(WARNING) << "Not support!";                                        \
   }
 
 namespace ape {
@@ -78,8 +77,8 @@ void NotEq<parquet::ByteArray>::execute(parquet::ByteArray* dataBuffer, char* nu
 }
 
 template <>
-void Eq<NullStruct>::execute(NullStruct* dataBuffer, char* nullBuffer, NullStruct value, int batchSize,
-                             char* out) {
+void Eq<NullStruct>::execute(NullStruct* dataBuffer, char* nullBuffer, NullStruct value,
+                             int batchSize, char* out) {
   // it's trick that we did such cast.
   char* buf = (char*)dataBuffer;
   for (int i = 0; i < batchSize; i++) {
@@ -88,8 +87,8 @@ void Eq<NullStruct>::execute(NullStruct* dataBuffer, char* nullBuffer, NullStruc
 }
 
 template <>
-void NotEq<NullStruct>::execute(NullStruct* dataBuffer, char* nullBuffer, NullStruct value, int batchSize,
-                                char* out) {
+void NotEq<NullStruct>::execute(NullStruct* dataBuffer, char* nullBuffer,
+                                NullStruct value, int batchSize, char* out) {
   char* buf = (char*)dataBuffer;
   for (int i = 0; i < batchSize; i++) {
     out[i] = buf[i];
@@ -117,7 +116,8 @@ void Gt<T>::execute(T* dataBuffer, char* nullBuffer, T value, int batchSize, cha
 }
 
 template <typename T>
-void GtEq<T>::execute(T* dataBuffer, char* nullBuffer, T value, int batchSize, char* out) {
+void GtEq<T>::execute(T* dataBuffer, char* nullBuffer, T value, int batchSize,
+                      char* out) {
   ARROW_LOG(DEBUG) << "gteq";
 #ifdef USE_LIB_XXX
   // use XXX to evalute
@@ -152,7 +152,8 @@ void Eq<T>::execute(T* dataBuffer, char* nullBuffer, T value, int batchSize, cha
 }
 
 template <typename T>
-void NotEq<T>::execute(T* dataBuffer, char* nullBuffer, T value, int batchSize, char* out) {
+void NotEq<T>::execute(T* dataBuffer, char* nullBuffer, T value, int batchSize,
+                       char* out) {
 #ifdef USE_LIB_XXX
   // use XXX to evalute
 #elif USE_AVX
@@ -186,7 +187,8 @@ void Lt<T>::execute(T* dataBuffer, char* nullBuffer, T value, int batchSize, cha
 }
 
 template <typename T>
-void LtEq<T>::execute(T* dataBuffer, char* nullBuffer, T value, int batchSize, char* out) {
+void LtEq<T>::execute(T* dataBuffer, char* nullBuffer, T value, int batchSize,
+                      char* out) {
 #ifdef USE_LIB_XXX
   // use XXX to evalute
 #elif USE_AVX
