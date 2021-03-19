@@ -68,9 +68,9 @@ public class CachedInputStream extends FSInputStream {
   private int cacheHitCount = 0;
   private List<PMemBlock> cachedBlocks = new ArrayList<>();
 
-  // white list and black list regular expressions that decide whether to cache or not
-  private String cacheWhiteListRegexp;
-  private String cacheBlackListRegexp;
+  // allow list and deny list regular expressions that decide whether to cache or not
+  private String cacheAllowListRegexp;
+  private String cacheDenyListRegexp;
   private boolean fileShouldBeCached;
 
   public CachedInputStream(FSDataInputStream hdfsInputStream, Configuration conf,
@@ -93,11 +93,11 @@ public class CachedInputStream extends FSInputStream {
     this.statisticsStore = new RedisGlobalPMemCacheStatisticsStore(conf);
     this.ids = new ObjectId[(int)((contentLength + pmemCachedBlockSize - 1) / pmemCachedBlockSize)];
 
-    cacheWhiteListRegexp = conf.get(Constants.CONF_KEY_CACHE_WHITE_LIST_REGEXP,
-            Constants.DEFAULT_CACHE_WHITE_LIST_REGEXP);
+    cacheAllowListRegexp = conf.get(Constants.CONF_KEY_CACHE_ALLOW_LIST_REGEXP,
+            Constants.DEFAULT_CACHE_ALLOW_LIST_REGEXP);
 
-    cacheBlackListRegexp = conf.get(Constants.CONF_KEY_CACHE_BLACK_LIST_REGEXP,
-            Constants.DEFAULT_CACHE_BLACK_LIST_REGEXP);
+    cacheDenyListRegexp = conf.get(Constants.CONF_KEY_CACHE_DENY_LIST_REGEXP,
+            Constants.DEFAULT_CACHE_DENY_LIST_REGEXP);
 
     fileShouldBeCached = checkFileShouldBeCached();
 
@@ -105,10 +105,10 @@ public class CachedInputStream extends FSInputStream {
   }
 
   private boolean checkFileShouldBeCached() {
-    return (cacheWhiteListRegexp.isEmpty()
-            || Pattern.compile(cacheWhiteListRegexp).matcher(path.toString()).find())
-            && (cacheBlackListRegexp.isEmpty()
-            || !Pattern.compile(cacheBlackListRegexp).matcher(path.toString()).find());
+    return (cacheAllowListRegexp.isEmpty()
+            || Pattern.compile(cacheAllowListRegexp).matcher(path.toString()).find())
+            && (cacheDenyListRegexp.isEmpty()
+            || !Pattern.compile(cacheDenyListRegexp).matcher(path.toString()).find());
   }
 
   private void advanceCachePosition(long pos) {
@@ -243,7 +243,7 @@ public class CachedInputStream extends FSInputStream {
           LOG.warn("exception, data not cached to pmem for block: {}", currentBlock);
         }
       } else {
-        LOG.debug("data will not be cached since it's in blacklist or it's already cached: {}",
+        LOG.debug("data will not be cached since it's in denylist or it's already cached: {}",
                   currentBlock);
       }
     }

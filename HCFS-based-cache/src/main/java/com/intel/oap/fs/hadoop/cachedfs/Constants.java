@@ -71,17 +71,17 @@ public class Constants {
     public static final String CACHE_LOCATION_POLICY_HDFS_ONLY = "hdfs_only";
 
     // regular expression that contains patterns of paths which will be cached.
-    // files will not be cached when their paths match black list regexp.
+    // files will not be cached when their paths match deny list regexp.
     // an empty regexp results in matching everything.
     // eg. cachedFs://localhost:9000/dir/
-    public static final String CONF_KEY_CACHE_WHITE_LIST_REGEXP = "fs.cachedFs.whiteList.regexp";
+    public static final String CONF_KEY_CACHE_ALLOW_LIST_REGEXP = "fs.cachedFs.allowlist.regexp";
 
-    public static final String DEFAULT_CACHE_WHITE_LIST_REGEXP = ".*";
+    public static final String DEFAULT_CACHE_ALLOW_LIST_REGEXP = ".*";
 
     // regular expression that contains patterns of paths which will not be cached.
-    // an empty regexp results in no matching of black list.
+    // an empty regexp results in no matching of deny list.
     // eg. io_data|io_control
-    public static final String CONF_KEY_CACHE_BLACK_LIST_REGEXP = "fs.cachedFs.blacklist.regexp";
+    public static final String CONF_KEY_CACHE_DENY_LIST_REGEXP = "fs.cachedFs.denylist.regexp";
 
-    public static final String DEFAULT_CACHE_BLACK_LIST_REGEXP = "";
+    public static final String DEFAULT_CACHE_DENY_LIST_REGEXP = "";
 }
