@@ -35,7 +35,7 @@ import com.google.common.cache._
 import com.google.common.hash._
 import com.intel.oap.common.unsafe.VMEMCacheJNI
 import org.apache.arrow.plasma
-import org.apache.arrow.plasma.exceptions.{DuplicateObjectException, PlasmaClientException, PlasmaGetException}
+import org.apache.arrow.plasma.exceptions.{DuplicateObjectException, PlasmaClientException}
 import sun.nio.ch.DirectBuffer
 
 import org.apache.spark.{SparkEnv, SparkException}
@@ -1097,12 +1097,16 @@ class ExternalCache(fiberType: FiberType) extends OapCache with Logging {
           .run(new PlasmaGetObjAsByteBuffer(), plasmaClient, executorService,
             new PlasmaParam(objectId, -1, false), timeOutInSeconds)
           .asInstanceOf[ByteBuffer]
-        cacheHitCount.addAndGet(1)
-        fiberCache = ExternalDataFiber(buf, objectId, plasmaClient)
+        if (buf.asInstanceOf[DirectBuffer].address() == 0) {
+          fiberCache = cache(fiberId)
+          cacheMissCount.addAndGet(1)
+        } else {
+          cacheHitCount.addAndGet(1)
+          fiberCache = ExternalDataFiber(buf, objectId, plasmaClient)
+        }
       }
       catch {
-        case e @ (_: InterruptedException | _: ExecutionException |
-                  _: TimeoutException | _: PlasmaGetException) =>
+        case e @ (_: InterruptedException | _: ExecutionException | _: TimeoutException) =>
           logWarning("plasma getObjAsByteBuffer execption " +
             e.getClass.getName + " message: " + e.getMessage)
           fiberCache = cache(fiberId)
