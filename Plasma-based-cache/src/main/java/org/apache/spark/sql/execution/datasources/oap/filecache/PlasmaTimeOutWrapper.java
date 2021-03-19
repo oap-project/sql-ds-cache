@@ -22,53 +22,52 @@ import java.util.concurrent.*;
 import org.apache.arrow.plasma.PlasmaClient;
 import org.apache.arrow.plasma.exceptions.DuplicateObjectException;
 import org.apache.arrow.plasma.exceptions.PlasmaClientException;
-import org.apache.arrow.plasma.exceptions.PlasmaGetException;
 
 /**
  * Plasma Server store may dead or no response during the runtime
  * Wrapper plasmaClient methods with a timeOut mechanism
  */
 public class PlasmaTimeOutWrapper implements Callable<Object> {
-    private ExecutorService executorService;
-    private long timeOutInSeconds;
-    private PlasmaMethodWrapper wrapper;
-    private PlasmaClient client;
-    private PlasmaParam plasmaParam;
+  private ExecutorService executorService;
+  private long timeOutInSeconds;
+  private PlasmaMethodWrapper wrapper;
+  private PlasmaClient client;
+  private PlasmaParam plasmaParam;
 
-    private PlasmaTimeOutWrapper() {
-    }
+  private PlasmaTimeOutWrapper() {
+  }
 
-    public static Object run(
-            PlasmaMethodWrapper wrapper,
-            PlasmaClient client,
-            ExecutorService executorService,
-            PlasmaParam plasmaParam, long timeOutInSeconds)
-            throws InterruptedException, ExecutionException, TimeoutException,
-            DuplicateObjectException, PlasmaGetException, PlasmaClientException {
-        PlasmaTimeOutWrapper plasmaTimeOutWrapper = new PlasmaTimeOutWrapper();
-        return plasmaTimeOutWrapper
-                .submitFutureTask(wrapper, client, executorService, plasmaParam, timeOutInSeconds);
-    }
+  public static Object run(
+          PlasmaMethodWrapper wrapper,
+          PlasmaClient client,
+          ExecutorService executorService,
+          PlasmaParam plasmaParam, long timeOutInSeconds)
+          throws InterruptedException, ExecutionException, TimeoutException,
+          DuplicateObjectException, PlasmaClientException {
+    PlasmaTimeOutWrapper plasmaTimeOutWrapper = new PlasmaTimeOutWrapper();
+    return plasmaTimeOutWrapper
+            .submitFutureTask(wrapper, client, executorService, plasmaParam, timeOutInSeconds);
+  }
 
-    private Object submitFutureTask(
-            PlasmaMethodWrapper wrapper,
-            PlasmaClient client,
-            ExecutorService executorService,
-            PlasmaParam plasmaParam, long timeOutInSeconds)
-            throws InterruptedException, ExecutionException, TimeoutException,
-            DuplicateObjectException, PlasmaGetException, PlasmaClientException {
-        this.client = client;
-        this.wrapper = wrapper;
-        this.executorService = executorService;
-        this.plasmaParam = plasmaParam;
-        this.timeOutInSeconds = timeOutInSeconds;
-        FutureTask<Object> futureTask = (FutureTask<Object>) executorService.submit(this);
-        executorService.execute(futureTask);
-        return futureTask.get(timeOutInSeconds, TimeUnit.SECONDS);
-    }
+  private Object submitFutureTask(
+          PlasmaMethodWrapper wrapper,
+          PlasmaClient client,
+          ExecutorService executorService,
+          PlasmaParam plasmaParam, long timeOutInSeconds)
+          throws InterruptedException, ExecutionException, TimeoutException,
+          DuplicateObjectException, PlasmaClientException {
+    this.client = client;
+    this.wrapper = wrapper;
+    this.executorService = executorService;
+    this.plasmaParam = plasmaParam;
+    this.timeOutInSeconds = timeOutInSeconds;
+    FutureTask<Object> futureTask = (FutureTask<Object>) executorService.submit(this);
+    executorService.execute(futureTask);
+    return futureTask.get(timeOutInSeconds, TimeUnit.SECONDS);
+  }
 
-    @Override
-    public Object call() {
-        return wrapper.execute(client, plasmaParam);
-    }
+  @Override
+  public Object call() {
+    return wrapper.execute(client, plasmaParam);
+  }
 }

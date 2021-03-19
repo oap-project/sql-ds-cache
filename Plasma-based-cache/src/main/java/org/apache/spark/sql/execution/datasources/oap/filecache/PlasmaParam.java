@@ -18,53 +18,50 @@
 package org.apache.spark.sql.execution.datasources.oap.filecache;
 
 public class PlasmaParam {
-    private byte[] objectId;
-    private int timeoutMs = -1;
-    private boolean isMetadata = false;
-    private int length = 0;
+  private byte[] objectId;
+  private int timeoutMs = -1;
+  private boolean isMetadata = false;
+  private int length = 0;
 
-    // seal contains delete
-    public PlasmaParam(byte[] objectId) {
-        this.objectId = objectId;
-    }
+  // seal contains delete
+  public PlasmaParam(byte[] objectId) {
+    this.objectId = objectId;
+  }
 
-    // create
-    public PlasmaParam(byte[] objectId, int length) {
-        this.objectId = objectId;
-        this.length = length;
-    }
+  // create
+  public PlasmaParam(byte[] objectId, int length) {
+    this.objectId = objectId;
+    this.length = length;
+  }
 
-    // getObjAsByteBuffer
-    public PlasmaParam(byte[] objectId, int timeoutMs, boolean isMetadata) {
-        this.objectId = objectId;
-        this.timeoutMs = timeoutMs;
-        this.isMetadata = isMetadata;
-    }
+  // getObjAsByteBuffer
+  public PlasmaParam(byte[] objectId, int timeoutMs, boolean isMetadata) {
+    this.objectId = objectId;
+    this.timeoutMs = timeoutMs;
+    this.isMetadata = isMetadata;
+  }
 
+  public byte[] getObjectId() {
+    return objectId;
+  }
 
-    public byte[] getObjectId() {
-        return objectId;
-    }
+  public int getTimeoutMs() {
+    return timeoutMs;
+  }
 
+  public boolean isMetadata() {
+    return isMetadata;
+  }
 
-    public int getTimeoutMs() {
-        return timeoutMs;
-    }
+  public void setMetadata(boolean metadata) {
+    isMetadata = metadata;
+  }
 
+  public int getLength() {
+    return length;
+  }
 
-    public boolean isMetadata() {
-        return isMetadata;
-    }
-
-    public void setMetadata(boolean metadata) {
-        isMetadata = metadata;
-    }
-
-    public int getLength() {
-        return length;
-    }
-
-    public void setLength(int length) {
-        this.length = length;
-    }
+  public void setLength(int length) {
+    this.length = length;
+  }
 }
