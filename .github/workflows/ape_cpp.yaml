@@ -35,5 +35,5 @@ jobs:
       - name: install APE dependency
         run: ci_scripts/install_APE_dependency.sh
       - name: build ape cpp
-        run: cd oap-ape/ape-native; mkdir build; cd build; cmake ..; make -j2
+        run: cd oap-ape/ape-native; mkdir build; cd build; cmake .. -DAPE_TEST=ON; make -j2; ctest -v
 
