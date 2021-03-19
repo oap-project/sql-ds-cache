@@ -111,7 +111,7 @@ void PlasmaCacheManager::setCacheInfoToRedis() {
   }
 }
 
-std::string PlasmaCacheManager::cacheKeyofColumnChunk(::arrow::io::ReadRange range) {
+std::string PlasmaCacheManager::cacheKeyofFileRange(::arrow::io::ReadRange range) {
   char buff[1024];
   snprintf(buff, sizeof(buff), "plasma_cache:parquet_chunk:%s:%d_%d", file_path_.c_str(),
            range.offset, range.length);
@@ -119,8 +119,8 @@ std::string PlasmaCacheManager::cacheKeyofColumnChunk(::arrow::io::ReadRange ran
   return ret;
 }
 
-plasma::ObjectID PlasmaCacheManager::objectIdOfColumnChunk(::arrow::io::ReadRange range) {
-  std::string cache_key = cacheKeyofColumnChunk(range);
+plasma::ObjectID PlasmaCacheManager::objectIdOfFileRange(::arrow::io::ReadRange range) {
+  std::string cache_key = cacheKeyofFileRange(range);
 
   unsigned char hash[SHA_DIGEST_LENGTH];
   SHA1((const unsigned char*)cache_key.c_str(), cache_key.length(), hash);
@@ -144,10 +144,10 @@ void PlasmaCacheManager::setCacheRedis(
   }
 }
 
-bool PlasmaCacheManager::containsColumnChunk(::arrow::io::ReadRange range) {
+bool PlasmaCacheManager::containsFileRange(::arrow::io::ReadRange range) {
   bool has_object;
 
-  arrow::Status status = client_->Contains(objectIdOfColumnChunk(range), &has_object);
+  arrow::Status status = client_->Contains(objectIdOfFileRange(range), &has_object);
   if (!status.ok()) {
     ARROW_LOG(WARNING) << "plasma, Contains failed: " << status.message();
     return false;
@@ -162,15 +162,14 @@ bool PlasmaCacheManager::containsColumnChunk(::arrow::io::ReadRange range) {
   return has_object;
 }
 
-std::shared_ptr<Buffer> PlasmaCacheManager::getColumnChunk(::arrow::io::ReadRange range) {
+std::shared_ptr<Buffer> PlasmaCacheManager::getFileRange(::arrow::io::ReadRange range) {
   std::vector<plasma::ObjectID> oids;
-  plasma::ObjectID oid = objectIdOfColumnChunk(range);
+  plasma::ObjectID oid = objectIdOfFileRange(range);
   oids.push_back(oid);
 
   std::vector<plasma::ObjectBuffer> obufs(1);
 
-arrow:
-  Status status = client_->Get(oids.data(), 1, -1, obufs.data());
+  arrow::Status status = client_->Get(oids.data(), 1, -1, obufs.data());
   if (!status.ok()) {
     ARROW_LOG(WARNING) << "plasma, Get failed: " << status.message();
     cache_miss_count_ += 1;
@@ -189,10 +188,10 @@ arrow:
   return obufs[0].data;
 }
 
-bool PlasmaCacheManager::cacheColumnChunk(::arrow::io::ReadRange range,
-                                          std::shared_ptr<Buffer> data) {
+bool PlasmaCacheManager::cacheFileRange(::arrow::io::ReadRange range,
+                                        std::shared_ptr<Buffer> data) {
   std::vector<plasma::ObjectID> oids;
-  plasma::ObjectID oid = objectIdOfColumnChunk(range);
+  plasma::ObjectID oid = objectIdOfFileRange(range);
 
   // create new object
   std::shared_ptr<Buffer> saved_data;
@@ -211,17 +210,20 @@ bool PlasmaCacheManager::cacheColumnChunk(::arrow::io::ReadRange range,
     return false;
   }
 
-  // save object id for future release()
-  object_ids.push_back(oid);
-
   // copy data
   memcpy(saved_data->mutable_data(), data->data(), data->size());
 
   // seal object
   status = client_->Seal(oid);
-
   if (!status.ok()) {
     ARROW_LOG(WARNING) << "plasma, Seal failed: " << status.message();
+    return false;
+  }
+
+  // release object
+  status = client_->Release(oid);
+  if (!status.ok()) {
+    ARROW_LOG(WARNING) << "plasma, Release failed: " << status.message();
     return false;
   }
 
@@ -233,8 +235,8 @@ bool PlasmaCacheManager::cacheColumnChunk(::arrow::io::ReadRange range,
   return true;
 }
 
-bool PlasmaCacheManager::deleteColumnChunk(::arrow::io::ReadRange range) {
-  arrow::Status status = client_->Delete(objectIdOfColumnChunk(range));
+bool PlasmaCacheManager::deleteFileRange(::arrow::io::ReadRange range) {
+  arrow::Status status = client_->Delete(objectIdOfFileRange(range));
   if (!status.ok()) {
     ARROW_LOG(WARNING) << "plasma, Delete failed: " << status.message();
     return false;

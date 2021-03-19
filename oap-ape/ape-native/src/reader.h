@@ -63,6 +63,10 @@ class Reader {
  private:
   void convertSchema(std::string requiredColumnName);
 
+  void preBufferRowGroups();
+
+  void initRowGroupReaders();
+
   void checkEndOfRowGroup();
 
   void setFilterColumnNames(std::shared_ptr<Expression> filter);
@@ -123,5 +127,6 @@ class Reader {
   bool plasmaCacheEnabled = false;
   std::shared_ptr<PlasmaCacheManager> plasmaCacheManager;
   std::shared_ptr<sw::redis::ConnectionOptions> redisConnectionOptions;
+  int currentBufferedRowGroup = -1;
 };
 }  // namespace ape

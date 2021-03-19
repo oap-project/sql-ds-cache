@@ -77,19 +77,12 @@ void Reader::init(std::string fileName, std::string hdfsHost, int hdfsPort,
 
   currentRowGroup = firstRowGroupIndex;
 
-  rowGroupReaders.resize(totalRowGroups);
-  for (int i = 0; i < totalRowGroups; i++) {
-    rowGroupReaders[i] = parquetReader->RowGroup(firstRowGroupIndex + i);
-    totalRows += rowGroupReaders[i]->metadata()->num_rows();
-    ARROW_LOG(DEBUG) << "this rg have rows: "
-                     << rowGroupReaders[i]->metadata()->num_rows();
-  }
   columnReaders.resize(requiredColumnIndex.size());
   initRequiredColumnCount = requiredColumnIndex.size();
   initPlusFilterRequiredColumnCount = initRequiredColumnCount;
   ARROW_LOG(DEBUG) << "initRequiredColumnCount is " << initRequiredColumnCount;
 
-  ARROW_LOG(INFO) << "init done, totalRows " << totalRows;
+  ARROW_LOG(INFO) << "init done, totalRowGroups " << totalRowGroups;
 }
 
 void Reader::initCacheManager(std::string fileName, std::string hdfsHost, int hdfsPort) {
@@ -144,6 +137,14 @@ void convertBitMap(uint8_t* srcBitMap, uint8_t* dstByteMap, int len) {
 }
 
 int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr_) {
+  // Pre buffer row groups.
+  // This is not called in `init` because `requiredColumnIndex`
+  // may be changed by `setFilter` after `init`.
+  preBufferRowGroups();
+  // Init grow group readers.
+  // This should be called after preBufferRowGroups
+  initRowGroupReaders();
+
   // this reader have read all rows
   if (totalRowsRead >= totalRows) {
     return -1;
@@ -359,8 +360,8 @@ bool Reader::skipNextRowGroup() {
 void Reader::close() {
   ARROW_LOG(INFO) << "Filter takes " << time.count() * 1000 << " ms.";
 
-  ARROW_LOG(INFO) << "close reader.";
-  parquetReader->Close();
+  // No need to call parquetReader->Close(). It will be done in destructor.
+
   file->Close();
   for (auto ptr : extraByteArrayBuffers) {
     delete[] ptr;
@@ -375,6 +376,45 @@ void Reader::close() {
   // delete options;
 }
 
+void Reader::preBufferRowGroups() {
+  if (currentBufferedRowGroup >= currentRowGroup) {
+    return;
+  }
+
+  int maxBufferCount = 100;  // TODO
+  std::vector<int> rowGroups;
+  std::vector<int> columns = requiredColumnIndex;
+  int maxRowGroupIndex = firstRowGroupIndex + totalRowGroups - 1;
+  for (int i = 0; i < maxBufferCount && currentBufferedRowGroup < maxRowGroupIndex; i++) {
+    currentBufferedRowGroup = currentRowGroup + i;
+    rowGroups.push_back(currentBufferedRowGroup);
+  }
+
+  ::arrow::io::AsyncContext ctx;
+  ::arrow::io::CacheOptions options = ::arrow::io::CacheOptions::Defaults();
+
+  if (rowGroups.size() > 0) {
+    ARROW_LOG(INFO) << "PreBuffer, " << rowGroups.size() << " row group(s), "
+                    << columns.size() << " columns in each group";
+
+    parquetReader->PreBuffer(rowGroups, columns, ctx, options);
+  }
+}
+
+void Reader::initRowGroupReaders() {
+  if (rowGroupReaders.size() > 0) {
+    return;
+  }
+
+  rowGroupReaders.resize(totalRowGroups);
+  for (int i = 0; i < totalRowGroups; i++) {
+    rowGroupReaders[i] = parquetReader->RowGroup(firstRowGroupIndex + i);
+    totalRows += rowGroupReaders[i]->metadata()->num_rows();
+    ARROW_LOG(DEBUG) << "this rg have rows: "
+                     << rowGroupReaders[i]->metadata()->num_rows();
+  }
+}
+
 void Reader::checkEndOfRowGroup() {
   if (totalRowsRead != totalRowsLoadedSoFar) return;
   // if a splitFile contains rowGroup [2,5], currentRowGroup is 2
@@ -383,10 +423,8 @@ void Reader::checkEndOfRowGroup() {
   currentRowGroup++;
   totalRowGroupsRead++;
 
-  // relase objects in previous row group
-  if (plasmaCacheManager) {
-    plasmaCacheManager->release();
-  }
+  // Do not release CacheManager's objects when going to next row group.
+  // release() may free all useful buffers loaded by preBufferRowGroups.
 
   for (int i = 0; i < requiredColumnIndex.size(); i++) {
     columnReaders[i] = rowGroupReader->Column(requiredColumnIndex[i]);

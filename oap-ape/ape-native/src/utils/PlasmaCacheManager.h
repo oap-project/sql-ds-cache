@@ -30,19 +30,19 @@ class PlasmaCacheManager : public parquet::CacheManager {
   bool connected();
   void close();
   void release();
-  plasma::ObjectID objectIdOfColumnChunk(::arrow::io::ReadRange range);
+  plasma::ObjectID objectIdOfFileRange(::arrow::io::ReadRange range);
 
   void setCacheRedis(std::shared_ptr<sw::redis::ConnectionOptions> options);
 
   // override methods
-  bool containsColumnChunk(::arrow::io::ReadRange range) override;
-  std::shared_ptr<Buffer> getColumnChunk(::arrow::io::ReadRange range) override;
-  bool cacheColumnChunk(::arrow::io::ReadRange range,
-                        std::shared_ptr<Buffer> data) override;
-  bool deleteColumnChunk(::arrow::io::ReadRange range) override;
+  bool containsFileRange(::arrow::io::ReadRange range) override;
+  std::shared_ptr<Buffer> getFileRange(::arrow::io::ReadRange range) override;
+  bool cacheFileRange(::arrow::io::ReadRange range,
+                      std::shared_ptr<Buffer> data) override;
+  bool deleteFileRange(::arrow::io::ReadRange range) override;
 
  protected:
-  std::string cacheKeyofColumnChunk(::arrow::io::ReadRange range);
+  std::string cacheKeyofFileRange(::arrow::io::ReadRange range);
   void setCacheInfoToRedis();
 
  private:
