@@ -44,9 +44,10 @@ TEST(JasonConvertorTest, ConvertValidJson) {
   auto not2 = std::dynamic_pointer_cast<ape::NotFilterExpression>(left1)->getChild();
   EXPECT_TRUE(not2->getType() == "or");
 
-  auto left3= std::dynamic_pointer_cast<ape::BinaryFilterExpression>(not2)->getLeftChild();
-  auto right3= std::dynamic_pointer_cast<ape::BinaryFilterExpression>(not2)->getRightChild();
+  auto left3 =
+      std::dynamic_pointer_cast<ape::BinaryFilterExpression>(not2)->getLeftChild();
+  auto right3 =
+      std::dynamic_pointer_cast<ape::BinaryFilterExpression>(not2)->getRightChild();
   EXPECT_TRUE(left3->getType() == "eq");
   EXPECT_TRUE(right3->getType() == "noteq");
-
 }
