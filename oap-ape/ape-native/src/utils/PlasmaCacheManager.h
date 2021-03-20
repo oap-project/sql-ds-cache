@@ -74,7 +74,6 @@ class PlasmaCacheManagerProvider : public parquet::CacheManagerProvider {
   std::string file_path_;
   std::vector<std::shared_ptr<PlasmaCacheManager>> managers_;
   std::shared_ptr<sw::redis::ConnectionOptions> redis_options_;
-
 };
 
 }  // namespace ape

@@ -170,7 +170,7 @@ std::shared_ptr<Buffer> PlasmaCacheManager::getFileRange(::arrow::io::ReadRange 
   std::vector<plasma::ObjectBuffer> obufs(1);
 
   arrow::Status status = client_->Get(oids.data(), 1, -1, obufs.data());
-   if (!status.ok() || obufs[0].data == nullptr) {
+  if (!status.ok() || obufs[0].data == nullptr) {
     ARROW_LOG(WARNING) << "plasma, Get failed: " << status.message();
     cache_miss_count_ += 1;
     return nullptr;
@@ -262,7 +262,7 @@ bool PlasmaCacheManager::deleteFileRange(::arrow::io::ReadRange range) {
 }
 
 PlasmaCacheManagerProvider::PlasmaCacheManagerProvider(std::string file_path)
-  : file_path_(file_path) {
+    : file_path_(file_path) {
   auto default_manager = std::make_shared<PlasmaCacheManager>(file_path);
   managers_.push_back(default_manager);
 }
@@ -275,12 +275,10 @@ void PlasmaCacheManagerProvider::close() {
   }
 }
 
-bool PlasmaCacheManagerProvider::connected() {
-  return managers_[0]->connected();
-}
+bool PlasmaCacheManagerProvider::connected() { return managers_[0]->connected(); }
 
-
-void PlasmaCacheManagerProvider::setCacheRedis(std::shared_ptr<sw::redis::ConnectionOptions> options) {
+void PlasmaCacheManagerProvider::setCacheRedis(
+    std::shared_ptr<sw::redis::ConnectionOptions> options) {
   redis_options_ = options;
 
   for (auto manager : managers_) {
