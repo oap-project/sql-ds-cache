@@ -210,7 +210,7 @@
                   <shadeTestJar>false</shadeTestJar>
                   <artifactSet>
                     <includes combine.children="append">
-                      <include>com.intel.oap:oap-common</include>
+                      <include>com.intel.oap:pmem-common</include>
                       <include>com.intel.oap:ape-common</include>
                       <include>com.intel.oap:ape-hcfs</include>
                       <include>com.fasterxml.jackson.core:jackson-core</include>

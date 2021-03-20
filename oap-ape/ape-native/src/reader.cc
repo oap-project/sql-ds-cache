@@ -91,16 +91,16 @@ void Reader::initCacheManager(std::string fileName, std::string hdfsHost, int hd
            fileName.c_str());
   std::string path = buff;
 
-  std::shared_ptr<PlasmaCacheManager> cacheManager =
-      std::make_shared<PlasmaCacheManager>(path);
-  if (cacheManager->connected()) {
-    plasmaCacheManager = cacheManager;
+  std::shared_ptr<PlasmaCacheManagerProvider> cacheManagerProvider =
+      std::make_shared<PlasmaCacheManagerProvider>(path);
+  if (cacheManagerProvider->connected()) {
+    plasmaCacheManagerProvider = cacheManagerProvider;
 
     if (redisConnectionOptions != nullptr) {
-      plasmaCacheManager->setCacheRedis(redisConnectionOptions);
+      plasmaCacheManagerProvider->setCacheRedis(redisConnectionOptions);
     }
 
-    parquetReader->setCacheManager(cacheManager);
+    parquetReader->setCacheManagerProvider(plasmaCacheManagerProvider);
     ARROW_LOG(INFO) << "set cache manager in parquet reader";
   }
 }
@@ -368,16 +368,16 @@ void Reader::close() {
   }
   freeFilterBuffers();
 
-  if (plasmaCacheManager) {
-    plasmaCacheManager->close();
-    plasmaCacheManager = nullptr;
+  if (plasmaCacheManagerProvider) {
+    plasmaCacheManagerProvider->close();
+    plasmaCacheManagerProvider = nullptr;
   }
 
   // delete options;
 }
 
 void Reader::preBufferRowGroups() {
-  if (currentBufferedRowGroup >= currentRowGroup) {
+  if (!preBufferEnabled || currentBufferedRowGroup >= currentRowGroup) {
     return;
   }
 
@@ -712,9 +712,11 @@ void Reader::setPlasmaCacheRedis(std::string host, int port, std::string passwor
   }
   redisConnectionOptions = options;
 
-  if (plasmaCacheManager != nullptr) {
-    plasmaCacheManager->setCacheRedis(options);
+  if (plasmaCacheManagerProvider != nullptr) {
+    plasmaCacheManagerProvider->setCacheRedis(options);
   }
 }
+
+void Reader::setPreBufferEnabled(bool isEnabled) { preBufferEnabled = isEnabled; }
 
 }  // namespace ape

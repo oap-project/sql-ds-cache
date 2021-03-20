@@ -60,6 +60,8 @@ class Reader {
 
   void setPlasmaCacheRedis(std::string host, int port, std::string password);
 
+  void setPreBufferEnabled(bool isEnabled);
+
  private:
   void convertSchema(std::string requiredColumnName);
 
@@ -125,8 +127,10 @@ class Reader {
   std::vector<std::vector<ApeDecimal128Ptr>> aggResults;
 
   bool plasmaCacheEnabled = false;
-  std::shared_ptr<PlasmaCacheManager> plasmaCacheManager;
+  std::shared_ptr<PlasmaCacheManagerProvider> plasmaCacheManagerProvider;
   std::shared_ptr<sw::redis::ConnectionOptions> redisConnectionOptions;
+
+  bool preBufferEnabled = false;
   int currentBufferedRowGroup = -1;
 };
 }  // namespace ape

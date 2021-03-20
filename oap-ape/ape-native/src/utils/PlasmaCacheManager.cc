@@ -71,9 +71,6 @@ void PlasmaCacheManager::close() {
   // release objects
   release();
 
-  // save cache info to redis
-  setCacheInfoToRedis();
-
   // disconnct
   arrow::Status status = client_->Disconnect();
   if (!status.ok()) {
@@ -81,6 +78,9 @@ void PlasmaCacheManager::close() {
   }
 
   client_ = nullptr;
+
+  // save cache info to redis
+  setCacheInfoToRedis();
 }
 
 void PlasmaCacheManager::setCacheInfoToRedis() {
@@ -170,7 +170,7 @@ std::shared_ptr<Buffer> PlasmaCacheManager::getFileRange(::arrow::io::ReadRange 
   std::vector<plasma::ObjectBuffer> obufs(1);
 
   arrow::Status status = client_->Get(oids.data(), 1, -1, obufs.data());
-  if (!status.ok()) {
+   if (!status.ok() || obufs[0].data == nullptr) {
     ARROW_LOG(WARNING) << "plasma, Get failed: " << status.message();
     cache_miss_count_ += 1;
     return nullptr;
@@ -217,6 +217,20 @@ bool PlasmaCacheManager::cacheFileRange(::arrow::io::ReadRange range,
   status = client_->Seal(oid);
   if (!status.ok()) {
     ARROW_LOG(WARNING) << "plasma, Seal failed: " << status.message();
+
+    // abort object
+    status = client_->Abort(oid);
+    if (!status.ok()) {
+      ARROW_LOG(WARNING) << "plasma, Abort failed: " << status.message();
+    }
+
+    // release object
+    status = client_->Release(oid);
+    if (!status.ok()) {
+      ARROW_LOG(WARNING) << "plasma, Release failed: " << status.message();
+      return false;
+    }
+
     return false;
   }
 
@@ -245,6 +259,48 @@ bool PlasmaCacheManager::deleteFileRange(::arrow::io::ReadRange range) {
   ARROW_LOG(INFO) << "plasma, delete object from cache: " << file_path_ << ", "
                   << range.offset << ", " << range.length;
   return true;
+}
+
+PlasmaCacheManagerProvider::PlasmaCacheManagerProvider(std::string file_path)
+  : file_path_(file_path) {
+  auto default_manager = std::make_shared<PlasmaCacheManager>(file_path);
+  managers_.push_back(default_manager);
+}
+
+PlasmaCacheManagerProvider::~PlasmaCacheManagerProvider() {}
+
+void PlasmaCacheManagerProvider::close() {
+  for (auto manager : managers_) {
+    manager->close();
+  }
+}
+
+bool PlasmaCacheManagerProvider::connected() {
+  return managers_[0]->connected();
+}
+
+
+void PlasmaCacheManagerProvider::setCacheRedis(std::shared_ptr<sw::redis::ConnectionOptions> options) {
+  redis_options_ = options;
+
+  for (auto manager : managers_) {
+    manager->setCacheRedis(options);
+  }
+}
+
+std::shared_ptr<parquet::CacheManager> PlasmaCacheManagerProvider::defaultCacheManager() {
+  return managers_[0];
+}
+
+std::shared_ptr<parquet::CacheManager> PlasmaCacheManagerProvider::newCacheManager() {
+  auto new_manager = std::make_shared<PlasmaCacheManager>(file_path_);
+  managers_.push_back(new_manager);
+
+  if (redis_options_) {
+    new_manager->setCacheRedis(redis_options_);
+  }
+
+  return new_manager;
 }
 
 }  // namespace ape

@@ -58,4 +58,23 @@ class PlasmaCacheManager : public parquet::CacheManager {
   std::vector<::arrow::io::ReadRange> cached_ranges_;
 };
 
+class PlasmaCacheManagerProvider : public parquet::CacheManagerProvider {
+ public:
+  explicit PlasmaCacheManagerProvider(std::string file_path);
+  ~PlasmaCacheManagerProvider();
+  void close();
+  bool connected();
+  void setCacheRedis(std::shared_ptr<sw::redis::ConnectionOptions> options);
+
+  // override methods
+  std::shared_ptr<parquet::CacheManager> defaultCacheManager() override;
+  std::shared_ptr<parquet::CacheManager> newCacheManager() override;
+
+ private:
+  std::string file_path_;
+  std::vector<std::shared_ptr<PlasmaCacheManager>> managers_;
+  std::shared_ptr<sw::redis::ConnectionOptions> redis_options_;
+
+};
+
 }  // namespace ape
