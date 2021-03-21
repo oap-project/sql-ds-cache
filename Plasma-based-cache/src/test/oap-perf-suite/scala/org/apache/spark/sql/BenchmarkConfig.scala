@@ -16,10 +16,9 @@
  */
 package org.apache.spark.sql
 
-
 import scala.collection.mutable
-import org.apache.spark.SparkConf
 
+import org.apache.spark.SparkConf
 
 // TODO: use SQLConf style i.e. (value, defaultValue)
 class BenchmarkConfig {
@@ -115,7 +114,7 @@ class BenchmarkConfig {
 
 object BenchmarkConfig {
   val INDEX_ENABLE = "oap.benchmark.config.index"
-  val FILE_FORMAT  = "oap.benchmark.config.format"
+  val FILE_FORMAT = "oap.benchmark.config.format"
 }
 
 abstract class BenchmarkConfigSelector {
@@ -174,8 +173,9 @@ trait ParquetVsOrcConfigSet extends BenchmarkConfigSelector{
   // TODO: choose conf
   val _conf = new SparkConf()
   def allConfigurations: Seq[BenchmarkConfig] =
-    if(_conf.get("spark.sql.oap.cache.memory.manager") == "offheap" ||
-      ((!_conf.contains("spark.sql.oap.cache.memory.manager")) && _conf.get("spark.sql.oap.fiberCache.memory.manager")=="offheap")) {
+    if (_conf.get("spark.sql.oap.cache.memory.manager") == "offheap" ||
+      ((!_conf.contains("spark.sql.oap.cache.memory.manager")) &&
+        _conf.get("spark.sql.oap.fiberCache.memory.manager")=="offheap")) {
       Seq(
         new BenchmarkConfig()
           .setBenchmarkConfName("Orc w/ index")
@@ -245,7 +245,7 @@ trait ParquetVsOrcConfigSet extends BenchmarkConfigSelector{
           .setSparkConf("spark.sql.oap.index.data.cache.separation.enabled", "true")
           .setSparkConf("spark.oap.cache.strategy", "mix")
       )
-    }else{
+    } else {
       Seq(
         new BenchmarkConfig()
           .setBenchmarkConfName("Orc w/ index")

@@ -1067,7 +1067,7 @@ class ExternalCache(fiberType: FiberType) extends OapCache with Logging {
       var fiberCache : FiberCache = null
       logDebug(s"Cache hit, get from external cache.")
       val plasmaClient = plasmaClientPool(clientRoundRobin.getAndAdd(1) % clientPoolSize)
-      val buf: ByteBuffer = plasmaClient.getObjAsByteBuffer(objectId, -1, false)
+      val buf: ByteBuffer = plasmaClient.getObjAsByteBuffer(objectId, 1000, false)
       if(buf.asInstanceOf[DirectBuffer].address() == 0) {
         logWarning("Get return an invalid value.")
         fiberCache = cache(fiberId)
