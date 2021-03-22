@@ -172,7 +172,7 @@ std::shared_ptr<Buffer> PlasmaCacheManager::getFileRange(::arrow::io::ReadRange 
 
   std::vector<plasma::ObjectBuffer> obufs(1);
 
-  arrow::Status status = client_->Get(oids.data(), 1, -1, obufs.data());
+  arrow::Status status = client_->Get(oids.data(), 1, 1000, obufs.data());
   if (!status.ok() || obufs[0].data == nullptr) {
     ARROW_LOG(WARNING) << "plasma, Get failed: " << status.message();
     cache_miss_count_ += 1;

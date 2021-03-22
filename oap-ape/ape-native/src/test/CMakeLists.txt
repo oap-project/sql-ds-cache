@@ -53,9 +53,14 @@ add_executable(aggParserTest aggParserTest.cc)
 target_link_libraries(aggParserTest gtest_main parquet_jni)
 add_test(NAME aggParserTest COMMAND ${EXECUTABLE_OUTPUT_PATH}/aggParserTest)
 
-# this test works well on my dev machine, but it will fail on ci env
+# these test works well on my dev machine, but it will fail on ci env
 # because it have hdfs dependency, so I will disable it. You can enable 
 # it in your local machine to test.
+
 # add_executable(parquetHdfsTest parquetHdfsTest.cc)
 # target_link_libraries(parquetHdfsTest gtest_main parquet_jni)
 # add_test(NAME parquetHdfsTest COMMAND ${EXECUTABLE_OUTPUT_PATH}/parquetHdfsTest)
+
+# add_executable(plasmaTest plasmaTest.cc)
+# target_link_libraries(plasmaTest gtest_main parquet_jni)
+# add_test(NAME plasmaTest COMMAND ${EXECUTABLE_OUTPUT_PATH}/plasmaTest)
