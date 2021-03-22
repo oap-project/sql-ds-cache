@@ -20,7 +20,7 @@
 
 #include "src/utils/PlasmaCacheManager.h"
 
-// in this case, we didn't write cache(call create), so it will fail. And you 
+// in this case, we didn't write cache(call create), so it will fail. And you
 // need to start a Plasma server before run test.
 TEST(PlasmaCacheTest, cacheTest) {
   auto file =
