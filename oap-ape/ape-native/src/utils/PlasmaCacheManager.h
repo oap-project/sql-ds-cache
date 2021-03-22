@@ -30,19 +30,19 @@ class PlasmaCacheManager : public parquet::CacheManager {
   bool connected();
   void close();
   void release();
-  plasma::ObjectID objectIdOfColumnChunk(::arrow::io::ReadRange range);
+  plasma::ObjectID objectIdOfFileRange(::arrow::io::ReadRange range);
 
   void setCacheRedis(std::shared_ptr<sw::redis::ConnectionOptions> options);
 
   // override methods
-  bool containsColumnChunk(::arrow::io::ReadRange range) override;
-  std::shared_ptr<Buffer> getColumnChunk(::arrow::io::ReadRange range) override;
-  bool cacheColumnChunk(::arrow::io::ReadRange range,
-                        std::shared_ptr<Buffer> data) override;
-  bool deleteColumnChunk(::arrow::io::ReadRange range) override;
+  bool containsFileRange(::arrow::io::ReadRange range) override;
+  std::shared_ptr<Buffer> getFileRange(::arrow::io::ReadRange range) override;
+  bool cacheFileRange(::arrow::io::ReadRange range,
+                      std::shared_ptr<Buffer> data) override;
+  bool deleteFileRange(::arrow::io::ReadRange range) override;
 
  protected:
-  std::string cacheKeyofColumnChunk(::arrow::io::ReadRange range);
+  std::string cacheKeyofFileRange(::arrow::io::ReadRange range);
   void setCacheInfoToRedis();
 
  private:
@@ -56,6 +56,24 @@ class PlasmaCacheManager : public parquet::CacheManager {
   int cache_hit_count_ = 0;
   int cache_miss_count_ = 0;
   std::vector<::arrow::io::ReadRange> cached_ranges_;
+};
+
+class PlasmaCacheManagerProvider : public parquet::CacheManagerProvider {
+ public:
+  explicit PlasmaCacheManagerProvider(std::string file_path);
+  ~PlasmaCacheManagerProvider();
+  void close();
+  bool connected();
+  void setCacheRedis(std::shared_ptr<sw::redis::ConnectionOptions> options);
+
+  // override methods
+  std::shared_ptr<parquet::CacheManager> defaultCacheManager() override;
+  std::shared_ptr<parquet::CacheManager> newCacheManager() override;
+
+ private:
+  std::string file_path_;
+  std::vector<std::shared_ptr<PlasmaCacheManager>> managers_;
+  std::shared_ptr<sw::redis::ConnectionOptions> redis_options_;
 };
 
 }  // namespace ape
