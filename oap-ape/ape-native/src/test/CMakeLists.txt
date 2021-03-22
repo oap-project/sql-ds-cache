@@ -57,10 +57,15 @@ add_test(NAME aggParserTest COMMAND ${EXECUTABLE_OUTPUT_PATH}/aggParserTest)
 # because it have hdfs dependency, so I will disable it. You can enable 
 # it in your local machine to test.
 
-# add_executable(parquetHdfsTest parquetHdfsTest.cc)
-# target_link_libraries(parquetHdfsTest gtest_main parquet_jni)
-# add_test(NAME parquetHdfsTest COMMAND ${EXECUTABLE_OUTPUT_PATH}/parquetHdfsTest)
+add_executable(parquetHdfsTest parquetHdfsTest.cc)
+target_link_libraries(parquetHdfsTest gtest_main parquet_jni)
 
-# add_executable(plasmaTest plasmaTest.cc)
-# target_link_libraries(plasmaTest gtest_main parquet_jni)
-# add_test(NAME plasmaTest COMMAND ${EXECUTABLE_OUTPUT_PATH}/plasmaTest)
+add_executable(plasmaTest plasmaTest.cc)
+target_link_libraries(plasmaTest gtest_main parquet_jni)
+
+if(APE_CI)
+  # Will not run these test
+else()
+  add_test(NAME parquetHdfsTest COMMAND ${EXECUTABLE_OUTPUT_PATH}/parquetHdfsTest)
+  add_test(NAME plasmaTest COMMAND ${EXECUTABLE_OUTPUT_PATH}/plasmaTest)
+endif()
