@@ -125,7 +125,8 @@ public class ParquetNativeRecordReaderWrapper {
                             Constants.DEFAULT_REDIS_AUTH));
         }
 
-        LOG.info("native parquet reader initialized, plasma cache: {}, cache locality: {}, prebuffer: {}",
+        LOG.info("native parquet reader initialized, plasma cache: {},  "
+                        + "cache locality: {}, pre buffer: {}",
                 plasmaCacheEnabled, cacheLocalityEnabled, preBufferEnabled);
 
         return reader;
