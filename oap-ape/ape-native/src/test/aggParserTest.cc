@@ -30,7 +30,7 @@ TEST(AggParserTest, IllegalInput) {
 }
 
 TEST(AggParserTest, SimpleCase) {
-    std::string json =
+  std::string json =
       " { \"aggregateExprs\": [{\"exprName\": \"AttributeReference\",\"dataType\": "
       "\"StringType\",\"columnName\": \"l_returnflag\"},{\"exprName\": "
       "\"AttributeReference\",\"dataType\": \"StringType\",\"columnName\": "

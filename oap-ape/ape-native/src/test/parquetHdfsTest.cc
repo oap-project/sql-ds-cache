@@ -38,7 +38,6 @@ TEST(ParquetHdfsTest, ReadTest) {
   auto result = arrow::fs::HadoopFileSystem::Make(options_);
   EXPECT_TRUE(result.ok()) << "HadoopFileSystem Make failed";
 
-
   std::shared_ptr<arrow::fs::FileSystem> fs_ =
       std::make_shared<arrow::fs::SubTreeFileSystem>("", *result);
 
@@ -121,8 +120,8 @@ TEST(ParquetHdfsTest, ReadTest) {
             << "levels_read: " << levels_read << std::endl
             << "values read: " << values_read << std::endl
             << "null count: " << null_count << std::endl;
-              
-              // cannot comapre these two buffers.
+
+  // cannot comapre these two buffers.
   // for (int i = 0; i < 100; i++) {
   //   std::cout << values_rb[i] << "\t" << values_rbs[i] << std::endl;
   // }
