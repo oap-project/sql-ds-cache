@@ -16,18 +16,30 @@
 // under the License.
 
 #include <vector>
+#include <gtest/gtest.h>
 
 #include <arrow/util/decimal.h>
-#include "ApeDecimal.h"
-#include "DecimalUtil.h"
+
+#include "src/utils/ApeDecimal.h"
+#include "src/utils/DecimalUtil.h"
 
 using namespace ape;
 
-int main() {
+class DecimalTest : public ::testing::Test {
+ public:
+  // TODO(pcm): At the moment, stdout of the test gets mixed up with
+  // stdout of the object store. Consider changing that.
+
+  void SetUp() { buffer = std::vector<uint8_t>(16); }
+
+ protected:
   int32_t scale;
   int32_t precision;
   arrow::Decimal128 decimal;
-  std::vector<uint8_t> buffer(16);
+  std::vector<uint8_t> buffer;
+};
+
+TEST_F(DecimalTest, Multiply) {
   // retsult from JAVA code
   // BigDecimal("1234567890.12345678").unscaledValue().toByteArray()
   std::vector<uint8_t> b1{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -35,15 +47,16 @@ int main() {
   arrow::Decimal128::FromString("1234567890.12345678", &decimal, &precision, &scale);
   ApeDecimal128 d1(decimal.high_bits(), decimal.low_bits(), precision, scale);
   d1.toBytes(buffer.data());
-  assert(b1 == buffer);
+  EXPECT_TRUE(b1 == buffer);
 
-  // retsult from JAVA code BigDecimal("-9876543210.1234").unscaledValue().toByteArray()
+  // retsult from JAVA code
+  // BigDecimal("-9876543210.1234").unscaledValue().toByteArray()
   std::vector<uint8_t> b2{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
                           0xff, 0xff, 0xa6, 0x2c, 0x61, 0x80, 0xe6, 0x8e};
   arrow::Decimal128::FromString("-9876543210.1234", &decimal, &precision, &scale);
   ApeDecimal128 d2(decimal.high_bits(), decimal.low_bits(), precision, scale);
   d2.toBytes(buffer.data());
-  assert(b2 == buffer);
+  EXPECT_TRUE(b2 == buffer);
 
   // retsult from JAVA code
   // BigDecimal("-12193263112635198799.878698366652").unscaledValue().toByteArray()
@@ -53,6 +66,4 @@ int main() {
   ApeDecimal128 d3(d, 38, 12);
   d3.toBytes(buffer.data());
   assert(b3 == buffer);
-
-  return 0;
 }

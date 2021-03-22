@@ -16,13 +16,14 @@
 // under the License.
 
 #include <string>
+#include <gtest/gtest.h>
 
-#include "FilterExpression.h"
-#include "jsonConvertor.h"
+#include "src/utils/FilterExpression.h"
+#include "src/utils/jsonConvertor.h"
 
-int main() {
+TEST(JasonConvertorTest, ConvertValidJson) {
   std::string s =
-      "{\"FilterTypeName\":\"and\",\"LeftNode\":{\"FilterTypeName\":\"not\",\"child\":{"
+      "{\"FilterTypeName\":\"and\",\"LeftNode\":{\"FilterTypeName\":\"not\",\"Child\":{"
       "\"FilterTypeName\":\"or\",\"LeftNode\":{\"FilterTypeName\":\"eq\",\"ColumnName\":"
       "\"a.b.c\",\"ColumnType\":\"Integer\",\"Value\":\"7\"},\"RightNode\":{"
       "\"FilterTypeName\":\"noteq\",\"ColumnName\":\"a.b.c\",\"ColumnType\":\""
@@ -31,7 +32,22 @@ int main() {
 
   auto ex = ape::JsonConvertor::parseToFilterExpression(s);
 
-  ex->Execute();
+  EXPECT_TRUE(ex != nullptr);
+  EXPECT_TRUE(ex->getType() == "and");
 
-  return 0;
+  auto left1 = std::dynamic_pointer_cast<ape::BinaryFilterExpression>(ex)->getLeftChild();
+  auto right1 =
+      std::dynamic_pointer_cast<ape::BinaryFilterExpression>(ex)->getRightChild();
+  EXPECT_TRUE(left1->getType() == "not");
+  EXPECT_TRUE(right1->getType() == "gt");
+
+  auto not2 = std::dynamic_pointer_cast<ape::NotFilterExpression>(left1)->getChild();
+  EXPECT_TRUE(not2->getType() == "or");
+
+  auto left3 =
+      std::dynamic_pointer_cast<ape::BinaryFilterExpression>(not2)->getLeftChild();
+  auto right3 =
+      std::dynamic_pointer_cast<ape::BinaryFilterExpression>(not2)->getRightChild();
+  EXPECT_TRUE(left3->getType() == "eq");
+  EXPECT_TRUE(right3->getType() == "noteq");
 }

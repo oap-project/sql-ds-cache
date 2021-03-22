@@ -23,8 +23,9 @@
 #include <arrow/api.h>
 #include <arrow/filesystem/api.h>
 #include <parquet/api/reader.h>
+#include <gtest/gtest.h>
 
-int main() {
+TEST(ParquetHdfsTest, ReadTest) {
   arrow::fs::HdfsOptions options_;
 
   std::string hdfs_host = "sr585";
@@ -35,11 +36,8 @@ int main() {
   // options_.ConfigureUser(hdfs_user);
 
   auto result = arrow::fs::HadoopFileSystem::Make(options_);
-  if (!result.ok()) {
-    std::cout << "HadoopFileSystem Make failed" << std::endl;
-    return -1;
-  }
-  std::cout << "connect hdfs success" << std::endl;
+  EXPECT_TRUE(result.ok()) << "HadoopFileSystem Make failed";
+
   std::shared_ptr<arrow::fs::FileSystem> fs_ =
       std::make_shared<arrow::fs::SubTreeFileSystem>("", *result);
 
@@ -48,10 +46,7 @@ int main() {
       "part-00000-74feb3b4-1954-4be7-802d-a50912793bea-c000.snappy.parquet";
 
   auto file_result = fs_->OpenInputFile(file_name);
-  if (!file_result.ok()) {
-    std::cout << "Open hdfs file failed" << std::endl;
-    return -1;
-  }
+  EXPECT_TRUE(file_result.ok()) << "Open hdfs file failed";
 
   std::shared_ptr<arrow::io::RandomAccessFile> file = file_result.ValueOrDie();
   std::cout << "file size is " << file->GetSize().ValueOrDie() << std::endl;
@@ -137,6 +132,4 @@ int main() {
   std::free(def_levels);
   std::free(rep_levels);
   std::free(valid_bits);
-
-  return 0;
 }

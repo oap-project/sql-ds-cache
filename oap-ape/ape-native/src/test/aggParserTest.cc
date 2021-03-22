@@ -18,35 +18,26 @@
 #include <memory>
 #include <string>
 
-#include "AggExpression.h"
-#include "jsonConvertor.h"
+#include <gtest/gtest.h>
 
-void case1() {
-  std::cout << "test illegal input string case " << std::endl;
+#include "src/utils/AggExpression.h"
+#include "src/utils/jsonConvertor.h"
+
+TEST(AggParserTest, IllegalInput) {
   std::string json = "";
   auto exprs = ape::JsonConvertor::parseToAggExpressions(json);
-  assert(exprs.size() == 0);
+  EXPECT_EQ(exprs.size(), 0);
 }
 
-void case2() {
-  std::cout << "test simple agg case " << std::endl;
+TEST(AggParserTest, SimpleCase) {
   std::string json =
-      " { \"AggregateExprs\": [{\"ExprName\": \"AttributeReference\",\"DataType\": "
-      "\"StringType\",\"ColumnName\": \"l_returnflag\"},{\"ExprName\": "
-      "\"AttributeReference\",\"DataType\": \"StringType\",\"ColumnName\": "
-      "\"l_linestatus\"},{\"AliasName\": \"sum_qty\",\"ExprName\": "
-      "\"RootAgg\",\"IsDistinct\": false,\"child\": {\"ExprName\": \"Sum\",\"Child\": "
-      "{\"ExprName\": \"AttributeReference\",\"DataType\": "
-      "\"DecimalType(12,2)\",\"ColumnName\": \"l_quantity\"}}}]}";
+      " { \"aggregateExprs\": [{\"exprName\": \"AttributeReference\",\"dataType\": "
+      "\"StringType\",\"columnName\": \"l_returnflag\"},{\"exprName\": "
+      "\"AttributeReference\",\"dataType\": \"StringType\",\"columnName\": "
+      "\"l_linestatus\"},{\"aliasName\": \"sum_qty\",\"exprName\": "
+      "\"RootAgg\",\"isDistinct\": false,\"child\": {\"exprName\": \"Sum\",\"child\": "
+      "{\"exprName\": \"AttributeReference\",\"dataType\": "
+      "\"DecimalType(12,2)\",\"columnName\": \"l_quantity\"}}}]}";
   auto exprs = ape::JsonConvertor::parseToAggExpressions(json);
-  assert(exprs.size() == 3);
-  for (auto expr : exprs) {
-    std::static_pointer_cast<ape::WithResultExpression>(expr)->getResult();
-  }
-}
-
-int main() {
-  case1();
-  case2();
-  return 0;
+  EXPECT_EQ(exprs.size(), 3);
 }
