@@ -98,7 +98,10 @@ void PlasmaCacheManager::setCacheInfoToRedis() {
         std::string member = buff;
         scores.insert({member, range.offset});
       }
-      redis_->zadd(file_path_, scores.begin(), scores.end());
+
+      if (scores.size() > 0) {
+        redis_->zadd(file_path_, scores.begin(), scores.end());
+      }
 
       cache_hit_count_ = 0;
       cache_miss_count_ = 0;
