@@ -30,8 +30,9 @@ class FilterExpression : public Expression {
  public:
   explicit FilterExpression(std::string type_);
   virtual void Execute() {}
-  virtual int ExecuteWithParam(int batchSize, std::vector<int64_t> dataBuffers,
-                               std::vector<int64_t> nullBuffers, char* outBuffers) {
+  virtual int ExecuteWithParam(int batchSize, const std::vector<int64_t>& dataBuffers,
+                               const std::vector<int64_t>& nullBuffers,
+                               char* outBuffers) {
     return 0;
   }
   void setSchema(std::vector<Schema> schema_) {}
@@ -42,8 +43,8 @@ class RootFilterExpression : public FilterExpression {
  public:
   RootFilterExpression(std::string type_, std::shared_ptr<FilterExpression> child_);
   void Execute() {}
-  int ExecuteWithParam(int batchSize, std::vector<int64_t> dataBuffers,
-                       std::vector<int64_t> nullBuffers, char* outBuffers);
+  int ExecuteWithParam(int batchSize, const std::vector<int64_t>& dataBuffers,
+                       const std::vector<int64_t>& nullBuffers, char* outBuffers);
   ~RootFilterExpression();
   void setSchema(std::vector<Schema> schema_) {
     schema = schema_;
@@ -58,8 +59,8 @@ class NotFilterExpression : public FilterExpression {
  public:
   NotFilterExpression(std::string type_, std::shared_ptr<Expression> child_);
   void Execute() {}
-  int ExecuteWithParam(int batchSize, std::vector<int64_t> dataBuffers,
-                       std::vector<int64_t> nullBuffers, char* outBuffers);
+  int ExecuteWithParam(int batchSize, const std::vector<int64_t>& dataBuffers,
+                       const std::vector<int64_t>& nullBuffers, char* outBuffers);
   ~NotFilterExpression();
   void setSchema(std::vector<Schema> schema_) {
     schema = schema_;
@@ -76,8 +77,8 @@ class BinaryFilterExpression : public FilterExpression {
   BinaryFilterExpression(std::string type_, std::shared_ptr<Expression> left_,
                          std::shared_ptr<Expression> right_);
   void Execute() {}
-  int ExecuteWithParam(int batchSize, std::vector<int64_t> dataBuffers,
-                       std::vector<int64_t> nullBuffers, char* outBuffers);
+  int ExecuteWithParam(int batchSize, const std::vector<int64_t>& dataBuffers,
+                       const std::vector<int64_t>& nullBuffers, char* outBuffers);
   ~BinaryFilterExpression();
   void setSchema(std::vector<Schema> schema_) {
     schema = schema_;
@@ -111,8 +112,8 @@ class TypedUnaryFilterExpression : public UnaryFilterExpression {
  public:
   TypedUnaryFilterExpression(std::string type_, std::string columnName_, T value_);
   void Execute() {}
-  int ExecuteWithParam(int batchSize, std::vector<int64_t> dataBuffers,
-                       std::vector<int64_t> nullBuffers, char* outBuffers);
+  int ExecuteWithParam(int batchSize, const std::vector<int64_t>& dataBuffers,
+                       const std::vector<int64_t>& nullBuffers, char* outBuffers);
   ~TypedUnaryFilterExpression();
   void setSchema(std::vector<Schema> schema_);
 
@@ -127,8 +128,8 @@ class StringFilterExpression : public UnaryFilterExpression {
   StringFilterExpression(std::string type_, std::string columnName_, std::string value_);
   ~StringFilterExpression() {}
   void setSchema(std::vector<Schema> schema_);
-  int ExecuteWithParam(int batchSize, std::vector<int64_t> dataBuffers,
-                       std::vector<int64_t> nullBuffers, char* outBuffers) = 0;
+  int ExecuteWithParam(int batchSize, const std::vector<int64_t>& dataBuffers,
+                       const std::vector<int64_t>& nullBuffers, char* outBuffers) = 0;
   std::string getColumnName();
 
  protected:
@@ -143,8 +144,8 @@ class StartWithFilterExpression : public StringFilterExpression {
   StartWithFilterExpression(std::string type_, std::string columnName_,
                             std::string value_)
       : StringFilterExpression(type_, columnName_, value_) {}
-  int ExecuteWithParam(int batchSize, std::vector<int64_t> dataBuffers,
-                       std::vector<int64_t> nullBuffers, char* outBuffers);
+  int ExecuteWithParam(int batchSize, const std::vector<int64_t>& dataBuffers,
+                       const std::vector<int64_t>& nullBuffers, char* outBuffers);
   ~StartWithFilterExpression() {}
 };
 
@@ -152,8 +153,8 @@ class EndWithFilterExpression : public StringFilterExpression {
  public:
   EndWithFilterExpression(std::string type_, std::string columnName_, std::string value_)
       : StringFilterExpression(type_, columnName_, value_) {}
-  int ExecuteWithParam(int batchSize, std::vector<int64_t> dataBuffers,
-                       std::vector<int64_t> nullBuffers, char* outBuffers);
+  int ExecuteWithParam(int batchSize, const std::vector<int64_t>& dataBuffers,
+                       const std::vector<int64_t>& nullBuffers, char* outBuffers);
   ~EndWithFilterExpression() {}
 };
 
@@ -161,8 +162,8 @@ class ContainsFilterExpression : public StringFilterExpression {
  public:
   ContainsFilterExpression(std::string type_, std::string columnName_, std::string value_)
       : StringFilterExpression(type_, columnName_, value_) {}
-  int ExecuteWithParam(int batchSize, std::vector<int64_t> dataBuffers,
-                       std::vector<int64_t> nullBuffers, char* outBuffers);
+  int ExecuteWithParam(int batchSize, const std::vector<int64_t>& dataBuffers,
+                       const std::vector<int64_t>& nullBuffers, char* outBuffers);
   ~ContainsFilterExpression() {}
 };
 

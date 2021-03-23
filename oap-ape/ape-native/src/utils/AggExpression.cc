@@ -41,8 +41,9 @@ void AttributeReferenceExpression::setSchema(std::vector<Schema> schema_) {
   columnIndex = pos;
 }
 
-int RootAggExpression::ExecuteWithParam(int batchSize, std::vector<int64_t> dataBuffers,
-                                        std::vector<int64_t> nullBuffers,
+int RootAggExpression::ExecuteWithParam(int batchSize,
+                                        const std::vector<int64_t>& dataBuffers,
+                                        const std::vector<int64_t>& nullBuffers,
                                         char* outBuffers) {
   auto start1 = std::chrono::steady_clock::now();
   child->ExecuteWithParam(batchSize, dataBuffers, nullBuffers, outBuffers);
@@ -55,25 +56,26 @@ int RootAggExpression::ExecuteWithParam(int batchSize, std::vector<int64_t> data
   return 0;
 }
 
-int AggExpression::ExecuteWithParam(int batchSize, std::vector<int64_t> dataBuffers,
-                                    std::vector<int64_t> nullBuffers, char* outBuffers) {
+int AggExpression::ExecuteWithParam(int batchSize,
+                                    const std::vector<int64_t>& dataBuffers,
+                                    const std::vector<int64_t>& nullBuffers,
+                                    char* outBuffers) {
   child->ExecuteWithParam(batchSize, dataBuffers, nullBuffers, outBuffers);
   return 0;
 }
 
 int ArithmeticExpression::ExecuteWithParam(int batchSize,
-                                           std::vector<int64_t> dataBuffers,
-                                           std::vector<int64_t> nullBuffers,
+                                           const std::vector<int64_t>& dataBuffers,
+                                           const std::vector<int64_t>& nullBuffers,
                                            char* outBuffers) {
   leftChild->ExecuteWithParam(batchSize, dataBuffers, nullBuffers, outBuffers);
   rightChild->ExecuteWithParam(batchSize, dataBuffers, nullBuffers, outBuffers);
   return 0;
 }
 
-int AttributeReferenceExpression::ExecuteWithParam(int batchSize,
-                                                   std::vector<int64_t> dataBuffers,
-                                                   std::vector<int64_t> nullBuffers,
-                                                   char* outBuffers) {
+int AttributeReferenceExpression::ExecuteWithParam(
+    int batchSize, const std::vector<int64_t>& dataBuffers,
+    const std::vector<int64_t>& nullBuffers, char* outBuffers) {
   int64_t dataPtr = dataBuffers[columnIndex];
   int64_t nullPtr = nullBuffers[columnIndex];
   if (isDecimalType(dataType)) {
