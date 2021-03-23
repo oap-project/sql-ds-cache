@@ -29,7 +29,7 @@ class Expression {
  private:
  protected:
   std::string type;
-  std::vector<Schema> schema;
+  std::shared_ptr<std::vector<Schema>> schema;
 
  public:
   std::string getType() { return type; }
@@ -39,6 +39,7 @@ class Expression {
                                std::vector<int8_t>& outBuffers) = 0;
   Expression() {}
   virtual ~Expression() = default;
-  virtual void setSchema(std::vector<Schema> schema_) {}
+  // both filterExpression and aggExpression will use it, so make it a pointer.
+  virtual void setSchema(std::shared_ptr<std::vector<Schema>> schema_) {}
 };
 }  // namespace ape

@@ -35,7 +35,7 @@ class FilterExpression : public Expression {
                                std::vector<int8_t>& outBuffers) {
     return 0;
   }
-  void setSchema(std::vector<Schema> schema_) {}
+  void setSchema(std::shared_ptr<std::vector<Schema>> schema_) {}
   ~FilterExpression();
 };
 
@@ -47,7 +47,7 @@ class RootFilterExpression : public FilterExpression {
                        const std::vector<int64_t>& nullBuffers,
                        std::vector<int8_t>& outBuffers);
   ~RootFilterExpression();
-  void setSchema(std::vector<Schema> schema_) {
+  void setSchema(std::shared_ptr<std::vector<Schema>> schema_) {
     schema = schema_;
     child->setSchema(schema);
   }
@@ -64,7 +64,7 @@ class NotFilterExpression : public FilterExpression {
                        const std::vector<int64_t>& nullBuffers,
                        std::vector<int8_t>& outBuffers);
   ~NotFilterExpression();
-  void setSchema(std::vector<Schema> schema_) {
+  void setSchema(std::shared_ptr<std::vector<Schema>> schema_) {
     schema = schema_;
     child->setSchema(schema);
   }
@@ -83,7 +83,7 @@ class BinaryFilterExpression : public FilterExpression {
                        const std::vector<int64_t>& nullBuffers,
                        std::vector<int8_t>& outBuffers);
   ~BinaryFilterExpression();
-  void setSchema(std::vector<Schema> schema_) {
+  void setSchema(std::shared_ptr<std::vector<Schema>> schema_) {
     schema = schema_;
     left->setSchema(schema);
     right->setSchema(schema);
@@ -119,7 +119,7 @@ class TypedUnaryFilterExpression : public UnaryFilterExpression {
                        const std::vector<int64_t>& nullBuffers,
                        std::vector<int8_t>& outBuffers);
   ~TypedUnaryFilterExpression();
-  void setSchema(std::vector<Schema> schema_);
+  void setSchema(std::shared_ptr<std::vector<Schema>> schema_);
 
  private:
   std::shared_ptr<UnaryFilter<T>> filter;
@@ -131,7 +131,7 @@ class StringFilterExpression : public UnaryFilterExpression {
  public:
   StringFilterExpression(std::string type_, std::string columnName_, std::string value_);
   ~StringFilterExpression() {}
-  void setSchema(std::vector<Schema> schema_);
+  void setSchema(std::shared_ptr<std::vector<Schema>> schema_);
   int ExecuteWithParam(int batchSize, const std::vector<int64_t>& dataBuffers,
                        const std::vector<int64_t>& nullBuffers,
                        std::vector<int8_t>& outBuffers) = 0;

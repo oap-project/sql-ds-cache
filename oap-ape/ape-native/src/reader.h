@@ -91,7 +91,7 @@ class Reader {
 
   std::vector<int> requiredColumnIndex;
   std::vector<std::string> requiredColumnNames;
-  std::vector<Schema> schema;
+  std::shared_ptr<std::vector<Schema>> schema = std::make_shared<std::vector<Schema>>();
   std::vector<std::shared_ptr<parquet::ColumnReader>> columnReaders;
   std::vector<int> requiredRowGroupId;
 

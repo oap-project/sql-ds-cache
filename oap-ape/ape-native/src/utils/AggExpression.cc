@@ -34,10 +34,11 @@ class finder {
   const std::string str;
 };
 
-void AttributeReferenceExpression::setSchema(std::vector<Schema> schema_) {
+void AttributeReferenceExpression::setSchema(
+    std::shared_ptr<std::vector<Schema>> schema_) {
   schema = schema_;
   ptrdiff_t pos = std::distance(
-      schema.begin(), std::find_if(schema.begin(), schema.end(), finder(columnName)));
+      schema->begin(), std::find_if(schema->begin(), schema->end(), finder(columnName)));
   columnIndex = pos;
 }
 
@@ -81,7 +82,7 @@ int AttributeReferenceExpression::ExecuteWithParam(
   if (isDecimalType(dataType)) {
     int precision, scale;
     getPrecisionAndScaleFromDecimalType(dataType, precision, scale);
-    parquet::Type::type columnType = schema[columnIndex].getColType();
+    parquet::Type::type columnType = (*schema)[columnIndex].getColType();
     result.clear();
     if (result.capacity() < batchSize) {
       result.reserve(batchSize);
@@ -93,7 +94,7 @@ int AttributeReferenceExpression::ExecuteWithParam(
       DecimalConvertor::ConvertIntegerToDecimal128<parquet::Int32Type>(
           (const uint8_t*)(dataPtr), batchSize, precision, scale, result);
     } else if (columnType == parquet::Type::FIXED_LEN_BYTE_ARRAY) {
-      int typeLength = schema[columnIndex].getTypeLength();
+      int typeLength = (*schema)[columnIndex].getTypeLength();
       DecimalConvertor::ConvertFixLengthByteArrayToDecimal128(
           (const uint8_t*)(dataPtr), batchSize, typeLength, precision, scale, result);
     } else if (columnType == parquet::Type::BYTE_ARRAY) {
