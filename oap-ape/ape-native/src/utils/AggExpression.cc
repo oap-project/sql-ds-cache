@@ -44,7 +44,7 @@ void AttributeReferenceExpression::setSchema(std::vector<Schema> schema_) {
 int RootAggExpression::ExecuteWithParam(int batchSize,
                                         const std::vector<int64_t>& dataBuffers,
                                         const std::vector<int64_t>& nullBuffers,
-                                        char* outBuffers) {
+                                        std::vector<int8_t>& outBuffers) {
   auto start1 = std::chrono::steady_clock::now();
   child->ExecuteWithParam(batchSize, dataBuffers, nullBuffers, outBuffers);
   auto end1 = std::chrono::steady_clock::now();
@@ -59,7 +59,7 @@ int RootAggExpression::ExecuteWithParam(int batchSize,
 int AggExpression::ExecuteWithParam(int batchSize,
                                     const std::vector<int64_t>& dataBuffers,
                                     const std::vector<int64_t>& nullBuffers,
-                                    char* outBuffers) {
+                                    std::vector<int8_t>& outBuffers) {
   child->ExecuteWithParam(batchSize, dataBuffers, nullBuffers, outBuffers);
   return 0;
 }
@@ -67,7 +67,7 @@ int AggExpression::ExecuteWithParam(int batchSize,
 int ArithmeticExpression::ExecuteWithParam(int batchSize,
                                            const std::vector<int64_t>& dataBuffers,
                                            const std::vector<int64_t>& nullBuffers,
-                                           char* outBuffers) {
+                                           std::vector<int8_t>& outBuffers) {
   leftChild->ExecuteWithParam(batchSize, dataBuffers, nullBuffers, outBuffers);
   rightChild->ExecuteWithParam(batchSize, dataBuffers, nullBuffers, outBuffers);
   return 0;
@@ -75,7 +75,7 @@ int ArithmeticExpression::ExecuteWithParam(int batchSize,
 
 int AttributeReferenceExpression::ExecuteWithParam(
     int batchSize, const std::vector<int64_t>& dataBuffers,
-    const std::vector<int64_t>& nullBuffers, char* outBuffers) {
+    const std::vector<int64_t>& nullBuffers, std::vector<int8_t>& outBuffers) {
   int64_t dataPtr = dataBuffers[columnIndex];
   int64_t nullPtr = nullBuffers[columnIndex];
   if (isDecimalType(dataType)) {

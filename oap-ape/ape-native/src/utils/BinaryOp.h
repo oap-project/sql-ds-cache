@@ -18,11 +18,13 @@
 namespace ape {
 class BinaryOp {
  public:
-  virtual void execute(int batchSize, const char* left, const char* right, char* out) {}
+  virtual void execute(int batchSize, const std::vector<int8_t>& left,
+                       const std::vector<int8_t>& right, std::vector<int8_t>& out) {}
 };
 
 class And : public BinaryOp {
-  void execute(int batchSize, const char* left, const char* right, char* out) {
+  void execute(int batchSize, const std::vector<int8_t>& left,
+               const std::vector<int8_t>& right, std::vector<int8_t>& out) {
     for (int i = 0; i < batchSize; i++) {
       out[i] = left[i] & right[i];
     }
@@ -30,7 +32,8 @@ class And : public BinaryOp {
 };
 
 class Or : public BinaryOp {
-  void execute(int batchSize, const char* left, const char* right, char* out) {
+  void execute(int batchSize, const std::vector<int8_t>& left,
+               const std::vector<int8_t>& right, std::vector<int8_t>& out) {
     for (int i = 0; i < batchSize; i++) {
       out[i] = left[i] | right[i];
     }

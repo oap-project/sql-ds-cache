@@ -315,8 +315,7 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
   if (filterExpression) {
     auto start = std::chrono::steady_clock::now();
     std::vector<int8_t> tmp(0);
-    rowsRet =
-        filterExpression->ExecuteWithParam(rowsToRead, buffersPtr, nullsPtr, tmp);
+    rowsRet = filterExpression->ExecuteWithParam(rowsToRead, buffersPtr, nullsPtr, tmp);
     time += std::chrono::steady_clock::now() - start;
   }
 
@@ -325,7 +324,7 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
     for (int i = 0; i < aggExprs.size(); i++) {
       auto agg = aggExprs[i];
       if (typeid(*agg) == typeid(RootAggExpression)) {
-            std::vector<int8_t> tmp(0);
+        std::vector<int8_t> tmp(0);
         rowsRet = agg->ExecuteWithParam(rowsToRead, buffersPtr, nullsPtr, tmp);
         auto result = std::dynamic_pointer_cast<RootAggExpression>(agg)->getResult();
         if (result.size() == 1) {

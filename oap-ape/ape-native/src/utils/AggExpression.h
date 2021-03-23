@@ -49,7 +49,7 @@ static int getPrecisionAndScaleFromDecimalType(std::string& decimalType, int& pr
 class WithResultExpression : public Expression {
  public:
   int ExecuteWithParam(int batchSize, const std::vector<int64_t>& dataBuffers,
-                       const std::vector<int64_t>& nullBuffers, char* outBuffers) {
+                       const std::vector<int64_t>& nullBuffers, std::vector<int8_t>& outBuffers) {
     return 0;
   }
   void Execute() {}
@@ -84,7 +84,7 @@ class RootAggExpression : public WithResultExpression {
   std::shared_ptr<Expression> getChild() { return child; }
 
   int ExecuteWithParam(int batchSize, const std::vector<int64_t>& dataBuffers,
-                       const std::vector<int64_t>& nullBuffers, char* outBuffers);
+                       const std::vector<int64_t>& nullBuffers, std::vector<int8_t>& outBuffers);
 
   void setSchema(std::vector<Schema> schema_) {
     schema = schema_;
@@ -107,7 +107,7 @@ class AggExpression : public WithResultExpression {
   std::shared_ptr<WithResultExpression> getChild() { return child; }
 
   int ExecuteWithParam(int batchSize, const std::vector<int64_t>& dataBuffers,
-                       const std::vector<int64_t>& nullBuffers, char* outBuffers);
+                       const std::vector<int64_t>& nullBuffers, std::vector<int8_t>& outBuffers);
 
   void setSchema(std::vector<Schema> schema_) {
     schema = schema_;
@@ -208,7 +208,7 @@ class ArithmeticExpression : public WithResultExpression {
   }
 
   int ExecuteWithParam(int batchSize, const std::vector<int64_t>& dataBuffers,
-                       const std::vector<int64_t>& nullBuffers, char* outBuffers);
+                       const std::vector<int64_t>& nullBuffers, std::vector<int8_t>& outBuffers);
 
  protected:
   std::shared_ptr<WithResultExpression> leftChild;
@@ -394,7 +394,7 @@ class AttributeReferenceExpression : public WithResultExpression {
   void setSchema(std::vector<Schema> schema_);
 
   int ExecuteWithParam(int batchSize, const std::vector<int64_t>& dataBuffers,
-                       const std::vector<int64_t>& nullBuffers, char* outBuffers);
+                       const std::vector<int64_t>& nullBuffers, std::vector<int8_t>& outBuffers);
 
  private:
   ApeDecimal128Vector result;
