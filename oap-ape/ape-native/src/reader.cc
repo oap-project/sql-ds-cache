@@ -170,7 +170,6 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
     ARROW_LOG(DEBUG) << "use extra agg buffers count: " << aggBufferCount;
 
     buffersPtr.resize(initRequiredColumnCount + filterBufferCount + aggBufferCount);
-    // new int64_t[initRequiredColumnCount + filterBufferCount + aggBufferCount];
     nullsPtr.resize(initRequiredColumnCount + filterBufferCount + aggBufferCount);
 
     for (int i = 0; i < initRequiredColumnCount; i++) {
