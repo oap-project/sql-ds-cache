@@ -338,11 +338,6 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
     time += std::chrono::steady_clock::now() - start;
   }
 
-  // if (filterBufferCount > 0 || aggBufferCount > 0) {
-  //   delete[] buffersPtr;
-  //   delete[] nullsPtr;
-  // }
-
   ARROW_LOG(DEBUG) << "ret rows " << rowsRet;
   return rowsRet;
 }
