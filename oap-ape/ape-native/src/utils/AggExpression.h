@@ -178,13 +178,14 @@ class Avg : public AggExpression {
   ApeDecimal128Vector getResult() override {
     auto tmp = child->getResult();
     arrow::BasicDecimal128 sum;
+    arrow::BasicDecimal128 avg;
     for (auto e : tmp) {
       sum += e->value();
     }
-    auto v1 = std::make_shared<ApeDecimal128>(sum, tmp[0]->precision(), tmp[0]->scale());
-    auto v2 = std::make_shared<ApeDecimal128>(tmp.size());
-
-    return {v1, v2};
+    if (tmp.size()) {
+      avg = sum / tmp.size();
+    }
+    return {std::make_shared<ApeDecimal128>(avg, tmp[0]->precision(), tmp[0]->scale())};
   }
 };
 
