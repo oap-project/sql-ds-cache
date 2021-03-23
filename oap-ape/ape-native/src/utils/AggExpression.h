@@ -23,7 +23,7 @@
 #include "src/utils/ApeDecimal.h"
 #include "src/utils/DecimalConvertor.h"
 #include "src/utils/DecimalUtil.h"
-#include "src/utils/expression.h"
+#include "src/utils/Expression.h"
 
 namespace ape {
 
@@ -48,8 +48,8 @@ static int getPrecisionAndScaleFromDecimalType(std::string& decimalType, int& pr
 
 class WithResultExpression : public Expression {
  public:
-  int ExecuteWithParam(int batchSize, int64_t* dataBuffers, int64_t* nullBuffers,
-                       char* outBuffers) {
+  int ExecuteWithParam(int batchSize, std::vector<int64_t> dataBuffers,
+                       std::vector<int64_t> nullBuffers, char* outBuffers) {
     return 0;
   }
   void Execute() {}
@@ -83,8 +83,8 @@ class RootAggExpression : public WithResultExpression {
   }
   std::shared_ptr<Expression> getChild() { return child; }
 
-  int ExecuteWithParam(int batchSize, int64_t* dataBuffers, int64_t* nullBuffers,
-                       char* outBuffers);
+  int ExecuteWithParam(int batchSize, std::vector<int64_t> dataBuffers,
+                       std::vector<int64_t> nullBuffers, char* outBuffers);
 
   void setSchema(std::vector<Schema> schema_) {
     schema = schema_;
@@ -106,8 +106,8 @@ class AggExpression : public WithResultExpression {
   void setChild(std::shared_ptr<WithResultExpression> child_) { child = child_; }
   std::shared_ptr<WithResultExpression> getChild() { return child; }
 
-  int ExecuteWithParam(int batchSize, int64_t* dataBuffers, int64_t* nullBuffers,
-                       char* outBuffers);
+  int ExecuteWithParam(int batchSize, std::vector<int64_t> dataBuffers,
+                       std::vector<int64_t> nullBuffers, char* outBuffers);
 
   void setSchema(std::vector<Schema> schema_) {
     schema = schema_;
@@ -175,14 +175,13 @@ class Avg : public AggExpression {
   ApeDecimal128Vector getResult() override {
     auto tmp = child->getResult();
     arrow::BasicDecimal128 sum;
-    arrow::BasicDecimal128 avg;
     for (auto e : tmp) {
       sum += e->value();
     }
-    if (tmp.size()) {
-      avg = sum / tmp.size();
-    }
-    return {std::make_shared<ApeDecimal128>(avg, tmp[0]->precision(), tmp[0]->scale())};
+    auto v1 = std::make_shared<ApeDecimal128>(sum, tmp[0]->precision(), tmp[0]->scale());
+    auto v2 = std::make_shared<ApeDecimal128>(tmp.size());
+
+    return {v1, v2};
   }
 };
 
@@ -208,8 +207,8 @@ class ArithmeticExpression : public WithResultExpression {
     rightChild->setSchema(schema);
   }
 
-  int ExecuteWithParam(int batchSize, int64_t* dataBuffers, int64_t* nullBuffers,
-                       char* outBuffers);
+  int ExecuteWithParam(int batchSize, std::vector<int64_t> dataBuffers,
+                       std::vector<int64_t> nullBuffers, char* outBuffers);
 
  protected:
   std::shared_ptr<WithResultExpression> leftChild;
@@ -394,8 +393,8 @@ class AttributeReferenceExpression : public WithResultExpression {
 
   void setSchema(std::vector<Schema> schema_);
 
-  int ExecuteWithParam(int batchSize, int64_t* dataBuffers, int64_t* nullBuffers,
-                       char* outBuffers);
+  int ExecuteWithParam(int batchSize, std::vector<int64_t> dataBuffers,
+                       std::vector<int64_t> nullBuffers, char* outBuffers);
 
  private:
   ApeDecimal128Vector result;

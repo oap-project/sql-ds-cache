@@ -20,7 +20,7 @@
 #include <arrow/util/logging.h>
 #include <parquet/types.h>
 
-#include "src/utils/type.h"
+#include "src/utils/Type.h"
 
 namespace ape {
 

@@ -151,8 +151,8 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
   }
   checkEndOfRowGroup();
 
-  int64_t* buffersPtr = buffersPtr_;
-  int64_t* nullsPtr = nullsPtr_;
+  std::vector<int64_t> buffersPtr;
+  std::vector<int64_t> nullsPtr;
 
   // allocate extra memory for filtered columns if needed
   if (filterExpression) {
@@ -169,9 +169,9 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
     ARROW_LOG(DEBUG) << "use extra filter buffers count: " << filterBufferCount;
     ARROW_LOG(DEBUG) << "use extra agg buffers count: " << aggBufferCount;
 
-    buffersPtr =
-        new int64_t[initRequiredColumnCount + filterBufferCount + aggBufferCount];
-    nullsPtr = new int64_t[initRequiredColumnCount + filterBufferCount + aggBufferCount];
+    buffersPtr.resize(initRequiredColumnCount + filterBufferCount + aggBufferCount);
+    // new int64_t[initRequiredColumnCount + filterBufferCount + aggBufferCount];
+    nullsPtr.resize(initRequiredColumnCount + filterBufferCount + aggBufferCount);
 
     for (int i = 0; i < initRequiredColumnCount; i++) {
       buffersPtr[i] = buffersPtr_[i];
@@ -337,10 +337,10 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
   delete[] repLevel;
   delete[] nullBitMap;
 
-  if (filterBufferCount > 0 || aggBufferCount > 0) {
-    delete[] buffersPtr;
-    delete[] nullsPtr;
-  }
+  // if (filterBufferCount > 0 || aggBufferCount > 0) {
+  //   delete[] buffersPtr;
+  //   delete[] nullsPtr;
+  // }
 
   ARROW_LOG(DEBUG) << "ret rows " << rowsRet;
   return rowsRet;

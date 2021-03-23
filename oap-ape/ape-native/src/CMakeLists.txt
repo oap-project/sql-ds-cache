@@ -59,7 +59,7 @@ if(NOT REDIS_PLUS_PLUS_LIB)
   message(FATAL_ERROR "redis++ library not found")
 endif()
 
-set(PARSE_SRC utils/FilterExpression.cc utils/jsonConvertor.cc utils/type.cc utils/UnaryFilter.cc)
+set(PARSE_SRC utils/FilterExpression.cc utils/JsonConvertor.cc utils/Type.cc utils/UnaryFilter.cc)
 set(DECIMAL_SRC utils/DecimalUtil.cc utils/DecimalConvertor.cc)
 set(AGG_SRC utils/AggExpression.cc)
 

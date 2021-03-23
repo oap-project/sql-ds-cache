@@ -21,7 +21,7 @@
 #include <gtest/gtest.h>
 
 #include "src/utils/AggExpression.h"
-#include "src/utils/jsonConvertor.h"
+#include "src/utils/JsonConvertor.h"
 
 TEST(AggParserTest, IllegalInput) {
   std::string json = "";

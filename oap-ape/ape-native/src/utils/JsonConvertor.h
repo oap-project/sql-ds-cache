@@ -26,7 +26,7 @@
 
 #include "src/utils/AggExpression.h"
 #include "src/utils/FilterExpression.h"
-#include "src/utils/expression.h"
+#include "src/utils/Expression.h"
 
 namespace ape {
 

@@ -19,7 +19,7 @@
 #include <gtest/gtest.h>
 
 #include "src/utils/FilterExpression.h"
-#include "src/utils/jsonConvertor.h"
+#include "src/utils/JsonConvertor.h"
 
 TEST(JasonConvertorTest, ConvertValidJson) {
   std::string s =
