@@ -55,6 +55,7 @@ public class ParquetNativeRecordReaderWrapper extends RecordReader<Void, Object>
   long readTime = 0;
 
   boolean cacheEnabled = false;
+  boolean preBufferEnabled = false;
 
   private ColumnarBatch columnarBatch;
 
@@ -87,7 +88,7 @@ public class ParquetNativeRecordReaderWrapper extends RecordReader<Void, Object>
     LOG.info("filename is " + fileName + " hdfs is " + hdfsHost + " " + hdfsPort);
     LOG.info("schema is " + sparkSchema.json());
     reader = ParquetReaderJNI.init(fileName, hdfsHost, hdfsPort, sparkSchema.json(),
-            inputSplitRowGroupStartIndex, inputSplitRowGroupNum, cacheEnabled, false);
+            inputSplitRowGroupStartIndex, inputSplitRowGroupNum, cacheEnabled, preBufferEnabled);
   }
 
   public void getRequiredSplitRowGroup(ParquetInputSplit split, Configuration configuration)
@@ -121,6 +122,10 @@ public class ParquetNativeRecordReaderWrapper extends RecordReader<Void, Object>
 
   public void setCacheEnabled(boolean cacheEnabled) {
     this.cacheEnabled = cacheEnabled;
+  }
+
+  public void setPreBufferEnabled(boolean preBufferEnabled) {
+    this.preBufferEnabled = preBufferEnabled;
   }
 
   public void setFilter(FilterPredicate predicate) {

@@ -265,6 +265,7 @@ class ParquetFileFormat
     val aggPdEnabled = sqlConf.apeAggPDEnabled
     val cacheEnabled = sqlConf.apeCacheEnabled
     val redisEnabled = sqlConf.apeRedisEnabled
+    val preBufferEnabled = sqlConf.apePreBufferEnabled
     val (redisHost: String, redisPort: Int, redisPasswd: String) = if (redisEnabled) {
       (sqlConf.apeRedisHostName, sqlConf.apeRedisPort, sqlConf.apeRedisPasswd)
     } else {
@@ -339,6 +340,7 @@ class ParquetFileFormat
         // SPARK-23457 Register a task completion listener before `initialization`.
         taskContext.foreach(_.addTaskCompletionListener[Unit](_ => iter.close()))
         reader.setCacheEnabled(cacheEnabled)
+        reader.setPreBufferEnabled(preBufferEnabled)
         reader.initialize(split, hadoopAttemptContext)
         if(cacheEnabled && redisEnabled) {
           reader.setPlasmaCacheRedis(redisHost, redisPort, redisPasswd)
