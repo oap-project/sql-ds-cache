@@ -193,9 +193,9 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
 
   currentBatchSize = batchSize;
   int rowsToRead = std::min((int64_t)batchSize, totalRowsLoadedSoFar - totalRowsRead);
-  int16_t* defLevel = new int16_t[rowsToRead];
-  int16_t* repLevel = new int16_t[rowsToRead];
-  uint8_t* nullBitMap = new uint8_t[rowsToRead];
+  std::vector<int16_t> defLevel(rowsToRead);
+  std::vector<int16_t> repLevel(rowsToRead);
+  std::vector<uint8_t> nullBitMap(rowsToRead);
   ARROW_LOG(DEBUG) << "will read " << rowsToRead << " rows";
   for (int i = 0; i < columnReaders.size(); i++) {
     int64_t levelsRead = 0, valuesRead = 0, nullCount = 0;
@@ -209,8 +209,9 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
           parquet::BoolReader* boolReader =
               static_cast<parquet::BoolReader*>(columnReaders[i].get());
           tmpRows = boolReader->ReadBatchSpaced(
-              rowsToRead - rows, defLevel, repLevel, (bool*)buffersPtr[i] + rows,
-              (uint8_t*)nullBitMap, 0, &levelsRead, &valuesRead, &nullCount);
+              rowsToRead - rows, defLevel.data(), repLevel.data(),
+              (bool*)buffersPtr[i] + rows, nullBitMap.data(), 0, &levelsRead, &valuesRead,
+              &nullCount);
           break;
         }
 
@@ -218,49 +219,53 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
           parquet::Int32Reader* int32Reader =
               static_cast<parquet::Int32Reader*>(columnReaders[i].get());
           tmpRows = int32Reader->ReadBatchSpaced(
-              rowsToRead - rows, defLevel, repLevel, (int32_t*)buffersPtr[i] + rows,
-              (uint8_t*)nullBitMap, 0, &levelsRead, &valuesRead, &nullCount);
+              rowsToRead - rows, defLevel.data(), repLevel.data(),
+              (int32_t*)buffersPtr[i] + rows, nullBitMap.data(), 0, &levelsRead,
+              &valuesRead, &nullCount);
           break;
         }
         case parquet::Type::INT64: {
           parquet::Int64Reader* int64Reader =
               static_cast<parquet::Int64Reader*>(columnReaders[i].get());
           tmpRows = int64Reader->ReadBatchSpaced(
-              rowsToRead - rows, defLevel, repLevel, (int64_t*)buffersPtr[i] + rows,
-              (uint8_t*)nullBitMap, 0, &levelsRead, &valuesRead, &nullCount);
+              rowsToRead - rows, defLevel.data(), repLevel.data(),
+              (int64_t*)buffersPtr[i] + rows, nullBitMap.data(), 0, &levelsRead,
+              &valuesRead, &nullCount);
           break;
         }
         case parquet::Type::INT96: {
           parquet::Int96Reader* int96Reader =
               static_cast<parquet::Int96Reader*>(columnReaders[i].get());
-          tmpRows = int96Reader->ReadBatchSpaced(rowsToRead - rows, defLevel, repLevel,
-                                                 (parquet::Int96*)buffersPtr[i] + rows,
-                                                 (uint8_t*)nullBitMap, 0, &levelsRead,
-                                                 &valuesRead, &nullCount);
+          tmpRows = int96Reader->ReadBatchSpaced(
+              rowsToRead - rows, defLevel.data(), repLevel.data(),
+              (parquet::Int96*)buffersPtr[i] + rows, nullBitMap.data(), 0, &levelsRead,
+              &valuesRead, &nullCount);
           break;
         }
         case parquet::Type::FLOAT: {
           parquet::FloatReader* floatReader =
               static_cast<parquet::FloatReader*>(columnReaders[i].get());
           tmpRows = floatReader->ReadBatchSpaced(
-              rowsToRead - rows, defLevel, repLevel, (float*)buffersPtr[i] + rows,
-              (uint8_t*)nullBitMap, 0, &levelsRead, &valuesRead, &nullCount);
+              rowsToRead - rows, defLevel.data(), repLevel.data(),
+              (float*)buffersPtr[i] + rows, nullBitMap.data(), 0, &levelsRead,
+              &valuesRead, &nullCount);
           break;
         }
         case parquet::Type::DOUBLE: {
           parquet::DoubleReader* doubleReader =
               static_cast<parquet::DoubleReader*>(columnReaders[i].get());
           tmpRows = doubleReader->ReadBatchSpaced(
-              rowsToRead - rows, defLevel, repLevel, (double*)buffersPtr[i] + rows,
-              (uint8_t*)nullBitMap, 0, &levelsRead, &valuesRead, &nullCount);
+              rowsToRead - rows, defLevel.data(), repLevel.data(),
+              (double*)buffersPtr[i] + rows, nullBitMap.data(), 0, &levelsRead,
+              &valuesRead, &nullCount);
           break;
         }
         case parquet::Type::BYTE_ARRAY: {
           parquet::ByteArrayReader* byteArrayReader =
               static_cast<parquet::ByteArrayReader*>(columnReaders[i].get());
           tmpRows = byteArrayReader->ReadBatchSpaced(
-              rowsToRead - rows, defLevel, repLevel,
-              (parquet::ByteArray*)buffersPtr[i] + rows, (uint8_t*)nullBitMap, 0,
+              rowsToRead - rows, defLevel.data(), repLevel.data(),
+              (parquet::ByteArray*)buffersPtr[i] + rows, nullBitMap.data(), 0,
               &levelsRead, &valuesRead, &nullCount);
           parquet::ByteArray* p = (parquet::ByteArray*)buffersPtr[i] + rows;
           // we do need to read twice, buffer may be overwrite, so let's do an extra
@@ -288,8 +293,8 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
           parquet::FixedLenByteArrayReader* fixedLenByteArrayReader =
               static_cast<parquet::FixedLenByteArrayReader*>(columnReaders[i].get());
           tmpRows = fixedLenByteArrayReader->ReadBatchSpaced(
-              rowsToRead - rows, defLevel, repLevel,
-              (parquet::FixedLenByteArray*)buffersPtr[i] + rows, (uint8_t*)nullBitMap, 0,
+              rowsToRead - rows, defLevel.data(), repLevel.data(),
+              (parquet::FixedLenByteArray*)buffersPtr[i] + rows, nullBitMap.data(), 0,
               &levelsRead, &valuesRead, &nullCount);
           break;
         }
@@ -297,7 +302,7 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
           ARROW_LOG(WARNING) << "Unsupported Type!";
           break;
       }
-      convertBitMap(nullBitMap, (uint8_t*)nullsPtr[i] + rows, tmpRows);
+      convertBitMap(nullBitMap.data(), (uint8_t*)nullsPtr[i] + rows, tmpRows);
       rows += tmpRows;
     }
     assert(rowsToRead == rows);
@@ -309,8 +314,9 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
   int rowsRet = rowsToRead;
   if (filterExpression) {
     auto start = std::chrono::steady_clock::now();
+    std::vector<int8_t> tmp(0);
     rowsRet =
-        filterExpression->ExecuteWithParam(rowsToRead, buffersPtr, nullsPtr, nullptr);
+        filterExpression->ExecuteWithParam(rowsToRead, buffersPtr, nullsPtr, tmp);
     time += std::chrono::steady_clock::now() - start;
   }
 
@@ -319,7 +325,8 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
     for (int i = 0; i < aggExprs.size(); i++) {
       auto agg = aggExprs[i];
       if (typeid(*agg) == typeid(RootAggExpression)) {
-        rowsRet = agg->ExecuteWithParam(rowsToRead, buffersPtr, nullsPtr, nullptr);
+            std::vector<int8_t> tmp(0);
+        rowsRet = agg->ExecuteWithParam(rowsToRead, buffersPtr, nullsPtr, tmp);
         auto result = std::dynamic_pointer_cast<RootAggExpression>(agg)->getResult();
         if (result.size() == 1) {
           aggResults[i].push_back(result[0]);
@@ -332,10 +339,6 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
     }
     time += std::chrono::steady_clock::now() - start;
   }
-
-  delete[] defLevel;
-  delete[] repLevel;
-  delete[] nullBitMap;
 
   // if (filterBufferCount > 0 || aggBufferCount > 0) {
   //   delete[] buffersPtr;

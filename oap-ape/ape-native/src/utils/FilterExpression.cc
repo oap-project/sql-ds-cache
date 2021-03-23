@@ -53,9 +53,9 @@ RootFilterExpression::RootFilterExpression(std::string type_,
 int RootFilterExpression::ExecuteWithParam(int batchSize,
                                            const std::vector<int64_t>& dataBuffers,
                                            const std::vector<int64_t>& nullBuffers,
-                                           char* outBuffers) {
+                                           std::vector<int8_t>& outBuffers) {
   // root node doesn't need outbuffer
-  char* childBuffer = new char[batchSize];
+  std::vector<int8_t> childBuffer(batchSize);
   auto start1 = std::chrono::steady_clock::now();
   child->ExecuteWithParam(batchSize, dataBuffers, nullBuffers, childBuffer);
   auto end1 = std::chrono::steady_clock::now();
@@ -92,7 +92,6 @@ int RootFilterExpression::ExecuteWithParam(int batchSize,
                           1000
                    << " ms";
 
-  delete[] childBuffer;
   return hitIndex;
 }
 
@@ -110,9 +109,9 @@ NotFilterExpression::~NotFilterExpression() {}
 int NotFilterExpression::ExecuteWithParam(int batchSize,
                                           const std::vector<int64_t>& dataBuffers,
                                           const std::vector<int64_t>& nullBuffers,
-                                          char* outBuffers) {
-  std::memset(outBuffers, 0, batchSize);
-  char* childBuffer = new char[batchSize];
+                                          std::vector<int8_t>& outBuffers) {
+  std::memset(outBuffers.data(), 0, batchSize);
+  std::vector<int8_t> childBuffer(batchSize);
   child->ExecuteWithParam(batchSize, dataBuffers, nullBuffers, childBuffer);
 
   for (int i = 0; i < batchSize; i++) {
@@ -124,7 +123,6 @@ int NotFilterExpression::ExecuteWithParam(int batchSize,
       ARROW_LOG(WARNING) << "Impossible case!";
     }
   }
-  delete[] childBuffer;
 
   return 0;
 }
@@ -149,18 +147,15 @@ BinaryFilterExpression::~BinaryFilterExpression() {}
 int BinaryFilterExpression::ExecuteWithParam(int batchSize,
                                              const std::vector<int64_t>& dataBuffers,
                                              const std::vector<int64_t>& nullBuffers,
-                                             char* outBuffers) {
+                                             std::vector<int8_t>& outBuffers) {
   // assert(outBuffers != nullptr);
-  std::memset(outBuffers, 0, batchSize);
-  char* leftBuffer = new char[batchSize];
-  char* rightBuffer = new char[batchSize];
+  std::memset(outBuffers.data(), 0, batchSize);
+  std::vector<int8_t> leftBuffer(batchSize);
+  std::vector<int8_t> rightBuffer(batchSize);
   left->ExecuteWithParam(batchSize, dataBuffers, nullBuffers, leftBuffer);
   right->ExecuteWithParam(batchSize, dataBuffers, nullBuffers, rightBuffer);
 
   op->execute(batchSize, leftBuffer, rightBuffer, outBuffers);
-
-  delete[] leftBuffer;
-  delete[] rightBuffer;
 
   return 0;
 }
@@ -185,8 +180,8 @@ std::string StringFilterExpression::getColumnName() { return columnName; }
 int StartWithFilterExpression::ExecuteWithParam(int batchSize,
                                                 const std::vector<int64_t>& dataBuffers,
                                                 const std::vector<int64_t>& nullBuffers,
-                                                char* outBuffers) {
-  std::memset(outBuffers, 0, batchSize);
+                                                std::vector<int8_t>& outBuffers) {
+  std::memset(outBuffers.data(), 0, batchSize);
   int64_t dataPtr = dataBuffers[columnIndex];
   parquet::ByteArray* data = (parquet::ByteArray*)dataPtr;
   int len = value.length();
@@ -203,8 +198,8 @@ int StartWithFilterExpression::ExecuteWithParam(int batchSize,
 int EndWithFilterExpression::ExecuteWithParam(int batchSize,
                                               const std::vector<int64_t>& dataBuffers,
                                               const std::vector<int64_t>& nullBuffers,
-                                              char* outBuffers) {
-  std::memset(outBuffers, 0, batchSize);
+                                              std::vector<int8_t>& outBuffers) {
+  std::memset(outBuffers.data(), 0, batchSize);
   int64_t dataPtr = dataBuffers[columnIndex];
   parquet::ByteArray* data = (parquet::ByteArray*)dataPtr;
   int len = value.length();
@@ -221,8 +216,8 @@ int EndWithFilterExpression::ExecuteWithParam(int batchSize,
 int ContainsFilterExpression::ExecuteWithParam(int batchSize,
                                                const std::vector<int64_t>& dataBuffers,
                                                const std::vector<int64_t>& nullBuffers,
-                                               char* outBuffers) {
-  std::memset(outBuffers, 0, batchSize);
+                                               std::vector<int8_t>& outBuffers) {
+  std::memset(outBuffers.data(), 0, batchSize);
   int64_t dataPtr = dataBuffers[columnIndex];
   parquet::ByteArray* data = (parquet::ByteArray*)dataPtr;
   int len = value.length();
@@ -262,8 +257,8 @@ TypedUnaryFilterExpression<T>::TypedUnaryFilterExpression(std::string type_,
 template <>
 int TypedUnaryFilterExpression<NullStruct>::ExecuteWithParam(
     int batchSize, const std::vector<int64_t>& dataBuffers,
-    const std::vector<int64_t>& nullBuffers, char* outBuffers) {
-  std::memset(outBuffers, 0, batchSize);
+    const std::vector<int64_t>& nullBuffers, std::vector<int8_t>& outBuffers) {
+  std::memset(outBuffers.data(), 0, batchSize);
   int64_t nullPtr = nullBuffers[columnIndex];
   char* ptr = (char*)nullPtr;
   NullStruct nullSturct;
@@ -275,8 +270,8 @@ int TypedUnaryFilterExpression<NullStruct>::ExecuteWithParam(
 template <typename T>
 int TypedUnaryFilterExpression<T>::ExecuteWithParam(
     int batchSize, const std::vector<int64_t>& dataBuffers,
-    const std::vector<int64_t>& nullBuffers, char* outBuffers) {
-  std::memset(outBuffers, 0, batchSize);
+    const std::vector<int64_t>& nullBuffers, std::vector<int8_t>& outBuffers) {
+  std::memset(outBuffers.data(), 0, batchSize);
   int64_t dataPtr = dataBuffers[columnIndex];
   int64_t nullPtr = nullBuffers[columnIndex];
   T* ptr = (T*)dataPtr;
