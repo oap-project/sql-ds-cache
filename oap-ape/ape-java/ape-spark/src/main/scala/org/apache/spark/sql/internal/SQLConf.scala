@@ -2608,6 +2608,11 @@ object SQLConf {
       .booleanConf
       .createWithDefault(false)
 
+  val APE_PRE_BUFFER_ENABLED =
+    buildConf("spark.sql.ape.pre.buffer.enabled")
+      .booleanConf
+      .createWithDefault(false)
+
   /**
    * Holds information about keys that have been deprecated.
    *
@@ -2911,6 +2916,7 @@ class SQLConf extends Serializable with Logging {
   def apeRedisPort: Int = getConf(APE_REDIS_PORT)
   def apeRedisPasswd: String = getConf(APE_REDIS_PASSWORD)
   def apeAggPDEnabled: Boolean = getConf(APE_AGGREGATION_PUSHDOWN_ENABLED)
+  def apePreBufferEnabled: Boolean = getConf(APE_PRE_BUFFER_ENABLED)
 
   /**
    * Returns the [[Resolver]] for the current configuration, which can be used to determine if two
