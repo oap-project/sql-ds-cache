@@ -322,7 +322,7 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
     time += std::chrono::steady_clock::now() - start;
   }
 
-  if (aggExprs.size() && rowsRet > 0) {  // if rows after filter is 0, no need to do agg.
+  if (rowsRet > 0 && aggExprs.size()) {  // if rows after filter is 0, no need to do agg.
     auto start = std::chrono::steady_clock::now();
     int index = 0;
     for (int i = 0; i < aggExprs.size(); i++) {
