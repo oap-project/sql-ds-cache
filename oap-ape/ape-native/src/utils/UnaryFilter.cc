@@ -28,7 +28,7 @@
 #define NOT_SUPPORT(dataType, filterType)                                             \
   template <>                                                                         \
   void filterType<dataType>::execute(dataType* buffer, dataType value, int batchSize, \
-                                     char* out) {                                     \
+                                     std::vector<int8_t>& out) {                      \
     ARROW_LOG(WARNING) << "Not support!";                                             \
   }
 
@@ -47,7 +47,7 @@ NOT_SUPPORT(parquet::ByteArray, LtEq);
 
 template <>
 void Eq<parquet::ByteArray>::execute(parquet::ByteArray* buffer, parquet::ByteArray value,
-                                     int batchSize, char* out) {
+                                     int batchSize, std::vector<int8_t>& out) {
   int len = value.len;
   for (int i = 0; i < batchSize; i++) {
     if (buffer[i].len == len && !std::memcmp(buffer[i].ptr, value.ptr, len)) {
@@ -59,7 +59,7 @@ void Eq<parquet::ByteArray>::execute(parquet::ByteArray* buffer, parquet::ByteAr
 template <>
 void NotEq<parquet::ByteArray>::execute(parquet::ByteArray* buffer,
                                         parquet::ByteArray value, int batchSize,
-                                        char* out) {
+                                        std::vector<int8_t>& out) {
   int len = value.len;
   for (int i = 0; i < batchSize; i++) {
     if (buffer[i].len != len || std::memcmp(buffer[i].ptr, value.ptr, len)) {
@@ -70,7 +70,7 @@ void NotEq<parquet::ByteArray>::execute(parquet::ByteArray* buffer,
 
 template <>
 void Eq<NullStruct>::execute(NullStruct* buffer, NullStruct value, int batchSize,
-                             char* out) {
+                             std::vector<int8_t>& out) {
   // it's trick that we did such cast.
   char* buf = (char*)buffer;
   for (int i = 0; i < batchSize; i++) {
@@ -80,7 +80,7 @@ void Eq<NullStruct>::execute(NullStruct* buffer, NullStruct value, int batchSize
 
 template <>
 void NotEq<NullStruct>::execute(NullStruct* buffer, NullStruct value, int batchSize,
-                                char* out) {
+                                std::vector<int8_t>& out) {
   char* buf = (char*)buffer;
   for (int i = 0; i < batchSize; i++) {
     out[i] = buf[i];
@@ -90,7 +90,7 @@ void NotEq<NullStruct>::execute(NullStruct* buffer, NullStruct value, int batchS
 // impl execute.
 // TODO: add AVX/LIBXXX integration.
 template <typename T>
-void Gt<T>::execute(T* buffer, T value, int batchSize, char* out) {
+void Gt<T>::execute(T* buffer, T value, int batchSize, std::vector<int8_t>& out) {
   ARROW_LOG(DEBUG) << "gt";
 #ifdef USE_LIB_XXX
   // use XXX to evalute
@@ -104,7 +104,7 @@ void Gt<T>::execute(T* buffer, T value, int batchSize, char* out) {
 }
 
 template <typename T>
-void GtEq<T>::execute(T* buffer, T value, int batchSize, char* out) {
+void GtEq<T>::execute(T* buffer, T value, int batchSize, std::vector<int8_t>& out) {
   ARROW_LOG(DEBUG) << "gteq";
 #ifdef USE_LIB_XXX
   // use XXX to evalute
@@ -118,7 +118,7 @@ void GtEq<T>::execute(T* buffer, T value, int batchSize, char* out) {
 }
 
 template <typename T>
-void Eq<T>::execute(T* buffer, T value, int batchSize, char* out) {
+void Eq<T>::execute(T* buffer, T value, int batchSize, std::vector<int8_t>& out) {
 #ifdef USE_LIB_XXX
   // use XXX to evalute
 #elif USE_AVX
@@ -131,7 +131,7 @@ void Eq<T>::execute(T* buffer, T value, int batchSize, char* out) {
 }
 
 template <typename T>
-void NotEq<T>::execute(T* buffer, T value, int batchSize, char* out) {
+void NotEq<T>::execute(T* buffer, T value, int batchSize, std::vector<int8_t>& out) {
 #ifdef USE_LIB_XXX
   // use XXX to evalute
 #elif USE_AVX
@@ -144,7 +144,7 @@ void NotEq<T>::execute(T* buffer, T value, int batchSize, char* out) {
 }
 
 template <typename T>
-void Lt<T>::execute(T* buffer, T value, int batchSize, char* out) {
+void Lt<T>::execute(T* buffer, T value, int batchSize, std::vector<int8_t>& out) {
 #ifdef USE_LIB_XXX
   // use XXX to evalute
 #elif USE_AVX
@@ -157,7 +157,7 @@ void Lt<T>::execute(T* buffer, T value, int batchSize, char* out) {
 }
 
 template <typename T>
-void LtEq<T>::execute(T* buffer, T value, int batchSize, char* out) {
+void LtEq<T>::execute(T* buffer, T value, int batchSize, std::vector<int8_t>& out) {
 #ifdef USE_LIB_XXX
   // use XXX to evalute
 #elif USE_AVX

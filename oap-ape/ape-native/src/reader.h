@@ -31,8 +31,8 @@
 #include "utils/AggExpression.h"
 #include "utils/FilterExpression.h"
 #include "utils/PlasmaCacheManager.h"
-#include "utils/jsonConvertor.h"
-#include "utils/type.h"
+#include "utils/JsonConvertor.h"
+#include "utils/Type.h"
 
 namespace ape {
 class Reader {

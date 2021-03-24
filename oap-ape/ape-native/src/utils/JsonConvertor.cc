@@ -17,7 +17,7 @@
 
 #include <arrow/util/logging.h>
 
-#include "src/utils/jsonConvertor.h"
+#include "src/utils/JsonConvertor.h"
 
 namespace ape {
 

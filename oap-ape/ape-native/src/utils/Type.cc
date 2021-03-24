@@ -17,7 +17,7 @@
 
 #include <iostream>
 
-#include "src/utils/type.h"
+#include "src/utils/Type.h"
 
 namespace ape {
 
