@@ -114,7 +114,6 @@ public class NativeColumnVector extends ColumnVector {
       byte[] bytes = getFixedLenBinary(rowId);
       BigInteger bigInteger = new BigInteger(bytes);
       BigDecimal javaDecimal = new BigDecimal(bigInteger, scale);
-      System.err.println("precision: " + precision + " scale: " + scale);
       return Decimal.apply(javaDecimal, precision, scale);
     }
   }
