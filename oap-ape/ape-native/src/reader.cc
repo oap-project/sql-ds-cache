@@ -171,9 +171,6 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
     ARROW_LOG(DEBUG) << "use extra filter buffers count: " << filterBufferCount;
     ARROW_LOG(DEBUG) << "use extra agg buffers count: " << aggBufferCount;
 
-    ARROW_LOG(INFO) << "initRequiredColumnCount: " << initRequiredColumnCount
-                    << "filterBufferCount: " << filterBufferCount
-                    << "aggBufferCount: " << aggBufferCount;
     // when enable agg pd, initRequiredColumnCount will be 0, because init column will
     // be sum(col),
     buffersPtr.resize(initRequiredColumnCount + filterBufferCount + aggBufferCount);
@@ -334,17 +331,17 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
         std::vector<int8_t> tmp(0);
         agg->ExecuteWithParam(rowsRet, buffersPtr, nullsPtr, tmp);
         auto result = std::dynamic_pointer_cast<RootAggExpression>(agg)->getResult();
-        if (result.size() == 1) {  // for aggregation with group by,
-                                   // it could be more than 1 result row.
+        if (result.size() == 1) {
           aggResults[i].push_back(result[0]);
         } else {
           ARROW_LOG(DEBUG) << "Oops... why return " << result.size() << " results";
         }
+        // TODO: refactor. For 'avg' expression, it will return two elements, which are
+        // 'Sum' and 'Count' and 'Count' type should be int64. However, we didn't handle
+        // 'Count' expression here.
         for (int j = 0; j < result.size(); j++) {
-          int64_t count = result[j]->toInt64();
-          ARROW_LOG(INFO) << j << " res count is: " << count;
-          if (j == 1) {
-            *((int64_t*)(buffersPtr_[index])) = count;
+          if (j == 1) {  // for `count` in `avg`
+            *((int64_t*)(buffersPtr_[index])) = result[j]->toInt64();
           } else {
             result[j]->toBytes((uint8_t*)(buffersPtr_[index]));
           }

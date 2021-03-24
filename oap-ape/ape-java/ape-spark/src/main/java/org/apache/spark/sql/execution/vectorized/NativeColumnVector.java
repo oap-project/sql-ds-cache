@@ -110,12 +110,8 @@ public class NativeColumnVector extends ColumnVector {
     } else if (precision <= Decimal.MAX_LONG_DIGITS()) {
       return Decimal.createUnsafe(getLong(rowId), precision, scale);
     } else {
-      // it didn't work for now,
-      // because we didn't convert arrowDecimal128 to parquet::FixedLenByteArray
+      // convert from parquet fix length byte array to spark decimal
       byte[] bytes = getFixedLenBinary(rowId);
-      // return a Mocked value
-      // byte[] mockedBytes = new byte[16];
-      // mockedBytes[15] = 10;
       BigInteger bigInteger = new BigInteger(bytes);
       BigDecimal javaDecimal = new BigDecimal(bigInteger, scale);
       System.err.println("precision: " + precision + " scale: " + scale);
