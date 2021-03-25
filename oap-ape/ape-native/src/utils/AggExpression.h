@@ -88,7 +88,7 @@ class RootAggExpression : public WithResultExpression {
                        const std::vector<int64_t>& nullBuffers,
                        std::vector<int8_t>& outBuffers);
 
-  void setSchema(std::vector<Schema> schema_) {
+  void setSchema(std::shared_ptr<std::vector<Schema>> schema_) {
     schema = schema_;
     child->setSchema(schema);
   }
@@ -112,7 +112,7 @@ class AggExpression : public WithResultExpression {
                        const std::vector<int64_t>& nullBuffers,
                        std::vector<int8_t>& outBuffers);
 
-  void setSchema(std::vector<Schema> schema_) {
+  void setSchema(std::shared_ptr<std::vector<Schema>> schema_) {
     schema = schema_;
     child->setSchema(schema);
   }
@@ -178,14 +178,13 @@ class Avg : public AggExpression {
   ApeDecimal128Vector getResult() override {
     auto tmp = child->getResult();
     arrow::BasicDecimal128 sum;
-    arrow::BasicDecimal128 avg;
     for (auto e : tmp) {
       sum += e->value();
     }
-    if (tmp.size()) {
-      avg = sum / tmp.size();
-    }
-    return {std::make_shared<ApeDecimal128>(avg, tmp[0]->precision(), tmp[0]->scale())};
+    auto v1 = std::make_shared<ApeDecimal128>(sum, tmp[0]->precision(), tmp[0]->scale());
+    auto v2 = std::make_shared<ApeDecimal128>(tmp.size());
+
+    return {v1, v2};
   }
 };
 
@@ -205,7 +204,7 @@ class ArithmeticExpression : public WithResultExpression {
   std::shared_ptr<WithResultExpression> getLeftChild() { return leftChild; }
   std::shared_ptr<WithResultExpression> getRightChild() { return rightChild; }
 
-  void setSchema(std::vector<Schema> schema_) {
+  void setSchema(std::shared_ptr<std::vector<Schema>> schema_) {
     schema = schema_;
     leftChild->setSchema(schema);
     rightChild->setSchema(schema);
@@ -396,7 +395,7 @@ class AttributeReferenceExpression : public WithResultExpression {
     PromotePrecision = PromotePrecision_;
   }
 
-  void setSchema(std::vector<Schema> schema_);
+  void setSchema(std::shared_ptr<std::vector<Schema>> schema_);
 
   int ExecuteWithParam(int batchSize, const std::vector<int64_t>& dataBuffers,
                        const std::vector<int64_t>& nullBuffers,

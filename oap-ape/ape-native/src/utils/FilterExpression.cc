@@ -68,18 +68,19 @@ int RootFilterExpression::ExecuteWithParam(int batchSize,
   int hitIndex = 0;
   for (int i = 0; i < batchSize; i++) {
     if (childBuffer[i] == 1) {
-      for (int j = 0; j < schema.size(); j++) {
+      for (int j = 0; j < schema->size(); j++) {
         void* dataPtr = (void*)(dataBuffers[j]);
         char* nullPtr = (char*)(nullBuffers[j]);
-        std::memcpy(dataPtr + hitIndex * schema[j].getDefaultSize(),
-                    dataPtr + i * schema[j].getDefaultSize(), schema[j].getDefaultSize());
+        std::memcpy(dataPtr + hitIndex * (*schema)[j].getDefaultSize(),
+                    dataPtr + i * (*schema)[j].getDefaultSize(),
+                    (*schema)[j].getDefaultSize());
         nullPtr[hitIndex] = nullPtr[i];
       }
       hitIndex++;
     }
   }
   // we should set left to zero
-  for (int i = 0; i < schema.size(); i++) {
+  for (int i = 0; i < schema->size(); i++) {
     void* dataPtr = (void*)(dataBuffers[i]);
     char* nullPtr = (char*)(nullBuffers[i]);
     // std::memset(dataPtr + hitIndex * defaultSize, 0, (batchSize - hitIndex) *
@@ -167,10 +168,10 @@ StringFilterExpression::StringFilterExpression(std::string type_, std::string co
   value = value_;
 }
 
-void StringFilterExpression::setSchema(std::vector<Schema> schema_) {
+void StringFilterExpression::setSchema(std::shared_ptr<std::vector<Schema>> schema_) {
   schema = schema_;
   ptrdiff_t pos = std::distance(
-      schema.begin(), std::find_if(schema.begin(), schema.end(), finder(columnName)));
+      schema->begin(), std::find_if(schema->begin(), schema->end(), finder(columnName)));
   columnIndex = pos;
 }
 
@@ -282,10 +283,11 @@ int TypedUnaryFilterExpression<T>::ExecuteWithParam(
 }
 
 template <typename T>
-void TypedUnaryFilterExpression<T>::setSchema(std::vector<Schema> schema_) {
+void TypedUnaryFilterExpression<T>::setSchema(
+    std::shared_ptr<std::vector<Schema>> schema_) {
   schema = schema_;
   ptrdiff_t pos = std::distance(
-      schema.begin(), std::find_if(schema.begin(), schema.end(), finder(columnName)));
+      schema->begin(), std::find_if(schema->begin(), schema->end(), finder(columnName)));
   columnIndex = pos;
 }
 

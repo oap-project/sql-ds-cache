@@ -112,11 +112,13 @@ void Reader::convertSchema(std::string requiredColumnName) {
   for (int i = 0; i < filedsNum; i++) {
     std::string columnName = j["fields"][i]["name"];
     int columnIndex = fileMetaData->schema()->ColumnIndex(columnName);
-    requiredColumnIndex.push_back(columnIndex);
-    schema.push_back(Schema(columnName,
-                            fileMetaData->schema()->Column(columnIndex)->physical_type(),
-                            fileMetaData->schema()->Column(columnIndex)->type_length()));
-    requiredColumnNames.push_back(columnName);
+    if (columnIndex >= 0) {
+      requiredColumnIndex.push_back(columnIndex);
+      schema->push_back(
+          Schema(columnName, fileMetaData->schema()->Column(columnIndex)->physical_type(),
+                 fileMetaData->schema()->Column(columnIndex)->type_length()));
+      requiredColumnNames.push_back(columnName);
+    }
   }
 }
 
@@ -169,6 +171,8 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
     ARROW_LOG(DEBUG) << "use extra filter buffers count: " << filterBufferCount;
     ARROW_LOG(DEBUG) << "use extra agg buffers count: " << aggBufferCount;
 
+    // when enable agg pd, initRequiredColumnCount will be 0, because init column will
+    // be sum(col),
     buffersPtr.resize(initRequiredColumnCount + filterBufferCount + aggBufferCount);
     nullsPtr.resize(initRequiredColumnCount + filterBufferCount + aggBufferCount);
 
@@ -318,24 +322,40 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
     time += std::chrono::steady_clock::now() - start;
   }
 
-  if (aggExprs.size()) {
+  if (rowsRet > 0 && aggExprs.size()) {  // if rows after filter is 0, no need to do agg.
     auto start = std::chrono::steady_clock::now();
+    int index = 0;
     for (int i = 0; i < aggExprs.size(); i++) {
       auto agg = aggExprs[i];
       if (typeid(*agg) == typeid(RootAggExpression)) {
         std::vector<int8_t> tmp(0);
-        rowsRet = agg->ExecuteWithParam(rowsToRead, buffersPtr, nullsPtr, tmp);
+        agg->ExecuteWithParam(rowsRet, buffersPtr, nullsPtr, tmp);
         auto result = std::dynamic_pointer_cast<RootAggExpression>(agg)->getResult();
         if (result.size() == 1) {
           aggResults[i].push_back(result[0]);
         } else {
           ARROW_LOG(DEBUG) << "Oops... why return " << result.size() << " results";
         }
+        // TODO: refactor. For 'avg' expression, it will return two elements, which are
+        // 'Sum' and 'Count' and 'Count' type should be int64. However, we didn't handle
+        // 'Count' expression here.
+        for (int j = 0; j < result.size(); j++) {
+          if (j == 1) {  // for `count` in `avg`
+            *((int64_t*)(buffersPtr_[index])) = result[j]->toInt64();
+          } else {
+            result[j]->toBytes((uint8_t*)(buffersPtr_[index]));
+          }
+          *((uint8_t*)(nullsPtr_[index])) = (uint8_t)1;
+          index++;
+        }
+
       } else if (typeid(*agg) == typeid(AttributeReferenceExpression)) {
         // TODO
       }
     }
+    rowsRet = 1;
     time += std::chrono::steady_clock::now() - start;
+  } else {
   }
 
   ARROW_LOG(DEBUG) << "ret rows " << rowsRet;
@@ -443,7 +463,7 @@ void Reader::setFilter(std::string filterJsonStr) {
   // reset required columns to initial size
   requiredColumnIndex.resize(initRequiredColumnCount);
   requiredColumnNames.resize(initRequiredColumnCount);
-  schema.erase(schema.begin() + initRequiredColumnCount, schema.end());
+  schema->erase(schema->begin() + initRequiredColumnCount, schema->end());
   columnReaders.resize(initRequiredColumnCount);
 
   // Check with filtered column names. Append column if not present in the initial
@@ -457,7 +477,7 @@ void Reader::setFilter(std::string filterJsonStr) {
       // append column
       requiredColumnIndex.push_back(columnIndex);
       requiredColumnNames.push_back(columnName);
-      schema.push_back(
+      schema->push_back(
           Schema(columnName, fileMetaData->schema()->Column(columnIndex)->physical_type(),
                  fileMetaData->schema()->Column(columnIndex)->type_length()));
       columnReaders.resize(requiredColumnIndex.size());
@@ -668,7 +688,7 @@ void Reader::setAgg(std::string aggStr) {
   // reset required columns to initial size
   requiredColumnIndex.resize(initPlusFilterRequiredColumnCount);
   requiredColumnNames.resize(initPlusFilterRequiredColumnCount);
-  schema.erase(schema.begin() + initPlusFilterRequiredColumnCount, schema.end());
+  schema->erase(schema->begin() + initPlusFilterRequiredColumnCount, schema->end());
   columnReaders.resize(initPlusFilterRequiredColumnCount);
 
   // Check with agg column names. Append column if not present in the initial required
@@ -682,7 +702,7 @@ void Reader::setAgg(std::string aggStr) {
       // append column
       requiredColumnIndex.push_back(columnIndex);
       requiredColumnNames.push_back(columnName);
-      schema.push_back(
+      schema->push_back(
           Schema(columnName, fileMetaData->schema()->Column(columnIndex)->physical_type(),
                  fileMetaData->schema()->Column(columnIndex)->type_length()));
       columnReaders.resize(requiredColumnIndex.size());
