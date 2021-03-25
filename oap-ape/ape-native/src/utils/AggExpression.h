@@ -56,9 +56,8 @@ class WithResultExpression : public Expression {
   void Execute() {}
   ~WithResultExpression() {}
 
-  virtual ApeDecimal128Vector getResult() {
+  virtual void getResult(ApeDecimal128Vector& result) {
     // should never be called.
-    return {std::make_shared<ApeDecimal128>()};
   }
 
   void setDataType(std::string dataType_) { dataType = dataType_; }
@@ -93,7 +92,7 @@ class RootAggExpression : public WithResultExpression {
     child->setSchema(schema);
   }
 
-  ApeDecimal128Vector getResult() { return child->getResult(); }
+  void getResult(ApeDecimal128Vector& result) { child->getResult(result); }
 
  private:
   bool isDistinct;
@@ -124,67 +123,73 @@ class AggExpression : public WithResultExpression {
 class Sum : public AggExpression {
  public:
   ~Sum() {}
-  ApeDecimal128Vector getResult() override {
-    auto tmp = child->getResult();
+  void getResult(ApeDecimal128Vector& result) override {
+    auto tmp = ApeDecimal128Vector();
+    child->getResult(tmp);
     arrow::BasicDecimal128 out;
     for (auto e : tmp) {
       out += e->value();
     }
     ApeDecimal128Ptr sum =
         std::make_shared<ApeDecimal128>(out, tmp[0]->precision(), tmp[0]->scale());
-    return {sum};
+    result.push_back(sum);
   }
 };
 
 class Min : public AggExpression {
  public:
   ~Min() {}
-  ApeDecimal128Vector getResult() override {
-    auto tmp = child->getResult();
+  void getResult(ApeDecimal128Vector& result) override {
+    auto tmp = ApeDecimal128Vector();
+    child->getResult(tmp);
     arrow::BasicDecimal128 out(tmp[0]->value());
     for (auto e : tmp) out = out < e->value() ? out : e->value();
     ApeDecimal128Ptr min =
         std::make_shared<ApeDecimal128>(out, tmp[0]->precision(), tmp[0]->scale());
-    return {min};
+    result.push_back(min);
+    // return {min};
   }
 };
 
 class Max : public AggExpression {
  public:
   ~Max() {}
-  ApeDecimal128Vector getResult() override {
-    auto tmp = child->getResult();
+  void getResult(ApeDecimal128Vector& result) override {
+    auto tmp = ApeDecimal128Vector();
+    child->getResult(tmp);
     arrow::BasicDecimal128 out(tmp[0]->value());
     for (auto e : tmp) out = out > e->value() ? out : e->value();
     ApeDecimal128Ptr max =
         std::make_shared<ApeDecimal128>(out, tmp[0]->precision(), tmp[0]->scale());
-    return {max};
+    result.push_back(max);
   }
 };
 
 class Count : public AggExpression {
  public:
   ~Count() {}
-  ApeDecimal128Vector getResult() override {
-    auto tmp = child->getResult();
+  void getResult(ApeDecimal128Vector& result) override {
+    auto tmp = ApeDecimal128Vector();
+    child->getResult(tmp);
     ApeDecimal128Ptr count = std::make_shared<ApeDecimal128>(tmp.size());
-    return {count};
+    result.push_back(count);
   }
 };
 
 class Avg : public AggExpression {
  public:
   ~Avg() {}
-  ApeDecimal128Vector getResult() override {
-    auto tmp = child->getResult();
+  void getResult(ApeDecimal128Vector& result) override {
+    auto tmp = ApeDecimal128Vector();
+    child->getResult(tmp);
     arrow::BasicDecimal128 sum;
     for (auto e : tmp) {
       sum += e->value();
     }
     auto v1 = std::make_shared<ApeDecimal128>(sum, tmp[0]->precision(), tmp[0]->scale());
     auto v2 = std::make_shared<ApeDecimal128>(tmp.size());
-
-    return {v1, v2};
+    result.push_back(v1);
+    result.push_back(v2);
   }
 };
 
@@ -227,9 +232,11 @@ class ArithmeticExpression : public WithResultExpression {
 class Add : public ArithmeticExpression {
  public:
   ~Add() {}
-  ApeDecimal128Vector getResult() override {
-    auto left = leftChild->getResult();
-    auto right = rightChild->getResult();
+  void getResult(ApeDecimal128Vector& result) override {
+    auto left = ApeDecimal128Vector();
+    auto right = ApeDecimal128Vector();
+    leftChild->getResult(left);
+    rightChild->getResult(right);
     int32_t scale;
     int32_t precision;
     if (!checkOverFlowType.empty()) {
@@ -246,35 +253,35 @@ class Add : public ArithmeticExpression {
       precision = type->precision();
       scale = type->scale();
     }
-    ApeDecimal128Vector add;
     if (left.size() == 1) {
       for (int i = 0; i < right.size(); i++) {
         arrow::BasicDecimal128 out = left[0]->value() + right[i]->value();
-        add.push_back(std::make_shared<ApeDecimal128>(out, precision, scale));
+        result.push_back(std::make_shared<ApeDecimal128>(out, precision, scale));
       }
     } else if (right.size() == 1) {
       for (int i = 0; i < left.size(); i++) {
         arrow::BasicDecimal128 out = left[i]->value() + right[0]->value();
-        add.push_back(std::make_shared<ApeDecimal128>(out, precision, scale));
+        result.push_back(std::make_shared<ApeDecimal128>(out, precision, scale));
       }
     } else if (left.size() == right.size()) {
       for (int i = 0; i < left.size(); i++) {
         arrow::BasicDecimal128 out = left[i]->value() + right[i]->value();
-        add.push_back(std::make_shared<ApeDecimal128>(out, precision, scale));
+        result.push_back(std::make_shared<ApeDecimal128>(out, precision, scale));
       }
     } else {
       ARROW_LOG(ERROR) << "Oops...why left and right has different size?";
     }
-    return add;
   }
 };
 
 class Sub : public ArithmeticExpression {
  public:
   ~Sub() {}
-  ApeDecimal128Vector getResult() override {
-    auto left = leftChild->getResult();
-    auto right = rightChild->getResult();
+  void getResult(ApeDecimal128Vector& result) override {
+    auto left = ApeDecimal128Vector();
+    auto right = ApeDecimal128Vector();
+    leftChild->getResult(left);
+    rightChild->getResult(right);
     int32_t scale;
     int32_t precision;
     if (!checkOverFlowType.empty()) {
@@ -291,35 +298,36 @@ class Sub : public ArithmeticExpression {
       precision = type->precision();
       scale = type->scale();
     }
-    ApeDecimal128Vector substract;
+    // ApeDecimal128Vector substract;
     if (left.size() == 1) {
       for (int i = 0; i < right.size(); i++) {
         arrow::BasicDecimal128 out = left[0]->value() - right[i]->value();
-        substract.push_back(std::make_shared<ApeDecimal128>(out, precision, scale));
+        result.push_back(std::make_shared<ApeDecimal128>(out, precision, scale));
       }
     } else if (right.size() == 1) {
       for (int i = 0; i < left.size(); i++) {
         arrow::BasicDecimal128 out = left[i]->value() - right[0]->value();
-        substract.push_back(std::make_shared<ApeDecimal128>(out, precision, scale));
+        result.push_back(std::make_shared<ApeDecimal128>(out, precision, scale));
       }
     } else if (left.size() == right.size()) {
       for (int i = 0; i < left.size(); i++) {
         arrow::BasicDecimal128 out = left[i]->value() - right[i]->value();
-        substract.push_back(std::make_shared<ApeDecimal128>(out, precision, scale));
+        result.push_back(std::make_shared<ApeDecimal128>(out, precision, scale));
       }
     } else {
       ARROW_LOG(ERROR) << "Oops...why left and right has different size?";
     }
-    return substract;
   }
 };
 
 class Multiply : public ArithmeticExpression {
  public:
   ~Multiply() {}
-  ApeDecimal128Vector getResult() override {
-    auto left = leftChild->getResult();
-    auto right = rightChild->getResult();
+  void getResult(ApeDecimal128Vector& result) override {
+    auto left = ApeDecimal128Vector();
+    auto right = ApeDecimal128Vector();
+    leftChild->getResult(left);
+    rightChild->getResult(right);
     int32_t scale;
     int32_t precision;
     if (!checkOverFlowType.empty()) {
@@ -336,48 +344,46 @@ class Multiply : public ArithmeticExpression {
       precision = type->precision();
       scale = type->scale();
     }
-    ApeDecimal128Vector multiply;
     if (left.size() == 1) {
       for (int i = 0; i < right.size(); i++) {
         arrow::BasicDecimal128 out = left[0]->value() * right[i]->value();
-        multiply.push_back(std::make_shared<ApeDecimal128>(out, precision, scale));
+        result.push_back(std::make_shared<ApeDecimal128>(out, precision, scale));
       }
     } else if (right.size() == 1) {
       for (int i = 0; i < left.size(); i++) {
         arrow::BasicDecimal128 out = left[i]->value() * right[0]->value();
-        multiply.push_back(std::make_shared<ApeDecimal128>(out, precision, scale));
+        result.push_back(std::make_shared<ApeDecimal128>(out, precision, scale));
       }
     } else if (left.size() == right.size()) {
       for (int i = 0; i < left.size(); i++) {
         arrow::BasicDecimal128 out = left[i]->value() * right[i]->value();
-        multiply.push_back(std::make_shared<ApeDecimal128>(out, precision, scale));
+        result.push_back(std::make_shared<ApeDecimal128>(out, precision, scale));
       }
     } else {
       ARROW_LOG(ERROR) << "Oops...why left and right has different size?";
     }
-    return multiply;
   }
 };
 
 class Divide : public ArithmeticExpression {
  public:
   ~Divide() {}
-  ApeDecimal128Vector getResult() override {
-    auto left = leftChild->getResult();
-    auto right = rightChild->getResult();
-    ApeDecimal128Ptr sum = std::make_shared<ApeDecimal128>();
-    return {sum};
+  void getResult(ApeDecimal128Vector& result) override {
+    auto left = ApeDecimal128Vector();
+    auto right = ApeDecimal128Vector();
+    leftChild->getResult(left);
+    rightChild->getResult(right);
   }
 };
 
 class Mod : public ArithmeticExpression {
  public:
   ~Mod() {}
-  ApeDecimal128Vector getResult() override {
-    auto left = leftChild->getResult();
-    auto right = rightChild->getResult();
-    ApeDecimal128Ptr sum = std::make_shared<ApeDecimal128>();
-    return {sum};
+  void getResult(ApeDecimal128Vector& result) override {
+    auto left = ApeDecimal128Vector();
+    auto right = ApeDecimal128Vector();
+    leftChild->getResult(left);
+    rightChild->getResult(right);
   }
 };  // ...
 
@@ -385,7 +391,12 @@ class AttributeReferenceExpression : public WithResultExpression {
  public:
   ~AttributeReferenceExpression() {}
   // TODO: get value buffer and trans to Decimal()
-  ApeDecimal128Vector getResult() { return result; }
+  void getResult(ApeDecimal128Vector& res) override {
+    res.clear();
+    for (auto e : result) {
+      res.push_back(e);
+    }
+  }
 
   void setAttribute(std::string columnName_, std::string dataType_, std::string castType_,
                     bool PromotePrecision_) {
@@ -410,7 +421,10 @@ class AttributeReferenceExpression : public WithResultExpression {
 class LiteralExpression : public WithResultExpression {
  public:
   ~LiteralExpression() {}
-  ApeDecimal128Vector getResult() override { return {value}; }
+  void getResult(ApeDecimal128Vector& res) override {
+    res.clear();
+    res.push_back(value);
+  }
   void setAttribute(std::string dataType_, std::string valueString_) {
     dataType = dataType_;
     valueString = valueString_;

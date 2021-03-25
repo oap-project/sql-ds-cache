@@ -330,7 +330,8 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
       if (typeid(*agg) == typeid(RootAggExpression)) {
         std::vector<int8_t> tmp(0);
         agg->ExecuteWithParam(rowsRet, buffersPtr, nullsPtr, tmp);
-        auto result = std::dynamic_pointer_cast<RootAggExpression>(agg)->getResult();
+        ApeDecimal128Vector result{};
+        std::dynamic_pointer_cast<RootAggExpression>(agg)->getResult(result);
         if (result.size() == 1) {
           aggResults[i].push_back(result[0]);
         } else {
