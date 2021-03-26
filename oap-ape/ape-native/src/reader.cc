@@ -29,6 +29,8 @@ Reader::Reader() {}
 
 void Reader::init(std::string fileName, std::string hdfsHost, int hdfsPort,
                   std::string requiredSchema, int firstRowGroup, int rowGroupToRead) {
+  arrow::util::ArrowLog::StartArrowLog("", arrow::util::ArrowLogLevel::ARROW_INFO);
+  arrow::util::ArrowLog::InstallFailureSignalHandler();
   options = new arrow::fs::HdfsOptions();
   ARROW_LOG(DEBUG) << "hdfsHost " << hdfsHost << " port " << hdfsPort;
 
@@ -153,8 +155,13 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
   }
   checkEndOfRowGroup();
 
-  std::vector<int64_t> buffersPtr;
-  std::vector<int64_t> nullsPtr;
+  std::vector<int64_t> buffersPtr(initRequiredColumnCount);
+  std::vector<int64_t> nullsPtr(initRequiredColumnCount);
+
+  for (int i = 0; i < initRequiredColumnCount; i++) {
+    buffersPtr[i] = buffersPtr_[i];
+    nullsPtr[i] = nullsPtr_[i];
+  }
 
   // allocate extra memory for filtered columns if needed
   if (filterExpression) {
