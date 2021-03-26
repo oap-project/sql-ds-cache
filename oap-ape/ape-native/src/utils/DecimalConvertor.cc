@@ -104,7 +104,7 @@ static void FromBigEndian(const uint8_t* bytes, int32_t length, int64_t* out_hig
 
 void DecimalConvertor::ConvertFixLengthByteArrayToDecimal128(
     const uint8_t* values, int32_t num_values, int32_t type_length, int32_t precision,
-    int32_t scale, ApeDecimal128Vector& out) {
+    int32_t scale, DecimalVector& out) {
   parquet::FixedLenByteArray* fixed_length_byte_array =
       (parquet::FixedLenByteArray*)(values);
   int64_t high;
@@ -112,25 +112,26 @@ void DecimalConvertor::ConvertFixLengthByteArrayToDecimal128(
   for (int32_t i = 0; i < num_values; ++i) {
     parquet::FixedLenByteArray value = fixed_length_byte_array[i];
     FromBigEndian(value.ptr, type_length, &high, &low);
-    out.push_back(std::make_shared<ApeDecimal128>(high, low, precision, scale));
+    out.data.push_back(arrow::BasicDecimal128(high, low));
   }
-
+  out.precision = precision;
+  out.scale = scale;
   return;
 }
 
 void DecimalConvertor::ConvertByteArrayToDecimal128(const uint8_t* values,
                                                     int32_t num_values, int32_t precision,
-                                                    int32_t scale,
-                                                    ApeDecimal128Vector& out) {
+                                                    int32_t scale, DecimalVector& out) {
   parquet::ByteArray* byte_array = (parquet::ByteArray*)(values);
   int64_t high;
   uint64_t low;
   for (int32_t i = 0; i < num_values; ++i) {
     parquet::ByteArray value = byte_array[i];
     FromBigEndian(value.ptr, value.len, &high, &low);
-    out.push_back(std::make_shared<ApeDecimal128>(high, low, precision, scale));
+    out.data.push_back(arrow::BasicDecimal128(high, low));
   }
-
+  out.precision = precision;
+  out.scale = scale;
   return;
 }
 

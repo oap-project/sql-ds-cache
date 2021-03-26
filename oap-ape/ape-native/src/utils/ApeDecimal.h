@@ -22,6 +22,52 @@
 #include <cstdint>
 
 namespace ape {
+// TODO: should use inline here?
+static inline void decimalToBytes(arrow::BasicDecimal128 input, int32_t precision,
+                                  uint8_t* out) {
+  int h = 0;
+  int l = 0;
+  int highShift = 0;
+  int lowShift = 0;
+  int8_t decimalBuffer[16];
+
+  int numBytes = arrow::DecimalType::DecimalSize(precision);
+
+  if (numBytes > 8) {
+    highShift = 8 * (numBytes - 8 - 1);
+    lowShift = 56;
+  } else {
+    lowShift = 8 * (numBytes - 1);
+  }
+
+  int leftBytes = numBytes;
+  if (numBytes > 8) {
+    while (h < numBytes - 8) {
+      decimalBuffer[h] = (input.high_bits() >> highShift) & 0xFF;
+      h++;
+      highShift -= 8;
+    }
+    leftBytes = 8;
+  }
+  while (l < leftBytes) {
+    decimalBuffer[h + l] = (input.low_bits() >> lowShift) & 0xFF;
+    l++;
+    lowShift -= 8;
+  }
+
+  int index = 0;
+  int8_t signByte;
+  if (decimalBuffer[0] < 0)
+    signByte = -1;
+  else
+    signByte = 0;
+  for (int i = 0; i < 16 - numBytes; i++) {
+    out[index++] = signByte;
+  }
+  for (int i = 0; i < numBytes; i++) {
+    out[index++] = decimalBuffer[i];
+  }
+}
 
 /// Represents a 128-bit decimal value along with its precision and scale.
 class ApeDecimal128 {

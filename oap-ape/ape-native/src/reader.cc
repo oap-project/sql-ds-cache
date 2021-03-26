@@ -330,21 +330,23 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
       if (typeid(*agg) == typeid(RootAggExpression)) {
         std::vector<int8_t> tmp(0);
         agg->ExecuteWithParam(rowsRet, buffersPtr, nullsPtr, tmp);
-        ApeDecimal128Vector result{};
+        DecimalVector result;
         std::dynamic_pointer_cast<RootAggExpression>(agg)->getResult(result);
-        if (result.size() == 1) {
-          aggResults[i].push_back(result[0]);
+        if (result.data.size() == 1) {
+          // TODO: for group by
         } else {
-          ARROW_LOG(DEBUG) << "Oops... why return " << result.size() << " results";
+          ARROW_LOG(DEBUG) << "Oops... why return " << result.data.size() << " results";
         }
         // TODO: refactor. For 'avg' expression, it will return two elements, which are
         // 'Sum' and 'Count' and 'Count' type should be int64. However, we didn't handle
         // 'Count' expression here.
-        for (int j = 0; j < result.size(); j++) {
+        for (int j = 0; j < result.data.size(); j++) {
           if (j == 1) {  // for `count` in `avg`
-            *((int64_t*)(buffersPtr_[index])) = result[j]->toInt64();
+            *((int64_t*)(buffersPtr_[index])) =
+                static_cast<int64_t>(result.data[j].low_bits());
           } else {
-            result[j]->toBytes((uint8_t*)(buffersPtr_[index]));
+            decimalToBytes(result.data[j], result.precision,
+                           (uint8_t*)(buffersPtr_[index]));
           }
           *((uint8_t*)(nullsPtr_[index])) = (uint8_t)1;
           index++;
@@ -675,10 +677,6 @@ void Reader::setAgg(std::string aggStr) {
   // do nothing now
   groupByExprs = JsonConvertor::parseToGroupByExpressions(aggStr);
   aggExprs = JsonConvertor::parseToAggExpressions(aggStr);
-  for (auto result : aggResults) {
-    result.clear();
-  }
-  aggResults.clear();
 
   // get column names from expression
   aggColumnNames.clear();
@@ -712,7 +710,6 @@ void Reader::setAgg(std::string aggStr) {
 
   for (auto agg : aggExprs) {
     agg->setSchema(schema);
-    aggResults.push_back(std::vector<ApeDecimal128Ptr>());
   }
 
   aggReset = true;

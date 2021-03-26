@@ -23,15 +23,20 @@
 
 namespace ape {
 
-using ApeDecimal128Ptr = std::shared_ptr<ApeDecimal128>;
-using ApeDecimal128Vector = std::vector<ApeDecimal128Ptr>;
+using Decimal128Vector = std::vector<arrow::BasicDecimal128>;
+
+struct DecimalVector {
+  Decimal128Vector data;
+  int32_t precision;
+  int32_t scale;
+};
 
 class DecimalConvertor {
  public:
   template <typename ParquetIntegerType>
   static void ConvertIntegerToDecimal128(const uint8_t* values, int32_t num_values,
                                          int32_t precision, int32_t scale,
-                                         ApeDecimal128Vector& out) {
+                                         DecimalVector& out) {
     using ElementType = typename ParquetIntegerType::c_type;
     static_assert(std::is_same<ElementType, int32_t>::value ||
                       std::is_same<ElementType, int64_t>::value,
@@ -39,15 +44,19 @@ class DecimalConvertor {
 
     const auto elements = reinterpret_cast<const ElementType*>(values);
 
+    out.data.clear();
+    if (out.data.capacity() < num_values) out.data.reserve(num_values);
+
     uint64_t high;
     uint64_t low;
     for (int32_t i = 0; i < num_values; ++i) {
       const auto value = static_cast<int64_t>(elements[i]);
       low = arrow::BitUtil::FromLittleEndian(static_cast<uint64_t>(value));
       high = static_cast<uint64_t>(value < 0 ? -1 : 0);
-      out.push_back(std::make_shared<ApeDecimal128>(high, low, precision, scale));
+      out.data.push_back(arrow::BasicDecimal128(high, low));
     }
-
+    out.precision = precision;
+    out.scale = scale;
     return;
   }
 
@@ -55,11 +64,11 @@ class DecimalConvertor {
                                                     int32_t num_values,
                                                     int32_t type_length,
                                                     int32_t precision, int32_t scale,
-                                                    ApeDecimal128Vector& out);
+                                                    DecimalVector& out);
 
   static void ConvertByteArrayToDecimal128(const uint8_t* values, int32_t num_values,
                                            int32_t precision, int32_t scale,
-                                           ApeDecimal128Vector& out);
+                                           DecimalVector& out);
 };
 
 }  // namespace ape
