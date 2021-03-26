@@ -124,7 +124,6 @@ class Reader {
   std::vector<char*> aggNullBuffers;
   std::vector<std::shared_ptr<Expression>> aggExprs;
   std::vector<std::shared_ptr<Expression>> groupByExprs;
-  std::vector<std::vector<ApeDecimal128Ptr>> aggResults;
 
   bool plasmaCacheEnabled = false;
   std::shared_ptr<PlasmaCacheManagerProvider> plasmaCacheManagerProvider;

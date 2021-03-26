@@ -83,9 +83,9 @@ int AttributeReferenceExpression::ExecuteWithParam(
     int precision, scale;
     getPrecisionAndScaleFromDecimalType(dataType, precision, scale);
     parquet::Type::type columnType = (*schema)[columnIndex].getColType();
-    result.clear();
-    if (result.capacity() < batchSize) {
-      result.reserve(batchSize);
+    result.data.clear();
+    if (result.data.capacity() < batchSize) {
+      result.data.reserve(batchSize);
     }
     if (columnType == parquet::Type::INT64) {
       DecimalConvertor::ConvertIntegerToDecimal128<parquet::Int64Type>(

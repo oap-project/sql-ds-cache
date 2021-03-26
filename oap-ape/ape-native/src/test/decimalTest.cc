@@ -65,5 +65,16 @@ TEST_F(DecimalTest, Multiply) {
   arrow::BasicDecimal128 d = DecimalUtil::Multiply(d1, d2, 18 + 14 + 1, 12);
   ApeDecimal128 d3(d, 38, 12);
   d3.toBytes(buffer.data());
-  assert(b3 == buffer);
+  EXPECT_TRUE(b3 == buffer);
+}
+
+TEST_F(DecimalTest, ConvertToBytes) {
+  // retsult from JAVA code
+  // BigDecimal("1234567890.12345678").unscaledValue().toByteArray()
+  std::vector<uint8_t> b1{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                          0x01, 0xb6, 0x9b, 0x4b, 0xa6, 0x30, 0xf3, 0x4e};
+  arrow::Decimal128::FromString("1234567890.12345678", &decimal, &precision, &scale);
+
+  ape::decimalToBytes(decimal, precision, buffer.data());
+  EXPECT_TRUE(b1 == buffer);
 }
