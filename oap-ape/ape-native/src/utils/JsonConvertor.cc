@@ -33,7 +33,7 @@ std::shared_ptr<Expression> JsonConvertor::parseToFilterExpression(nlohmann::jso
   std::string type = root["FilterTypeName"];
   if (type.compare("not") == 0) {
     ex = std::make_shared<NotFilterExpression>(type,
-                                               parseToFilterExpression(root["Child"]));
+                                               parseToFilterExpression(root["child"]));
   } else if (type.compare("and") == 0 || type.compare("or") == 0) {
     nlohmann::json leftNode = root["LeftNode"];
     nlohmann::json RightNode = root["RightNode"];
