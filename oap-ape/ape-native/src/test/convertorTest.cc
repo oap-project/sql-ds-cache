@@ -82,5 +82,5 @@ TEST(JasonConvertorTest, tpchQ16) {
       "size\",\"ColumnType\":\"Integer\",\"Value\":\"9\"}}},\"RightNode\":{"
       "\"FilterTypeName\":\"noteq\",\"ColumnName\":\"p_partkey\",\"ColumnType\":\"Null\","
       "\"Value\":\"null\"}}";
-        auto ex = ape::JsonConvertor::parseToFilterExpression(s);
+  auto ex = ape::JsonConvertor::parseToFilterExpression(s);
 }
