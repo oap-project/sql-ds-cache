@@ -154,6 +154,7 @@ object AggUtils {
                         child = child)
                       return agg :: Nil
                     }
+                  case _ => // do nothing, fix queries like tpc-ds q45
                 }
                case _ =>
             }
