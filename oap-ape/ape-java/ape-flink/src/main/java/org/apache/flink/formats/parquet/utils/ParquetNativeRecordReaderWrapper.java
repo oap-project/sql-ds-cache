@@ -343,7 +343,8 @@ public class ParquetNativeRecordReaderWrapper {
                         columns[i] = decimal64Vector;
                     } else {
                         typeSize = 16;
-                        NativeFixedBytesVector decimalBytesVector = new NativeFixedBytesVector(batchSize, typeSize);
+                        NativeFixedBytesVector decimalBytesVector =
+                                new NativeFixedBytesVector(batchSize, typeSize);
                         bufferPtr = Platform.allocateMemory(batchSize * typeSize);
                         decimalBytesVector.setPtr(bufferPtr, nullPtr, batchSize);
                         columns[i] = decimalBytesVector;
