@@ -19,6 +19,7 @@
 
 #include <queue>
 #include <mutex>
+#include <thread>
 
 #include <parquet/api/reader.h>
 #include <plasma/client.h>
@@ -33,7 +34,7 @@ struct CacheObject {
   std::shared_ptr<Buffer> data;
 };
 
-enum class CacheWriterState { INIT, STARTED, STOPING, STOPED };
+enum class CacheWriterState { INIT, STARTED, STOPPING, STOPED };
 
 class AsyncCacheWriter {
  public:
@@ -68,9 +69,11 @@ class AsyncCacheWriter {
   // a queue holds all the objects which need to be witten
   std::queue<std::shared_ptr<CacheObject>> cache_objects_;
   // current state of this writer
-  CacheWriterState state_;
-  //
+  CacheWriterState state_ = CacheWriterState::INIT;
+  // the loop interval to check the object queue and the `stop` state
   int loop_interval_micro_seconds_;
+  // thread holder
+  std::vector<std::thread> some_threads_;
 };
 
 class PlasmaCacheManager : public parquet::CacheManager, public AsyncCacheWriter {

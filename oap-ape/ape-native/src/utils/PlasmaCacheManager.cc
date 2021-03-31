@@ -17,7 +17,6 @@
 
 #include <unistd.h>
 #include <chrono>
-#include <thread>
 
 #include <openssl/sha.h>
 
@@ -29,9 +28,11 @@ namespace ape {
 
 void AsyncCacheWriter::startCacheWriting() {
   // start a new thread
-  std::thread t(&AsyncCacheWriter::loopOnCacheWriting, this);
+  ARROW_LOG(INFO) << "cache writer, starting loop thread";
+  some_threads_.push_back(std::thread(&AsyncCacheWriter::loopOnCacheWriting, this));
+  ARROW_LOG(INFO) << "cache writer, started loop thread";
 
-  state_ == CacheWriterState::STARTED;
+  state_ = CacheWriterState::STARTED;
 }
 
 void AsyncCacheWriter::stopCacheWriting() {
@@ -39,16 +40,18 @@ void AsyncCacheWriter::stopCacheWriting() {
     return;
   }
 
-  state_ = CacheWriterState::STOPING;
+  ARROW_LOG(DEBUG) << "cache writer, stopping, current state: "
+                   << static_cast<int>(state_);
+  state_ = CacheWriterState::STOPPING;
 
-  // wait until writing
+  // wait until writing finish
   auto start = std::chrono::steady_clock::now();
-  while (state_ != CacheWriterState::STOPED) {
-    std::this_thread::sleep_for(std::chrono::microseconds(loop_interval_micro_seconds_));
+  for (auto& t : some_threads_) {
+    t.join();
   }
-  auto duration = std::chrono::steady_clock::now() - start;
-  ARROW_LOG(INFO) << "cache writer, stoping takes " << duration.count() * 1000 << " ms.";
-  ;
+  auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+      std::chrono::steady_clock::now() - start);
+  ARROW_LOG(INFO) << "cache writer, stopping takes " << duration.count() << " ms.";
 }
 
 void AsyncCacheWriter::setLoopIntervalMicroSeconds(int interval) {
@@ -86,12 +89,13 @@ void AsyncCacheWriter::loopOnCacheWriting() {
     // no cache objects that need to be written
     if (obj == nullptr) {
       // check if this loop should stop
-      if (state_ != CacheWriterState::STOPING) {
+      if (state_ != CacheWriterState::STOPPING) {
+        ARROW_LOG(DEBUG) << "cache writer, loop next...";
         std::this_thread::sleep_for(
             std::chrono::microseconds(loop_interval_micro_seconds_));
-        ARROW_LOG(INFO) << "cache writer, loop next...";
         continue;
       } else {
+        ARROW_LOG(DEBUG) << "cache writer, loop stopping";
         break;
       }
     }
