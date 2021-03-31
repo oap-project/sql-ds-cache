@@ -139,7 +139,6 @@ class StringFilterExpression : public UnaryFilterExpression {
 
  protected:
   std::string type;
-  std::string columnName;
   std::string value;
   int columnIndex;
 };

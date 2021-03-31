@@ -29,8 +29,6 @@ Reader::Reader() {}
 
 void Reader::init(std::string fileName, std::string hdfsHost, int hdfsPort,
                   std::string requiredSchema, int firstRowGroup, int rowGroupToRead) {
-  arrow::util::ArrowLog::StartArrowLog("", arrow::util::ArrowLogLevel::ARROW_INFO);
-  arrow::util::ArrowLog::InstallFailureSignalHandler();
   options = new arrow::fs::HdfsOptions();
   ARROW_LOG(DEBUG) << "hdfsHost " << hdfsHost << " port " << hdfsPort;
 
