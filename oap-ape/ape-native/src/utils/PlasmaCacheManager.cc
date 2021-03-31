@@ -42,9 +42,13 @@ void AsyncCacheWriter::stopCacheWriting() {
   state_ = CacheWriterState::STOPING;
 
   // wait until writing
+  auto start = std::chrono::steady_clock::now();
   while (state_ != CacheWriterState::STOPED) {
     std::this_thread::sleep_for(std::chrono::microseconds(loop_interval_micro_seconds_));
   }
+  auto duration = std::chrono::steady_clock::now() - start;
+  ARROW_LOG(INFO) << "cache writer, stoping takes " << duration.count() * 1000 << " ms.";
+  ;
 }
 
 void AsyncCacheWriter::setLoopIntervalMicroSeconds(int interval) {
@@ -75,6 +79,7 @@ std::shared_ptr<CacheObject> AsyncCacheWriter::popCacheObject() {
 }
 
 void AsyncCacheWriter::loopOnCacheWriting() {
+  ARROW_LOG(INFO) << "cache writer, loop started";
   while (true) {
     auto obj = popCacheObject();
 
@@ -97,6 +102,7 @@ void AsyncCacheWriter::loopOnCacheWriting() {
 
   // change writer state
   state_ = CacheWriterState::STOPED;
+  ARROW_LOG(INFO) << "cache writer, loop stoped";
 }
 
 PlasmaCacheManager::PlasmaCacheManager(std::string file_path) : file_path_(file_path) {
