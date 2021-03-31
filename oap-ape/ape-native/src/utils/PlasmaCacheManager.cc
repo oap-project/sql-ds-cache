@@ -35,15 +35,14 @@ void AsyncCacheWriter::startCacheWriting() {
 }
 
 void AsyncCacheWriter::stopCacheWriting() {
-  if (state_ == CacheWriterState::INIT
-    || state_ == CacheWriterState::STOPED) {
-      return;
+  if (state_ == CacheWriterState::INIT || state_ == CacheWriterState::STOPED) {
+    return;
   }
 
   state_ = CacheWriterState::STOPING;
 
   // wait until writing
-  while(state_ != CacheWriterState::STOPED) {
+  while (state_ != CacheWriterState::STOPED) {
     std::this_thread::sleep_for(std::chrono::microseconds(loop_interval_micro_seconds_));
   }
 }
@@ -55,7 +54,7 @@ void AsyncCacheWriter::setLoopIntervalMicroSeconds(int interval) {
 }
 
 void AsyncCacheWriter::insertCacheObject(::arrow::io::ReadRange range,
-                      std::shared_ptr<Buffer> data) {
+                                         std::shared_ptr<Buffer> data) {
   std::lock_guard<std::mutex> guard(cache_mutex_);
 
   std::shared_ptr<CacheObject> obj = std::make_shared<CacheObject>(range, data);
@@ -76,15 +75,15 @@ std::shared_ptr<CacheObject> AsyncCacheWriter::popCacheObject() {
 }
 
 void AsyncCacheWriter::loopOnCacheWriting() {
-  while (true)
-  {
+  while (true) {
     auto obj = popCacheObject();
 
     // no cache objects that need to be written
     if (obj == nullptr) {
       // check if this loop should stop
       if (state_ != CacheWriterState::STOPING) {
-        std::this_thread::sleep_for(std::chrono::microseconds(loop_interval_micro_seconds_));
+        std::this_thread::sleep_for(
+            std::chrono::microseconds(loop_interval_micro_seconds_));
         ARROW_LOG(INFO) << "cache writer, loop next...";
         continue;
       } else {
@@ -98,7 +97,6 @@ void AsyncCacheWriter::loopOnCacheWriting() {
 
   // change writer state
   state_ = CacheWriterState::STOPED;
-  
 }
 
 PlasmaCacheManager::PlasmaCacheManager(std::string file_path) : file_path_(file_path) {
@@ -233,7 +231,8 @@ void PlasmaCacheManager::setCacheRedis(
   }
 }
 
-void PlasmaCacheManager::setCacheWriter(std::shared_ptr<PlasmaCacheManager> cache_writer) {
+void PlasmaCacheManager::setCacheWriter(
+    std::shared_ptr<PlasmaCacheManager> cache_writer) {
   if (cache_writer_ != nullptr) {
     return;
   }
@@ -297,7 +296,7 @@ bool PlasmaCacheManager::cacheFileRange(::arrow::io::ReadRange range,
 }
 
 bool PlasmaCacheManager::cacheFileRangeInternal(::arrow::io::ReadRange range,
-                                        std::shared_ptr<Buffer> data) {
+                                                std::shared_ptr<Buffer> data) {
   std::vector<plasma::ObjectID> oids;
   plasma::ObjectID oid = objectIdOfFileRange(range);
 
@@ -370,7 +369,7 @@ bool PlasmaCacheManager::deleteFileRange(::arrow::io::ReadRange range) {
 }
 
 bool PlasmaCacheManager::writeCacheObject(::arrow::io::ReadRange range,
-                      std::shared_ptr<Buffer> data) {
+                                          std::shared_ptr<Buffer> data) {
   return cacheFileRangeInternal(range, data);
 }
 
