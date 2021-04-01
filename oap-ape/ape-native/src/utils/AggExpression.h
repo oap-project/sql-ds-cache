@@ -131,7 +131,7 @@ class Sum : public AggExpression {
       out += e;
     }
     result.data.push_back(out);
-    result.precision = tmp.precision;
+    result.precision = 38;  // tmp.precision;
     result.scale = tmp.scale;
   }
 };
@@ -188,7 +188,7 @@ class Avg : public AggExpression {
     }
     result.data.push_back(sum);
     result.data.push_back(arrow::BasicDecimal128(tmp.data.size()));
-    result.precision = tmp.precision;
+    result.precision = 38;  // tmp.precision;
     result.scale = tmp.scale;
   }
 };

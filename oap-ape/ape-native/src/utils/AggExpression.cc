@@ -79,10 +79,10 @@ int AttributeReferenceExpression::ExecuteWithParam(
     const std::vector<int64_t>& nullBuffers, std::vector<int8_t>& outBuffers) {
   int64_t dataPtr = dataBuffers[columnIndex];
   int64_t nullPtr = nullBuffers[columnIndex];
+  parquet::Type::type columnType = (*schema)[columnIndex].getColType();
   if (isDecimalType(dataType)) {
     int precision, scale;
     getPrecisionAndScaleFromDecimalType(dataType, precision, scale);
-    parquet::Type::type columnType = (*schema)[columnIndex].getColType();
     result.data.clear();
     if (result.data.capacity() < batchSize) {
       result.data.reserve(batchSize);
@@ -101,9 +101,28 @@ int AttributeReferenceExpression::ExecuteWithParam(
       DecimalConvertor::ConvertByteArrayToDecimal128((const uint8_t*)(dataPtr), batchSize,
                                                      precision, scale, result);
     }
-
   } else {
-    // TODO: Add other type support
+    if (columnType == parquet::Type::INT64) {
+      DecimalConvertor::ConvertIntegerToDecimal128<parquet::Int64Type>(
+          (const uint8_t*)(dataPtr), batchSize, 18, 0, result);
+    } else if (columnType == parquet::Type::INT32) {
+      DecimalConvertor::ConvertIntegerToDecimal128<parquet::Int32Type>(
+          (const uint8_t*)(dataPtr), batchSize, 9, 0, result);
+    } else if (columnType == parquet::Type::DOUBLE) {
+      // TODO: get precision,scale
+      // getPrecisionAndScaleFromDecimalType(dataType, precision, scale);
+      int precision = 38, scale = 2;
+      DecimalConvertor::ConvertRealToDecimal128<parquet::DoubleType>(
+          (const uint8_t*)(dataPtr), batchSize, precision, scale, result);
+    } else if (columnType == parquet::Type::FLOAT) {
+      // TODO: get precision,scale
+      // getPrecisionAndScaleFromDecimalType(dataType, precision, scale);
+      int precision = 38, scale = 2;
+      DecimalConvertor::ConvertRealToDecimal128<parquet::FloatType>(
+          (const uint8_t*)(dataPtr), batchSize, precision, scale, result);
+    } else {
+      ARROW_LOG(ERROR) << "Unsupport dataType: " << columnType;
+    }
   }
   return 0;
 }

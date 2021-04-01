@@ -19,6 +19,9 @@
 
 #include <parquet/column_reader.h>
 
+#include <arrow/result.h>
+#include <arrow/util/decimal.h>
+
 #include "ApeDecimal.h"
 
 namespace ape {
@@ -69,6 +72,27 @@ class DecimalConvertor {
   static void ConvertByteArrayToDecimal128(const uint8_t* values, int32_t num_values,
                                            int32_t precision, int32_t scale,
                                            DecimalVector& out);
+
+  template <typename ParquetRealType>
+  static arrow::Status ConvertRealToDecimal128(const uint8_t* values, int32_t num_values,
+                                               int32_t precision, int32_t scale,
+                                               DecimalVector& out) {
+    using ElementType = typename ParquetRealType::c_type;
+    static_assert(std::is_same<ElementType, float>::value ||
+                      std::is_same<ElementType, double>::value,
+                  "ElementType must be float or double");
+    const auto elements = reinterpret_cast<const ElementType*>(values);
+    out.data.clear();
+    if (out.data.capacity() < num_values) out.data.reserve(num_values);
+    for (int32_t i = 0; i < num_values; ++i) {
+      ARROW_ASSIGN_OR_RAISE(auto decimal,
+                            arrow::Decimal128::FromReal(elements[i], precision, scale));
+      out.data.push_back(arrow::BasicDecimal128(decimal.high_bits(), decimal.low_bits()));
+    }
+    out.precision = precision;
+    out.scale = scale;
+    return arrow::Status::OK();
+  }
 };
 
 }  // namespace ape
