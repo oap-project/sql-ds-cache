@@ -22,6 +22,8 @@
 #include <arrow/result.h>
 #include <arrow/util/decimal.h>
 
+#include "src/utils/ApeDecimal.h"
+
 namespace ape {
 
 using Decimal128Vector = std::vector<arrow::BasicDecimal128>;
