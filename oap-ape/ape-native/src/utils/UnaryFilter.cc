@@ -91,7 +91,6 @@ void NotEq<NullStruct>::execute(NullStruct* buffer, NullStruct value, int batchS
 // TODO: add AVX/LIBXXX integration.
 template <typename T>
 void Gt<T>::execute(T* buffer, T value, int batchSize, std::vector<int8_t>& out) {
-  ARROW_LOG(DEBUG) << "gt";
 #ifdef USE_LIB_XXX
   // use XXX to evalute
 #elif USE_AVX
@@ -105,7 +104,6 @@ void Gt<T>::execute(T* buffer, T value, int batchSize, std::vector<int8_t>& out)
 
 template <typename T>
 void GtEq<T>::execute(T* buffer, T value, int batchSize, std::vector<int8_t>& out) {
-  ARROW_LOG(DEBUG) << "gteq";
 #ifdef USE_LIB_XXX
   // use XXX to evalute
 #elif USE_AVX

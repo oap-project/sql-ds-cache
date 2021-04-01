@@ -324,7 +324,7 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
     auto start = std::chrono::steady_clock::now();
     std::vector<int8_t> tmp(0);
     rowsRet = filterExpression->ExecuteWithParam(rowsToRead, buffersPtr, nullsPtr, tmp);
-    time += std::chrono::steady_clock::now() - start;
+    filterTime += std::chrono::steady_clock::now() - start;
   }
 
   if (rowsRet > 0 && aggExprs.size()) {  // if rows after filter is 0, no need to do agg.
@@ -344,27 +344,12 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
         } else {
           ARROW_LOG(DEBUG) << "Oops... why return " << result.data.size() << " results";
         }
-        // TODO: refactor. For 'avg' expression, it will return two elements, which are
-        // 'Sum' and 'Count' and 'Count' type should be int64. However, we didn't handle
-        // 'Count' expression here.
-        // for (int j = 0; j < result.data.size(); j++) {
-        //   if (j == 1) {  // for `count` in `avg`
-        //     *((int64_t*)(buffersPtr_[index])) =
-        //         static_cast<int64_t>(result.data[j].low_bits());
-        //   } else {
-        //     decimalToBytes(result.data[j], result.precision,
-        //                    (uint8_t*)(buffersPtr_[index]));
-        //   }
-        //   *((uint8_t*)(nullsPtr_[index])) = (uint8_t)1;
-        //   index++;
-        // }
-
       } else if (typeid(*agg) == typeid(AttributeReferenceExpression)) {
         // TODO
       }
     }
     rowsRet = 1;
-    time += std::chrono::steady_clock::now() - start;
+    aggTime += std::chrono::steady_clock::now() - start;
   } else {
   }
 
@@ -384,7 +369,8 @@ bool Reader::skipNextRowGroup() {
 }
 
 void Reader::close() {
-  ARROW_LOG(INFO) << "Filter takes " << time.count() * 1000 << " ms.";
+  ARROW_LOG(INFO) << "Filter takes " << filterTime.count() * 1000 << " ms. "
+                  << "Agg takes " << aggTime.count() * 1000 << " ms";
 
   // No need to call parquetReader->Close(). It will be done in destructor.
 

@@ -22,8 +22,6 @@
 #include <arrow/result.h>
 #include <arrow/util/decimal.h>
 
-#include "src/utils/ApeDecimal.h"
-
 namespace ape {
 
 using Decimal128Vector = std::vector<arrow::BasicDecimal128>;
@@ -71,10 +69,7 @@ static ResultType GetResultType(std::string s) {
   if (s.compare("DoubleType") == 0) return DoubleType;
   int a, b;
   if (getPrecisionAndScaleFromDecimalType(s, a, b) == 0) {
-    if (a <= 18)
-      return Decimal64Type;
-    else if (a <= 38)
-      return Decimal128Type;
+    return Decimal128Type;
   }
   return ErrorType;
 }

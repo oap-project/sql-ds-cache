@@ -87,7 +87,7 @@ JNIEXPORT void JNICALL Java_com_intel_ape_ParquetReaderJNI_setAggStr(JNIEnv* env
                                                                      jstring aggStr) {
   ape::Reader* reader = reinterpret_cast<ape::Reader*>(readerPtr);
   std::string aggStr_ = env->GetStringUTFChars(aggStr, nullptr);
-  ARROW_LOG(INFO) << "agg str is: " << aggStr_;
+  ARROW_LOG(DEBUG) << "agg str is: " << aggStr_;
   reader->setAgg(aggStr_);
 }
 

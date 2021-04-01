@@ -75,7 +75,6 @@ class RootAggExpression : public WithResultExpression {
 
   void getResult(DecimalVector& result) {
     child->getResult(result);
-    ARROW_LOG(INFO) << "result type is " << result.type;
   }
 
  private:
@@ -96,7 +95,6 @@ class AggExpression : public WithResultExpression {
                        std::vector<int8_t>& outBuffers);
 
   void setSchema(std::shared_ptr<std::vector<Schema>> schema_) {
-    ARROW_LOG(INFO) << "!!!!!!!dataType_ is " << dataType;
     schema = schema_;
     child->setSchema(schema);
   }
@@ -119,7 +117,6 @@ class Sum : public AggExpression {
     result.precision = 38;  // tmp.precision;
     result.scale = tmp.scale;
     result.type = GetResultType(dataType);
-    // getPrecisionAndScaleFromDecimalType()
   }
 };
 
@@ -157,13 +154,18 @@ class Count : public AggExpression {
  public:
   ~Count() {}
   void getResult(DecimalVector& result) override {
-    auto tmp = DecimalVector();
-    child->getResult(tmp);
-    result.data.push_back(arrow::BasicDecimal128(tmp.data.size()));
-    result.precision = tmp.precision;
-    result.scale = tmp.scale;
+    result.data.push_back(arrow::BasicDecimal128(count));
     result.type = ResultType::LongType;
   }
+  int ExecuteWithParam(int batchSize, const std::vector<int64_t>& dataBuffers,
+                       const std::vector<int64_t>& nullBuffers,
+                       std::vector<int8_t>& outBuffers) override {
+    count = batchSize;
+    return 0;
+  }
+
+ private:
+  int count = 0;
 };
 
 class Avg : public AggExpression {

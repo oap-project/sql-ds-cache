@@ -106,7 +106,8 @@ class Reader {
   int64_t totalRowsLoadedSoFar = 0;
 
   std::shared_ptr<RootFilterExpression> filterExpression;
-  std::chrono::duration<double> time;
+  std::chrono::duration<double> filterTime;
+  std::chrono::duration<double> aggTime;
 
   std::vector<char*> extraByteArrayBuffers;
 
