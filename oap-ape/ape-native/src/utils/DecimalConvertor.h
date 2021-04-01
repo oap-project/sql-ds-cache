@@ -22,17 +22,95 @@
 #include <arrow/result.h>
 #include <arrow/util/decimal.h>
 
-#include "ApeDecimal.h"
+#include "src/utils/ApeDecimal.h"
 
 namespace ape {
 
 using Decimal128Vector = std::vector<arrow::BasicDecimal128>;
 
+enum ResultType {
+  IntType,
+  LongType,
+  FloatType,
+  DoubleType,
+  Decimal64Type,
+  Decimal128Type,
+  ErrorType
+};
+
 struct DecimalVector {
   Decimal128Vector data;
   int32_t precision;
   int32_t scale;
+  ResultType type;
 };
+
+static inline bool isDecimalType(std::string& dataType) {
+  bool isDecimal = false;
+  std::string decimalType("DecimalType");
+  if (dataType.compare(0, decimalType.length(), decimalType) == 0) {
+    isDecimal = true;
+  }
+  return isDecimal;
+}
+
+static int getPrecisionAndScaleFromDecimalType(std::string& decimalType, int& precision,
+                                               int& scale) {
+  if (isDecimalType(decimalType)) {
+    char str[64];
+    sscanf(decimalType.c_str(), "%11s(%d,%d)", str, &precision, &scale);
+    return 0;
+  }
+  return -1;
+}
+
+static ResultType GetResultType(std::string s) {
+  if (s.compare("IntType") == 0) return IntType;
+  if (s.compare("LongType") == 0) return LongType;
+  if (s.compare("FloatType") == 0) return FloatType;
+  if (s.compare("DoubleType") == 0) return DoubleType;
+  int a, b;
+  if (getPrecisionAndScaleFromDecimalType(s, a, b) == 0) {
+    if (a <= 18)
+      return Decimal64Type;
+    else if (a <= 38)
+      return Decimal128Type;
+  }
+  return ErrorType;
+}
+
+static void dumpToJavaBuffer(uint8_t* bufferAddr, DecimalVector& result) {
+  switch (result.type) {
+    case ResultType::IntType: {
+      *((int32_t*)bufferAddr) = static_cast<int32_t>(result.data[0].low_bits());
+      break;
+    }
+    case ResultType::LongType: {
+      *((int64_t*)bufferAddr) = static_cast<int64_t>(result.data[0].low_bits());
+      break;
+    }
+    case ResultType::FloatType: {
+      // TODO: convert
+      break;
+    }
+    case ResultType::DoubleType: {
+      // TODO: convert
+      break;
+    }
+    case ResultType::Decimal64Type: {
+      *((int64_t*)bufferAddr) = static_cast<int64_t>(result.data[0].low_bits());
+      break;
+    }
+    case ResultType::Decimal128Type: {
+      decimalToBytes(result.data[0], result.precision, (uint8_t*)(bufferAddr));
+      break;
+    }
+    default: {
+      ARROW_LOG(WARNING) << "Type not support!";
+      break;
+    }
+  }
+}
 
 class DecimalConvertor {
  public:

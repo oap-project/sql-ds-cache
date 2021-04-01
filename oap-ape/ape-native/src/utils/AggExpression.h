@@ -27,25 +27,6 @@
 
 namespace ape {
 
-static inline bool isDecimalType(std::string& dataType) {
-  bool isDecimal = false;
-  std::string decimalType("DecimalType");
-  if (dataType.compare(0, decimalType.length(), decimalType) == 0) {
-    isDecimal = true;
-  }
-  return isDecimal;
-}
-
-static int getPrecisionAndScaleFromDecimalType(std::string& decimalType, int& precision,
-                                               int& scale) {
-  if (isDecimalType(decimalType)) {
-    char str[64];
-    sscanf(decimalType.c_str(), "%11s(%d,%d)", str, &precision, &scale);
-    return 0;
-  }
-  return -1;
-}
-
 class WithResultExpression : public Expression {
  public:
   int ExecuteWithParam(int batchSize, const std::vector<int64_t>& dataBuffers,
@@ -92,7 +73,10 @@ class RootAggExpression : public WithResultExpression {
     child->setSchema(schema);
   }
 
-  void getResult(DecimalVector& result) { child->getResult(result); }
+  void getResult(DecimalVector& result) {
+    child->getResult(result);
+    ARROW_LOG(INFO) << "result type is " << result.type;
+  }
 
  private:
   bool isDistinct;
@@ -112,6 +96,7 @@ class AggExpression : public WithResultExpression {
                        std::vector<int8_t>& outBuffers);
 
   void setSchema(std::shared_ptr<std::vector<Schema>> schema_) {
+    ARROW_LOG(INFO) << "!!!!!!!dataType_ is " << dataType;
     schema = schema_;
     child->setSchema(schema);
   }
@@ -133,6 +118,8 @@ class Sum : public AggExpression {
     result.data.push_back(out);
     result.precision = 38;  // tmp.precision;
     result.scale = tmp.scale;
+    result.type = GetResultType(dataType);
+    // getPrecisionAndScaleFromDecimalType()
   }
 };
 
@@ -147,6 +134,7 @@ class Min : public AggExpression {
     result.data.push_back(out);
     result.precision = tmp.precision;
     result.scale = tmp.scale;
+    result.type = GetResultType(dataType);
   }
 };
 
@@ -161,6 +149,7 @@ class Max : public AggExpression {
     result.data.push_back(out);
     result.precision = tmp.precision;
     result.scale = tmp.scale;
+    result.type = GetResultType(dataType);
   }
 };
 
@@ -173,6 +162,7 @@ class Count : public AggExpression {
     result.data.push_back(arrow::BasicDecimal128(tmp.data.size()));
     result.precision = tmp.precision;
     result.scale = tmp.scale;
+    result.type = ResultType::LongType;
   }
 };
 
@@ -180,6 +170,7 @@ class Avg : public AggExpression {
  public:
   ~Avg() {}
   void getResult(DecimalVector& result) override {
+    // should never be called
     auto tmp = DecimalVector();
     child->getResult(tmp);
     arrow::BasicDecimal128 sum;
@@ -190,6 +181,7 @@ class Avg : public AggExpression {
     result.data.push_back(arrow::BasicDecimal128(tmp.data.size()));
     result.precision = 38;  // tmp.precision;
     result.scale = tmp.scale;
+    result.type = GetResultType(dataType);
   }
 };
 

@@ -339,23 +339,25 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
         std::dynamic_pointer_cast<RootAggExpression>(agg)->getResult(result);
         if (result.data.size() == 1) {
           // TODO: for group by
+          dumpToJavaBuffer((uint8_t*)(buffersPtr_[index]), result);
+          index++;
         } else {
           ARROW_LOG(DEBUG) << "Oops... why return " << result.data.size() << " results";
         }
         // TODO: refactor. For 'avg' expression, it will return two elements, which are
         // 'Sum' and 'Count' and 'Count' type should be int64. However, we didn't handle
         // 'Count' expression here.
-        for (int j = 0; j < result.data.size(); j++) {
-          if (j == 1) {  // for `count` in `avg`
-            *((int64_t*)(buffersPtr_[index])) =
-                static_cast<int64_t>(result.data[j].low_bits());
-          } else {
-            decimalToBytes(result.data[j], result.precision,
-                           (uint8_t*)(buffersPtr_[index]));
-          }
-          *((uint8_t*)(nullsPtr_[index])) = (uint8_t)1;
-          index++;
-        }
+        // for (int j = 0; j < result.data.size(); j++) {
+        //   if (j == 1) {  // for `count` in `avg`
+        //     *((int64_t*)(buffersPtr_[index])) =
+        //         static_cast<int64_t>(result.data[j].low_bits());
+        //   } else {
+        //     decimalToBytes(result.data[j], result.precision,
+        //                    (uint8_t*)(buffersPtr_[index]));
+        //   }
+        //   *((uint8_t*)(nullsPtr_[index])) = (uint8_t)1;
+        //   index++;
+        // }
 
       } else if (typeid(*agg) == typeid(AttributeReferenceExpression)) {
         // TODO
