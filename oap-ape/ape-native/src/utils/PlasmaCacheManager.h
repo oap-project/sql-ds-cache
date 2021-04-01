@@ -35,7 +35,7 @@ struct CacheObject {
   std::shared_ptr<Buffer> data;
 };
 
-enum class CacheWriterState { INIT, STARTED, STOPPING, STOPED };
+enum class CacheWriterState { INIT, STARTED, STOPPING, STOPPED };
 
 class AsyncCacheWriter {
  public:

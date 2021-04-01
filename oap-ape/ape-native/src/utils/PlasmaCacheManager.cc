@@ -36,7 +36,7 @@ void AsyncCacheWriter::startCacheWriting() {
 }
 
 void AsyncCacheWriter::stopCacheWriting() {
-  if (state_ == CacheWriterState::INIT || state_ == CacheWriterState::STOPED) {
+  if (state_ == CacheWriterState::INIT || state_ == CacheWriterState::STOPPED) {
     return;
   }
 
@@ -106,8 +106,8 @@ void AsyncCacheWriter::loopOnCacheWriting() {
   }
 
   // change writer state
-  state_ = CacheWriterState::STOPED;
-  ARROW_LOG(INFO) << "cache writer, loop stoped";
+  state_ = CacheWriterState::STOPPED;
+  ARROW_LOG(INFO) << "cache writer, loop stopped";
 }
 
 PlasmaCacheManager::PlasmaCacheManager(std::string file_path) : file_path_(file_path) {
