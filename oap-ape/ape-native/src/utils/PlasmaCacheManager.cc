@@ -159,6 +159,8 @@ void PlasmaCacheManager::close() {
     return;
   }
 
+  auto start = std::chrono::steady_clock::now();
+
   // release objects
   release();
 
@@ -172,6 +174,10 @@ void PlasmaCacheManager::close() {
 
   // save cache info to redis
   setCacheInfoToRedis();
+
+  auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+      std::chrono::steady_clock::now() - start);
+  ARROW_LOG(INFO) << "cache manager, closing takes " << duration.count() << " ms.";
 }
 
 void PlasmaCacheManager::setCacheInfoToRedis() {
