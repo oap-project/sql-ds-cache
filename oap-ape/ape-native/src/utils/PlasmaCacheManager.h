@@ -20,6 +20,7 @@
 #include <queue>
 #include <mutex>
 #include <thread>
+#include <condition_variable>
 
 #include <parquet/api/reader.h>
 #include <plasma/client.h>
@@ -38,10 +39,7 @@ enum class CacheWriterState { INIT, STARTED, STOPPING, STOPED };
 
 class AsyncCacheWriter {
  public:
-  static constexpr int default_loop_interval_micro_seconds = 500 * 1000;
-
-  AsyncCacheWriter()
-      : loop_interval_micro_seconds_(default_loop_interval_micro_seconds){};
+  AsyncCacheWriter(){};
   virtual ~AsyncCacheWriter() = default;
   // start a new thread to write cache objects
   void startCacheWriting();
@@ -66,12 +64,12 @@ class AsyncCacheWriter {
  private:
   // a mutex to protect the obejct
   std::mutex cache_mutex_;
+  // event condition variable
+  std::condition_variable event_cv_;
   // a queue holds all the objects which need to be witten
   std::queue<std::shared_ptr<CacheObject>> cache_objects_;
   // current state of this writer
   CacheWriterState state_ = CacheWriterState::INIT;
-  // the loop interval to check the object queue and the `stop` state
-  int loop_interval_micro_seconds_;
   // thread holder
   std::vector<std::thread> some_threads_;
 };

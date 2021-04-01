@@ -42,7 +42,11 @@ void AsyncCacheWriter::stopCacheWriting() {
 
   ARROW_LOG(DEBUG) << "cache writer, stopping, current state: "
                    << static_cast<int>(state_);
+
+  std::unique_lock<std::mutex> lck(cache_mutex_);
   state_ = CacheWriterState::STOPPING;
+  lck.unlock();
+  event_cv_.notify_one();
 
   // wait until writing finish
   auto start = std::chrono::steady_clock::now();
@@ -54,18 +58,15 @@ void AsyncCacheWriter::stopCacheWriting() {
   ARROW_LOG(INFO) << "cache writer, stopping takes " << duration.count() << " ms.";
 }
 
-void AsyncCacheWriter::setLoopIntervalMicroSeconds(int interval) {
-  if (interval > 0) {
-    loop_interval_micro_seconds_ = interval;
-  }
-}
-
 void AsyncCacheWriter::insertCacheObject(::arrow::io::ReadRange range,
                                          std::shared_ptr<Buffer> data) {
-  std::lock_guard<std::mutex> guard(cache_mutex_);
+  std::unique_lock<std::mutex> lck(cache_mutex_);
 
   std::shared_ptr<CacheObject> obj = std::make_shared<CacheObject>(range, data);
   cache_objects_.push(obj);
+
+  lck.unlock();
+  event_cv_.notify_one();
 }
 
 std::shared_ptr<CacheObject> AsyncCacheWriter::popCacheObject() {
@@ -90,9 +91,9 @@ void AsyncCacheWriter::loopOnCacheWriting() {
     if (obj == nullptr) {
       // check if this loop should stop
       if (state_ != CacheWriterState::STOPPING) {
-        ARROW_LOG(DEBUG) << "cache writer, loop next...";
-        std::this_thread::sleep_for(
-            std::chrono::microseconds(loop_interval_micro_seconds_));
+        ARROW_LOG(DEBUG) << "cache writer, loop wait...";
+        std::unique_lock<std::mutex> lck(cache_mutex_);
+        event_cv_.wait(lck);
         continue;
       } else {
         ARROW_LOG(DEBUG) << "cache writer, loop stopping";
