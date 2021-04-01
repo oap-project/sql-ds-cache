@@ -70,8 +70,6 @@ void AsyncCacheWriter::insertCacheObject(::arrow::io::ReadRange range,
 }
 
 std::shared_ptr<CacheObject> AsyncCacheWriter::popCacheObject() {
-  std::lock_guard<std::mutex> guard(cache_mutex_);
-
   if (cache_objects_.empty()) {
     return nullptr;
   }
@@ -85,6 +83,7 @@ std::shared_ptr<CacheObject> AsyncCacheWriter::popCacheObject() {
 void AsyncCacheWriter::loopOnCacheWriting() {
   ARROW_LOG(INFO) << "cache writer, loop started";
   while (true) {
+    std::unique_lock<std::mutex> lck(cache_mutex_);
     auto obj = popCacheObject();
 
     // no cache objects that need to be written
@@ -92,14 +91,15 @@ void AsyncCacheWriter::loopOnCacheWriting() {
       // check if this loop should stop
       if (state_ != CacheWriterState::STOPPING) {
         ARROW_LOG(DEBUG) << "cache writer, loop wait...";
-        std::unique_lock<std::mutex> lck(cache_mutex_);
         event_cv_.wait(lck);
         continue;
       } else {
         ARROW_LOG(DEBUG) << "cache writer, loop stopping";
+        lck.unlock();
         break;
       }
     }
+    lck.unlock();
 
     // write cache
     this->writeCacheObject(obj->range, obj->data);
