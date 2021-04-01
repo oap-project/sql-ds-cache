@@ -73,9 +73,7 @@ class RootAggExpression : public WithResultExpression {
     child->setSchema(schema);
   }
 
-  void getResult(DecimalVector& result) {
-    child->getResult(result);
-  }
+  void getResult(DecimalVector& result) { child->getResult(result); }
 
  private:
   bool isDistinct;
