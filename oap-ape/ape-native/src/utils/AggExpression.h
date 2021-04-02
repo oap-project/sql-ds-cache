@@ -34,6 +34,7 @@ class WithResultExpression : public Expression {
                        std::vector<int8_t>& outBuffers) {
     return 0;
   }
+  virtual void reset() { done = false; }
   void Execute() {}
   ~WithResultExpression() {}
 
@@ -52,6 +53,7 @@ class WithResultExpression : public Expression {
   std::string columnName;
   std::string castType;
   bool isDistinct = false;
+  bool done = false;
 };
 
 class RootAggExpression : public WithResultExpression {
@@ -67,6 +69,10 @@ class RootAggExpression : public WithResultExpression {
   int ExecuteWithParam(int batchSize, const std::vector<int64_t>& dataBuffers,
                        const std::vector<int64_t>& nullBuffers,
                        std::vector<int8_t>& outBuffers);
+  void reset() override {
+    done = false;
+    child->reset();
+  }
 
   void setSchema(std::shared_ptr<std::vector<Schema>> schema_) {
     schema = schema_;
@@ -91,6 +97,10 @@ class AggExpression : public WithResultExpression {
   int ExecuteWithParam(int batchSize, const std::vector<int64_t>& dataBuffers,
                        const std::vector<int64_t>& nullBuffers,
                        std::vector<int8_t>& outBuffers);
+  void reset() override {
+    done = false;
+    child->reset();
+  }
 
   void setSchema(std::shared_ptr<std::vector<Schema>> schema_) {
     schema = schema_;
@@ -155,10 +165,14 @@ class Count : public AggExpression {
     result.data.push_back(arrow::BasicDecimal128(count));
     result.type = ResultType::LongType;
   }
+
   int ExecuteWithParam(int batchSize, const std::vector<int64_t>& dataBuffers,
                        const std::vector<int64_t>& nullBuffers,
                        std::vector<int8_t>& outBuffers) override {
-    count = batchSize;
+    if (!done) {
+      done = true;
+      count = batchSize;
+    }
     return 0;
   }
 
@@ -207,9 +221,26 @@ class ArithmeticExpression : public WithResultExpression {
     rightChild->setSchema(schema);
   }
 
+  void getResult(DecimalVector& result) override {
+    if (!done) {
+      getResultInternal(resultCache);
+      done = true;
+    }
+    result = resultCache;
+  }
+
   int ExecuteWithParam(int batchSize, const std::vector<int64_t>& dataBuffers,
                        const std::vector<int64_t>& nullBuffers,
                        std::vector<int8_t>& outBuffers);
+  void reset() override {
+    done = false;
+    resultCache.data.clear();
+    leftChild->reset();
+    rightChild->reset();
+  }
+  virtual void getResultInternal(DecimalVector& result) {
+    ARROW_LOG(INFO) << "should never be called";
+  };
 
  protected:
   std::shared_ptr<WithResultExpression> leftChild;
@@ -219,12 +250,13 @@ class ArithmeticExpression : public WithResultExpression {
   bool promotePrecision;
   bool checkOverflow;
   bool nullOnOverFlow;
+  DecimalVector resultCache;
 };
 
 class Add : public ArithmeticExpression {
  public:
   ~Add() {}
-  void getResult(DecimalVector& result) override {
+  void getResultInternal(DecimalVector& result) override {
     auto left = DecimalVector();
     auto right = DecimalVector();
     leftChild->getResult(left);
@@ -271,7 +303,7 @@ class Add : public ArithmeticExpression {
 class Sub : public ArithmeticExpression {
  public:
   ~Sub() {}
-  void getResult(DecimalVector& result) override {
+  void getResultInternal(DecimalVector& result) override {
     auto left = DecimalVector();
     auto right = DecimalVector();
     leftChild->getResult(left);
@@ -318,7 +350,7 @@ class Sub : public ArithmeticExpression {
 class Multiply : public ArithmeticExpression {
  public:
   ~Multiply() {}
-  void getResult(DecimalVector& result) override {
+  void getResultInternal(DecimalVector& result) override {
     auto left = DecimalVector();
     auto right = DecimalVector();
     leftChild->getResult(left);
@@ -365,7 +397,7 @@ class Multiply : public ArithmeticExpression {
 class Divide : public ArithmeticExpression {
  public:
   ~Divide() {}
-  void getResult(DecimalVector& result) override {
+  void getResultInternal(DecimalVector& result) override {
     auto left = DecimalVector();
     auto right = DecimalVector();
     leftChild->getResult(left);
@@ -376,7 +408,7 @@ class Divide : public ArithmeticExpression {
 class Mod : public ArithmeticExpression {
  public:
   ~Mod() {}
-  void getResult(DecimalVector& result) override {
+  void getResultInternal(DecimalVector& result) override {
     auto left = DecimalVector();
     auto right = DecimalVector();
     leftChild->getResult(left);
@@ -410,6 +442,7 @@ class AttributeReferenceExpression : public WithResultExpression {
   int ExecuteWithParam(int batchSize, const std::vector<int64_t>& dataBuffers,
                        const std::vector<int64_t>& nullBuffers,
                        std::vector<int8_t>& outBuffers);
+  void reset() override { done = false; }
 
  private:
   DecimalVector result;

@@ -349,6 +349,13 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
         // TODO
       }
     }
+
+    for (int i = 0; i < aggExprs.size(); i++) {
+      auto agg = aggExprs[i];
+      if (typeid(*agg) == typeid(RootAggExpression)) {
+        std::dynamic_pointer_cast<RootAggExpression>(agg)->reset();
+      }
+    }
     rowsRet = 1;
     aggTime += std::chrono::steady_clock::now() - start;
   } else {
@@ -673,7 +680,8 @@ void Reader::setAggColumnNames(std::shared_ptr<Expression> agg) {
 void Reader::setAgg(std::string aggStr) {
   // do nothing now
   groupByExprs = JsonConvertor::parseToGroupByExpressions(aggStr);
-  aggExprs = JsonConvertor::parseToAggExpressions(aggStr);
+  std::unordered_map<std::string, std::shared_ptr<WithResultExpression>> cache;
+  aggExprs = JsonConvertor::parseToAggExpressions(aggStr, cache);
 
   // get column names from expression
   aggColumnNames.clear();

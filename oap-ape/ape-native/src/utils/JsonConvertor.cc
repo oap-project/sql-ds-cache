@@ -116,9 +116,10 @@ std::vector<std::shared_ptr<Expression>> JsonConvertor::parseToGroupByExpression
   auto start = std::chrono::steady_clock::now();
   std::vector<std::shared_ptr<Expression>> v;
   auto exprs = root["groupByExprs"];
+  std::unordered_map<std::string, std::shared_ptr<WithResultExpression>> cache;
   for (int i = 0; i < exprs.size(); i++) {
     auto expr = exprs[i];
-    v.push_back(parseToAggExpressionsHelper(expr));
+    v.push_back(parseToAggExpressionsHelper(expr, cache));
   }
   std::chrono::duration<double> duration = std::chrono::steady_clock::now() - start;
   ARROW_LOG(INFO) << "Parsing json takes " << duration.count() * 1000 << " ms.";
@@ -126,7 +127,8 @@ std::vector<std::shared_ptr<Expression>> JsonConvertor::parseToGroupByExpression
 }
 
 std::vector<std::shared_ptr<Expression>> JsonConvertor::parseToAggExpressions(
-    std::string jsonString) {
+    std::string jsonString,
+    std::unordered_map<std::string, std::shared_ptr<WithResultExpression>>& cache) {
   ARROW_LOG(DEBUG) << "json string " << jsonString;
   nlohmann::json json;
   try {
@@ -136,11 +138,12 @@ std::vector<std::shared_ptr<Expression>> JsonConvertor::parseToAggExpressions(
     return std::vector<std::shared_ptr<Expression>>();
   }
 
-  return parseToAggExpressions(json);
+  return parseToAggExpressions(json, cache);
 }
 
 std::vector<std::shared_ptr<Expression>> JsonConvertor::parseToAggExpressions(
-    nlohmann::json root) {
+    nlohmann::json root,
+    std::unordered_map<std::string, std::shared_ptr<WithResultExpression>>& cache) {
   auto start = std::chrono::steady_clock::now();
   std::vector<std::shared_ptr<Expression>> v;
   auto exprs = root["aggregateExprs"];
@@ -150,13 +153,13 @@ std::vector<std::shared_ptr<Expression>> JsonConvertor::parseToAggExpressions(
     if ((((std::string)expr["exprName"]).compare("RootAgg") == 0) &&
         ((std::string(expr["child"]["exprName"])).compare("Average") == 0)) {
       expr["child"]["exprName"] = "Sum";
-      v.push_back(parseToAggExpressionsHelper(expr));
+      v.push_back(parseToAggExpressionsHelper(expr, cache));
 
       expr["child"]["exprName"] = "Count";
-      v.push_back(parseToAggExpressionsHelper(expr));
+      v.push_back(parseToAggExpressionsHelper(expr, cache));
 
     } else {
-      v.push_back(parseToAggExpressionsHelper(expr));
+      v.push_back(parseToAggExpressionsHelper(expr, cache));
     }
   }
   std::chrono::duration<double> duration = std::chrono::steady_clock::now() - start;
@@ -165,7 +168,13 @@ std::vector<std::shared_ptr<Expression>> JsonConvertor::parseToAggExpressions(
 }
 
 std::shared_ptr<WithResultExpression> JsonConvertor::parseToAggExpressionsHelper(
-    nlohmann::json root) {
+    nlohmann::json root,
+    std::unordered_map<std::string, std::shared_ptr<WithResultExpression>>& cache) {
+  auto key = root.dump();
+  if(cache.find(key) != cache.end()) {
+    ARROW_LOG(INFO) <<"agg cache hit " << key;
+    return cache[key];
+  }
   std::string name = root["exprName"];
   if (name.compare("AttributeReference") == 0) {
     auto res = std::make_shared<AttributeReferenceExpression>();
@@ -174,27 +183,30 @@ std::shared_ptr<WithResultExpression> JsonConvertor::parseToAggExpressionsHelper
         root.contains("castType") ? root["castType"] : "",
         root.contains("promotePrecision") ? (bool)root["promotePrecision"] : false);
     res->setType(name);
+    cache.insert(std::make_pair(key, res));
     return res;
   } else if (name.compare("Literal") == 0) {
     auto res = std::make_shared<LiteralExpression>();
     res->setAttribute(root["dataType"], root["value"]);
     res->setType(name);
+    cache.insert(std::make_pair(key, res));
     return res;
   } else if (name.compare("Sum") == 0 || name.compare("Average") == 0 ||
              name.compare("Count") == 0 || name.compare("Max") == 0 ||
              name.compare("Min") == 0) {
     std::shared_ptr<AggExpression> res = Gen::genAggExpression(name);
     res->setDataType(root.contains("dataType") ? root["dataType"] : "");
-    res->setChild(parseToAggExpressionsHelper(root["child"]));
+    res->setChild(parseToAggExpressionsHelper(root["child"], cache));
     res->setType(name);
+    cache.insert(std::make_pair(key, res));
     return res;
   } else if (name.compare("Add") == 0 || name.compare("Subtract") == 0 ||
              name.compare("Multiply") == 0 || name.compare("Divide") == 0 ||
              name.compare("Mod") == 0) {
     std::shared_ptr<ArithmeticExpression> res = Gen::genArithmeticExpression(name);
     res->setDataType(root.contains("dataType") ? root["dataType"] : "");
-    res->setLeft(parseToAggExpressionsHelper(root["leftNode"]));
-    res->setRight(parseToAggExpressionsHelper(root["rightNode"]));
+    res->setLeft(parseToAggExpressionsHelper(root["leftNode"], cache));
+    res->setRight(parseToAggExpressionsHelper(root["rightNode"], cache));
     res->setAttribute(
         root.contains("checkOverflowType") ? root["checkOverflowType"] : "",
         root.contains("castType") ? root["castType"] : "",
@@ -202,14 +214,16 @@ std::shared_ptr<WithResultExpression> JsonConvertor::parseToAggExpressionsHelper
         root.contains("checkOverflow") ? (bool)root["checkOverflow"] : false,
         root.contains("nullOnOverFlow") ? (bool)root["nullOnOverFlow"] : false);
     res->setType(name);
+    cache.insert(std::make_pair(key, res));
     return res;
   } else if (name.compare("RootAgg") == 0) {
     auto res = std::make_shared<RootAggExpression>();
     res->setDataType(root.contains("dataType") ? root["dataType"] : "");
-    res->setChild(parseToAggExpressionsHelper(root["child"]));
+    res->setChild(parseToAggExpressionsHelper(root["child"], cache));
     res->setAttribute(root.contains("isDistinct") ? (bool)root["isDistinct"] : false,
                       root.contains("aliasName") ? root["aliasName"] : "");
     res->setType(name);
+    cache.insert(std::make_pair(key, res));
     return res;
   } else {
     ARROW_LOG(WARNING) << "Unsupported Expression " << name;

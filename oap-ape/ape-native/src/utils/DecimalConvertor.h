@@ -43,6 +43,13 @@ struct DecimalVector {
   int32_t precision;
   int32_t scale;
   ResultType type;
+  void operator=(const DecimalVector& lhs) {
+    this->data = lhs.data;
+    this->precision = lhs.precision;
+    this->scale = lhs.scale;
+    this->type = lhs.type;
+
+  }
 };
 
 static inline bool isDecimalType(std::string& dataType) {
