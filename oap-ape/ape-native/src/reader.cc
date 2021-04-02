@@ -340,6 +340,7 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
         if (result.data.size() == 1) {
           // TODO: for group by
           dumpToJavaBuffer((uint8_t*)(buffersPtr_[index]), result);
+          *(uint8_t*)(nullsPtr_[index]) = 1;
           index++;
         } else {
           ARROW_LOG(DEBUG) << "Oops... why return " << result.data.size() << " results";
@@ -371,6 +372,8 @@ bool Reader::skipNextRowGroup() {
 void Reader::close() {
   ARROW_LOG(INFO) << "Filter takes " << filterTime.count() * 1000 << " ms. "
                   << "Agg takes " << aggTime.count() * 1000 << " ms";
+  filterTime = std::chrono::nanoseconds::zero();
+  aggTime = std::chrono::nanoseconds::zero();
 
   // No need to call parquetReader->Close(). It will be done in destructor.
 
