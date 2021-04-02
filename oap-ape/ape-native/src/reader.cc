@@ -391,6 +391,7 @@ void Reader::close() {
     delete[] ptr;
   }
   freeFilterBuffers();
+  freeAggBuffers();
 
   if (plasmaCacheManagerProvider) {
     plasmaCacheManagerProvider->close();

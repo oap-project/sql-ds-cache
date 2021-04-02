@@ -32,6 +32,7 @@ import org.apache.flink.core.fs.Path;
 import org.apache.flink.formats.parquet.vector.nativevector.NativeBooleanVector;
 import org.apache.flink.formats.parquet.vector.nativevector.NativeBytesVector;
 import org.apache.flink.formats.parquet.vector.nativevector.NativeDoubleVector;
+import org.apache.flink.formats.parquet.vector.nativevector.NativeFixedBytesVector;
 import org.apache.flink.formats.parquet.vector.nativevector.NativeFloatVector;
 import org.apache.flink.formats.parquet.vector.nativevector.NativeIntVector;
 import org.apache.flink.formats.parquet.vector.nativevector.NativeLongVector;
@@ -341,8 +342,12 @@ public class ParquetNativeRecordReaderWrapper {
                         decimal64Vector.setPtr(bufferPtr, nullPtr, batchSize);
                         columns[i] = decimal64Vector;
                     } else {
-                        throw new UnsupportedOperationException(fieldType +
-                                " is not supported now.");
+                        typeSize = 16;
+                        NativeFixedBytesVector decimalBytesVector =
+                                new NativeFixedBytesVector(batchSize, typeSize);
+                        bufferPtr = Platform.allocateMemory(batchSize * typeSize);
+                        decimalBytesVector.setPtr(bufferPtr, nullPtr, batchSize);
+                        columns[i] = decimalBytesVector;
                     }
                     break;
                 case TIMESTAMP_WITHOUT_TIME_ZONE:
