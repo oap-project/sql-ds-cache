@@ -56,7 +56,7 @@ class Reader {
 
   void setAgg(std::string aggStr);
 
-  void setPlasmaCacheEnabled(bool isEnabled);
+  void setPlasmaCacheEnabled(bool isEnabled, bool asyncCaching);
 
   void setPlasmaCacheRedis(std::string host, int port, std::string password);
 
@@ -126,6 +126,7 @@ class Reader {
   std::vector<std::shared_ptr<Expression>> groupByExprs;
 
   bool plasmaCacheEnabled = false;
+  bool plasmaCacheAsync = false;
   std::shared_ptr<PlasmaCacheManagerProvider> plasmaCacheManagerProvider;
   std::shared_ptr<sw::redis::ConnectionOptions> redisConnectionOptions;
 

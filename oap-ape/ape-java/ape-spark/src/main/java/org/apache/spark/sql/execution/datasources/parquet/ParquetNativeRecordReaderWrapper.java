@@ -88,7 +88,7 @@ public class ParquetNativeRecordReaderWrapper extends RecordReader<Void, Object>
     LOG.info("filename is " + fileName + " hdfs is " + hdfsHost + " " + hdfsPort);
     LOG.info("schema is " + sparkSchema.json());
     reader = ParquetReaderJNI.init(fileName, hdfsHost, hdfsPort, sparkSchema.json(),
-            inputSplitRowGroupStartIndex, inputSplitRowGroupNum, cacheEnabled, preBufferEnabled);
+            inputSplitRowGroupStartIndex, inputSplitRowGroupNum, cacheEnabled, preBufferEnabled, false);
   }
 
   public void getRequiredSplitRowGroup(ParquetInputSplit split, Configuration configuration)

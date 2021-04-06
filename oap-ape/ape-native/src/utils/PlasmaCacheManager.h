@@ -119,7 +119,7 @@ class PlasmaCacheManager : public parquet::CacheManager, public AsyncCacheWriter
 
 class PlasmaCacheManagerProvider : public parquet::CacheManagerProvider {
  public:
-  explicit PlasmaCacheManagerProvider(std::string file_path);
+  explicit PlasmaCacheManagerProvider(std::string file_path, bool enable_cache_writer);
   ~PlasmaCacheManagerProvider();
   void close();
   bool connected();
@@ -133,6 +133,7 @@ class PlasmaCacheManagerProvider : public parquet::CacheManagerProvider {
   std::string file_path_;
   std::vector<std::shared_ptr<PlasmaCacheManager>> managers_;
   std::shared_ptr<sw::redis::ConnectionOptions> redis_options_;
+  bool enable_cache_writer_ = false;
 };
 
 }  // namespace ape

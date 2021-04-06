@@ -17,28 +17,55 @@
 
 #include <iostream>
 #include <gtest/gtest.h>
+#include <chrono>
 
 #include "src/utils/PlasmaCacheManager.h"
 
-// in this case, we didn't write cache(call create), so it will fail. And you
 // need to start a Plasma server before run test.
 TEST(PlasmaCacheTest, cacheTest) {
-  auto file =
-      "hdfs://sr490:9000/tpch_1t_snappy/lineitem/"
-      "part-00036-01f81a98-e2b0-4bd4-9134-62fd522bc891-c000.snappy.parquet";
+  auto file = "scheme://host:port/file_path";
 
-  ape::PlasmaCacheManager cacheManager(file);
   auto range = arrow::io::ReadRange();
-  range.offset = 587558587;
+  range.offset = 587558533;
   range.length = 19723749;
 
-  auto c = cacheManager.containsFileRange(range);
+  std::shared_ptr<plasma::PlasmaClient> client = std::make_shared<plasma::PlasmaClient>();
+  auto status = client->Connect("/tmp/plasmaStore", "", 0);
+  if (status.ok()) {
+    ape::PlasmaCacheManager cacheManager(file);
+    bool exists = cacheManager.containsFileRange(range);
+    EXPECT_EQ(exists, 0);
 
-  EXPECT_EQ(c, 0);
+    // create new object
+    std::shared_ptr<Buffer> cache_data;
+    plasma::ObjectID oid = cacheManager.objectIdOfFileRange(range);
+    client->Create(oid, range.length, nullptr, 0, &cache_data);
 
-  auto g = cacheManager.getFileRange(range);
+    // print buffer addresses
+    uint8_t* buffer = new uint8_t[range.length];
+    std::cout << "buffer addr: " << static_cast<void*>(buffer) << std::endl;
+    std::cout << "cache addr: " << static_cast<const void*>(cache_data->data())
+              << std::endl;
 
-  EXPECT_EQ(g, nullptr);
+    // record data reading time
+    auto start = std::chrono::steady_clock::now();
+    memcpy(cache_data->mutable_data(), buffer, range.length);
+    // memcpy(buffer, cache_data->data(), range.length);
+    // cache_data->CopySlice(0, range.length);
+
+    auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
+        std::chrono::steady_clock::now() - start);
+    std::cout << "test reading cache of " << range.length << " bytes. takes "
+              << duration.count() << " ns." << std::endl;
+
+    // abort creating object
+    client->Abort(oid);
+
+    exists = cacheManager.containsFileRange(range);
+    EXPECT_EQ(exists, 0);
+
+    delete buffer;
+  }
 }
 
 // TODO: add a successful case.
