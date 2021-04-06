@@ -28,9 +28,9 @@ namespace ape {
 
 void AsyncCacheWriter::startCacheWriting() {
   // start a new thread
-  ARROW_LOG(INFO) << "cache writer, starting loop thread";
+  ARROW_LOG(DEBUG) << "cache writer, starting loop thread";
   some_threads_.push_back(std::thread(&AsyncCacheWriter::loopOnCacheWriting, this));
-  ARROW_LOG(INFO) << "cache writer, started loop thread";
+  ARROW_LOG(DEBUG) << "cache writer, started loop thread";
 
   state_ = CacheWriterState::STARTED;
 }
@@ -81,7 +81,7 @@ std::shared_ptr<CacheObject> AsyncCacheWriter::popCacheObject() {
 }
 
 void AsyncCacheWriter::loopOnCacheWriting() {
-  ARROW_LOG(INFO) << "cache writer, loop started";
+  ARROW_LOG(DEBUG) << "cache writer, loop started";
   while (true) {
     std::unique_lock<std::mutex> lck(cache_mutex_);
     auto obj = popCacheObject();
@@ -107,7 +107,7 @@ void AsyncCacheWriter::loopOnCacheWriting() {
 
   // change writer state
   state_ = CacheWriterState::STOPPED;
-  ARROW_LOG(INFO) << "cache writer, loop stopped";
+  ARROW_LOG(DEBUG) << "cache writer, loop stopped";
 }
 
 PlasmaCacheManager::PlasmaCacheManager(std::string file_path) : file_path_(file_path) {
@@ -242,7 +242,7 @@ void PlasmaCacheManager::setCacheRedis(
 
     auto redis = std::make_shared<sw::redis::Redis>(connection_options);
     redis_ = redis;
-    ARROW_LOG(INFO) << "plasma, set cache redis: " << options->host;
+    ARROW_LOG(DEBUG) << "plasma, set cache redis: " << options->host;
   } catch (const sw::redis::Error& e) {
     ARROW_LOG(WARNING) << "plasma, set redis failed: " << e.what();
   }
