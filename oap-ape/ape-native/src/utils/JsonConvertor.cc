@@ -134,7 +134,7 @@ std::vector<std::shared_ptr<Expression>> JsonConvertor::parseToAggExpressions(
   try {
     json = nlohmann::json::parse(jsonString);
   } catch (const nlohmann::json::parse_error e) {
-    std::cerr << e.what() << '\n';
+    ARROW_LOG(WARNING) << e.what() << '\n';
     return std::vector<std::shared_ptr<Expression>>();
   }
 
@@ -172,7 +172,7 @@ std::shared_ptr<WithResultExpression> JsonConvertor::parseToAggExpressionsHelper
     std::unordered_map<std::string, std::shared_ptr<WithResultExpression>>& cache) {
   auto key = root.dump();
   if (cache.find(key) != cache.end()) {
-    ARROW_LOG(INFO) << "agg cache hit " << key;
+    ARROW_LOG(DEBUG) << "agg cache hit " << key;
     return cache[key];
   }
   std::string name = root["exprName"];

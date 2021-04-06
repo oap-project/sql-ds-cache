@@ -17,6 +17,7 @@
 
 #include <memory>
 #include <string>
+#include <unordered_map>
 
 #include <gtest/gtest.h>
 
@@ -25,7 +26,8 @@
 
 TEST(AggParserTest, IllegalInput) {
   std::string json = "";
-  auto exprs = ape::JsonConvertor::parseToAggExpressions(json);
+  std::unordered_map<std::string, std::shared_ptr<ape::WithResultExpression>> cache;
+  auto exprs = ape::JsonConvertor::parseToAggExpressions(json, cache);
   EXPECT_EQ(exprs.size(), 0);
 }
 
@@ -38,8 +40,10 @@ TEST(AggParserTest, SimpleCase) {
       "\"RootAgg\",\"isDistinct\": false,\"child\": {\"exprName\": \"Sum\",\"child\": "
       "{\"exprName\": \"AttributeReference\",\"dataType\": "
       "\"DecimalType(12,2)\",\"columnName\": \"l_quantity\"}}}]}";
-  auto exprs = ape::JsonConvertor::parseToAggExpressions(json);
+  std::unordered_map<std::string, std::shared_ptr<ape::WithResultExpression>> cache;
+  auto exprs = ape::JsonConvertor::parseToAggExpressions(json, cache);
   EXPECT_EQ(exprs.size(), 3);
+  EXPECT_EQ(cache.size(), 5);
 }
 
 TEST(AggParserTest, ConvertAvgToSumAndCnt) {
@@ -48,6 +52,7 @@ TEST(AggParserTest, ConvertAvgToSumAndCnt) {
       "\"RootAgg\",\"isDistinct\": false,\"child\": {\"exprName\": "
       "\"Average\",\"child\": {\"exprName\": \"AttributeReference\",\"dataType\": "
       "\"DecimalType(12,2)\",\"columnName\": \"l_quantity\"}}}]}";
-  auto exprs = ape::JsonConvertor::parseToAggExpressions(json);
+  std::unordered_map<std::string, std::shared_ptr<ape::WithResultExpression>> cache;
+  auto exprs = ape::JsonConvertor::parseToAggExpressions(json, cache);
   EXPECT_EQ(exprs.size(), 2);
 }
