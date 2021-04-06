@@ -23,7 +23,7 @@ namespace ape {
 
 std::shared_ptr<Expression> JsonConvertor::parseToFilterExpression(
     std::string jsonString) {
-  ARROW_LOG(INFO) << "json string " << jsonString;
+  ARROW_LOG(DEBUG) << "json string " << jsonString;
   auto json = nlohmann::json::parse(jsonString);
   return parseToFilterExpression(json);
 }
@@ -100,7 +100,7 @@ std::shared_ptr<Expression> JsonConvertor::parseToFilterExpression(nlohmann::jso
 
 std::vector<std::shared_ptr<Expression>> JsonConvertor::parseToGroupByExpressions(
     std::string jsonString) {
-  ARROW_LOG(INFO) << "json string " << jsonString;
+  ARROW_LOG(DEBUG) << "json string " << jsonString;
   nlohmann::json json;
   try {
     json = nlohmann::json::parse(jsonString);
@@ -127,7 +127,7 @@ std::vector<std::shared_ptr<Expression>> JsonConvertor::parseToGroupByExpression
 
 std::vector<std::shared_ptr<Expression>> JsonConvertor::parseToAggExpressions(
     std::string jsonString) {
-  ARROW_LOG(INFO) << "json string " << jsonString;
+  ARROW_LOG(DEBUG) << "json string " << jsonString;
   nlohmann::json json;
   try {
     json = nlohmann::json::parse(jsonString);
@@ -146,7 +146,18 @@ std::vector<std::shared_ptr<Expression>> JsonConvertor::parseToAggExpressions(
   auto exprs = root["aggregateExprs"];
   for (int i = 0; i < exprs.size(); i++) {
     auto expr = exprs[i];
-    v.push_back(parseToAggExpressionsHelper(expr));
+    // convert avg to sum + count
+    if ((((std::string)expr["exprName"]).compare("RootAgg") == 0) &&
+        ((std::string(expr["child"]["exprName"])).compare("Average") == 0)) {
+      expr["child"]["exprName"] = "Sum";
+      v.push_back(parseToAggExpressionsHelper(expr));
+
+      expr["child"]["exprName"] = "Count";
+      v.push_back(parseToAggExpressionsHelper(expr));
+
+    } else {
+      v.push_back(parseToAggExpressionsHelper(expr));
+    }
   }
   std::chrono::duration<double> duration = std::chrono::steady_clock::now() - start;
   ARROW_LOG(INFO) << "Parsing json takes " << duration.count() * 1000 << " ms.";

@@ -41,3 +41,13 @@ TEST(AggParserTest, SimpleCase) {
   auto exprs = ape::JsonConvertor::parseToAggExpressions(json);
   EXPECT_EQ(exprs.size(), 3);
 }
+
+TEST(AggParserTest, ConvertAvgToSumAndCnt) {
+  std::string json =
+      "{\"aggregateExprs\": [{\"aliasName\": \"sum_qty\",\"exprName\": "
+      "\"RootAgg\",\"isDistinct\": false,\"child\": {\"exprName\": "
+      "\"Average\",\"child\": {\"exprName\": \"AttributeReference\",\"dataType\": "
+      "\"DecimalType(12,2)\",\"columnName\": \"l_quantity\"}}}]}";
+  auto exprs = ape::JsonConvertor::parseToAggExpressions(json);
+  EXPECT_EQ(exprs.size(), 2);
+}

@@ -101,6 +101,7 @@ public class AggregateConvertor {
       assert (exprs.size() == 1);
       ((ObjectNode) tmpNode).put("exprName", expr.nodeName());
       ((ObjectNode) tmpNode).put("child", constructTree(exprs.get(0), null));
+      ((ObjectNode) tmpNode).put("dataType", expr.dataType().toString());
       return tmpNode;
     } else if (expr instanceof BinaryArithmetic) { // Add sub Multiply ...
       assert (exprs.size() == 2);
