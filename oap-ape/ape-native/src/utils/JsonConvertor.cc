@@ -171,8 +171,8 @@ std::shared_ptr<WithResultExpression> JsonConvertor::parseToAggExpressionsHelper
     nlohmann::json root,
     std::unordered_map<std::string, std::shared_ptr<WithResultExpression>>& cache) {
   auto key = root.dump();
-  if(cache.find(key) != cache.end()) {
-    ARROW_LOG(INFO) <<"agg cache hit " << key;
+  if (cache.find(key) != cache.end()) {
+    ARROW_LOG(INFO) << "agg cache hit " << key;
     return cache[key];
   }
   std::string name = root["exprName"];

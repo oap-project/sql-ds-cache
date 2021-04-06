@@ -48,7 +48,6 @@ struct DecimalVector {
     this->precision = lhs.precision;
     this->scale = lhs.scale;
     this->type = lhs.type;
-
   }
 };
 
