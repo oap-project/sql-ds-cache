@@ -21,11 +21,11 @@
 JNIEXPORT jlong JNICALL Java_com_intel_ape_ParquetReaderJNI_init(
     JNIEnv* env, jclass cls, jstring fileName, jstring hdfsHost, jint hdfsPort,
     jstring requiredSchema, jint firstRowGroup, jint rowGroupToRead,
-    jboolean plasmaCacheEnabled, jboolean preBufferEnabled) {
+    jboolean plasmaCacheEnabled, jboolean preBufferEnabled, jboolean plasmaCacheAsync) {
   int i = 0;
   ape::Reader* reader = new ape::Reader();
 
-  reader->setPlasmaCacheEnabled(plasmaCacheEnabled);
+  reader->setPlasmaCacheEnabled(plasmaCacheEnabled, plasmaCacheAsync);
   reader->setPreBufferEnabled(preBufferEnabled);
 
   std::string schema_ = env->GetStringUTFChars(requiredSchema, nullptr);

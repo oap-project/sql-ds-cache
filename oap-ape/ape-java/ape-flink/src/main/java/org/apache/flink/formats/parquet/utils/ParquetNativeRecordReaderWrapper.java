@@ -107,11 +107,13 @@ public class ParquetNativeRecordReaderWrapper {
         ConvertToJson message = new ConvertToJson(fieldTypeList, projectedFields);
         boolean plasmaCacheEnabled =
                 hadoopConfig.getBoolean("fs.ape.reader.plasmaCacheEnabled", false);
+        boolean plasmaCacheAsync =
+                hadoopConfig.getBoolean("fs.ape.reader.plasmaCacheAsync", false);
         boolean preBufferEnabled =
                 hadoopConfig.getBoolean("fs.ape.reader.preBufferEnabled", false);
         reader = ParquetReaderJNI.init(fileName, hdfsHost, hdfsPort, message.toJson(),
                 inputSplitRowGroupStartIndex, inputSplitRowGroupNum, plasmaCacheEnabled,
-                preBufferEnabled);
+                preBufferEnabled, plasmaCacheAsync);
 
         boolean cacheLocalityEnabled =
                 hadoopConfig.getBoolean("fs.ape.reader.cacheLocalityEnabled", false);

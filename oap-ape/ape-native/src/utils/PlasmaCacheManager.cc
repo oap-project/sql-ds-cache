@@ -16,6 +16,7 @@
 // under the License.
 
 #include <unistd.h>
+#include <chrono>
 
 #include <openssl/sha.h>
 
@@ -24,6 +25,90 @@
 #include "src/utils/PlasmaCacheManager.h"
 
 namespace ape {
+
+void AsyncCacheWriter::startCacheWriting() {
+  // start a new thread
+  ARROW_LOG(DEBUG) << "cache writer, starting loop thread";
+  some_threads_.push_back(std::thread(&AsyncCacheWriter::loopOnCacheWriting, this));
+  ARROW_LOG(DEBUG) << "cache writer, started loop thread";
+
+  state_ = CacheWriterState::STARTED;
+}
+
+void AsyncCacheWriter::stopCacheWriting() {
+  if (state_ == CacheWriterState::INIT || state_ == CacheWriterState::STOPPED) {
+    return;
+  }
+
+  ARROW_LOG(DEBUG) << "cache writer, stopping, current state: "
+                   << static_cast<int>(state_);
+
+  std::unique_lock<std::mutex> lck(cache_mutex_);
+  state_ = CacheWriterState::STOPPING;
+  lck.unlock();
+  event_cv_.notify_one();
+
+  // wait until writing finish
+  auto start = std::chrono::steady_clock::now();
+  for (auto& t : some_threads_) {
+    t.join();
+  }
+  auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+      std::chrono::steady_clock::now() - start);
+  ARROW_LOG(INFO) << "cache writer, stopping takes " << duration.count() << " ms.";
+}
+
+void AsyncCacheWriter::insertCacheObject(::arrow::io::ReadRange range,
+                                         std::shared_ptr<Buffer> data) {
+  std::unique_lock<std::mutex> lck(cache_mutex_);
+
+  std::shared_ptr<CacheObject> obj = std::make_shared<CacheObject>(range, data);
+  cache_objects_.push(obj);
+
+  lck.unlock();
+  event_cv_.notify_one();
+}
+
+std::shared_ptr<CacheObject> AsyncCacheWriter::popCacheObject() {
+  if (cache_objects_.empty()) {
+    return nullptr;
+  }
+
+  auto ret = cache_objects_.front();
+  cache_objects_.pop();
+
+  return ret;
+}
+
+void AsyncCacheWriter::loopOnCacheWriting() {
+  ARROW_LOG(DEBUG) << "cache writer, loop started";
+  while (true) {
+    std::unique_lock<std::mutex> lck(cache_mutex_);
+    auto obj = popCacheObject();
+
+    // no cache objects that need to be written
+    if (obj == nullptr) {
+      // check if this loop should stop
+      if (state_ != CacheWriterState::STOPPING) {
+        ARROW_LOG(DEBUG) << "cache writer, loop wait...";
+        event_cv_.wait(lck);
+        continue;
+      } else {
+        ARROW_LOG(DEBUG) << "cache writer, loop stopping";
+        lck.unlock();
+        break;
+      }
+    }
+    lck.unlock();
+
+    // write cache
+    this->writeCacheObject(obj->range, obj->data);
+  }
+
+  // change writer state
+  state_ = CacheWriterState::STOPPED;
+  ARROW_LOG(DEBUG) << "cache writer, loop stopped";
+}
 
 PlasmaCacheManager::PlasmaCacheManager(std::string file_path) : file_path_(file_path) {
   ARROW_LOG(INFO) << "plasma, init cache manager with path: " << file_path;
@@ -64,9 +149,17 @@ void PlasmaCacheManager::release() {
 void PlasmaCacheManager::close() {
   ARROW_LOG(INFO) << "plasma, close cache manager";
 
+  // stop the cache writer
+  if (cache_writer_) {
+    cache_writer_->stopCacheWriting();
+    cache_writer_->close();
+  }
+
   if (!client_) {
     return;
   }
+
+  auto start = std::chrono::steady_clock::now();
 
   // release objects
   release();
@@ -81,6 +174,10 @@ void PlasmaCacheManager::close() {
 
   // save cache info to redis
   setCacheInfoToRedis();
+
+  auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+      std::chrono::steady_clock::now() - start);
+  ARROW_LOG(INFO) << "cache manager, closing takes " << duration.count() << " ms.";
 }
 
 void PlasmaCacheManager::setCacheInfoToRedis() {
@@ -133,6 +230,10 @@ plasma::ObjectID PlasmaCacheManager::objectIdOfFileRange(::arrow::io::ReadRange 
 
 void PlasmaCacheManager::setCacheRedis(
     std::shared_ptr<sw::redis::ConnectionOptions> options) {
+  if (cache_writer_) {
+    cache_writer_->setCacheRedis(options);
+  }
+
   try {
     sw::redis::ConnectionOptions connection_options;
     connection_options.host = options->host;
@@ -141,10 +242,20 @@ void PlasmaCacheManager::setCacheRedis(
 
     auto redis = std::make_shared<sw::redis::Redis>(connection_options);
     redis_ = redis;
-    ARROW_LOG(INFO) << "plasma, set cache redis: " << options->host;
+    ARROW_LOG(DEBUG) << "plasma, set cache redis: " << options->host;
   } catch (const sw::redis::Error& e) {
     ARROW_LOG(WARNING) << "plasma, set redis failed: " << e.what();
   }
+}
+
+void PlasmaCacheManager::setCacheWriter(
+    std::shared_ptr<PlasmaCacheManager> cache_writer) {
+  if (cache_writer_ != nullptr) {
+    return;
+  }
+
+  cache_writer_ = cache_writer;
+  cache_writer_->startCacheWriting();
 }
 
 bool PlasmaCacheManager::containsFileRange(::arrow::io::ReadRange range) {
@@ -193,6 +304,16 @@ std::shared_ptr<Buffer> PlasmaCacheManager::getFileRange(::arrow::io::ReadRange 
 
 bool PlasmaCacheManager::cacheFileRange(::arrow::io::ReadRange range,
                                         std::shared_ptr<Buffer> data) {
+  if (cache_writer_ != nullptr) {
+    cache_writer_->insertCacheObject(range, data);
+    return true;
+  } else {
+    return cacheFileRangeInternal(range, data);
+  }
+}
+
+bool PlasmaCacheManager::cacheFileRangeInternal(::arrow::io::ReadRange range,
+                                                std::shared_ptr<Buffer> data) {
   std::vector<plasma::ObjectID> oids;
   plasma::ObjectID oid = objectIdOfFileRange(range);
 
@@ -264,9 +385,21 @@ bool PlasmaCacheManager::deleteFileRange(::arrow::io::ReadRange range) {
   return true;
 }
 
-PlasmaCacheManagerProvider::PlasmaCacheManagerProvider(std::string file_path)
-    : file_path_(file_path) {
+bool PlasmaCacheManager::writeCacheObject(::arrow::io::ReadRange range,
+                                          std::shared_ptr<Buffer> data) {
+  return cacheFileRangeInternal(range, data);
+}
+
+PlasmaCacheManagerProvider::PlasmaCacheManagerProvider(std::string file_path,
+                                                       bool enable_cache_writer)
+    : file_path_(file_path), enable_cache_writer_(enable_cache_writer) {
   auto default_manager = std::make_shared<PlasmaCacheManager>(file_path);
+
+  if (enable_cache_writer_) {
+    auto cache_writer = std::make_shared<PlasmaCacheManager>(file_path);
+    default_manager->setCacheWriter(cache_writer);
+  }
+
   managers_.push_back(default_manager);
 }
 
@@ -295,6 +428,12 @@ std::shared_ptr<parquet::CacheManager> PlasmaCacheManagerProvider::defaultCacheM
 
 std::shared_ptr<parquet::CacheManager> PlasmaCacheManagerProvider::newCacheManager() {
   auto new_manager = std::make_shared<PlasmaCacheManager>(file_path_);
+
+  if (enable_cache_writer_) {
+    auto cache_writer = std::make_shared<PlasmaCacheManager>(file_path_);
+    new_manager->setCacheWriter(cache_writer);
+  }
+
   managers_.push_back(new_manager);
 
   if (redis_options_) {

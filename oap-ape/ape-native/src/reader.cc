@@ -92,7 +92,7 @@ void Reader::initCacheManager(std::string fileName, std::string hdfsHost, int hd
   std::string path = buff;
 
   std::shared_ptr<PlasmaCacheManagerProvider> cacheManagerProvider =
-      std::make_shared<PlasmaCacheManagerProvider>(path);
+      std::make_shared<PlasmaCacheManagerProvider>(path, plasmaCacheAsync);
   if (cacheManagerProvider->connected()) {
     plasmaCacheManagerProvider = cacheManagerProvider;
 
@@ -712,7 +712,10 @@ void Reader::setAgg(std::string aggStr) {
   aggReset = true;
 }
 
-void Reader::setPlasmaCacheEnabled(bool isEnabled) { plasmaCacheEnabled = isEnabled; }
+void Reader::setPlasmaCacheEnabled(bool isEnabled, bool asyncCaching) {
+  plasmaCacheEnabled = isEnabled;
+  plasmaCacheAsync = asyncCaching;
+}
 
 void Reader::setPlasmaCacheRedis(std::string host, int port, std::string password) {
   auto options = std::make_shared<sw::redis::ConnectionOptions>();
