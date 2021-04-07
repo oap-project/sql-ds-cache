@@ -46,14 +46,16 @@ int RootAggExpression::ExecuteWithParam(int batchSize,
                                         const std::vector<int64_t>& dataBuffers,
                                         const std::vector<int64_t>& nullBuffers,
                                         std::vector<int8_t>& outBuffers) {
-  auto start1 = std::chrono::steady_clock::now();
-  child->ExecuteWithParam(batchSize, dataBuffers, nullBuffers, outBuffers);
-  auto end1 = std::chrono::steady_clock::now();
-  ARROW_LOG(DEBUG) << "exec takes "
-                   << static_cast<std::chrono::duration<double>>(end1 - start1).count() *
-                          1000
-                   << " ms";
-
+  if (!done) {
+    auto start1 = std::chrono::steady_clock::now();
+    child->ExecuteWithParam(batchSize, dataBuffers, nullBuffers, outBuffers);
+    auto end1 = std::chrono::steady_clock::now();
+    ARROW_LOG(DEBUG)
+        << "exec takes "
+        << static_cast<std::chrono::duration<double>>(end1 - start1).count() * 1000
+        << " ms";
+    done = true;
+  }
   return 0;
 }
 
@@ -61,7 +63,10 @@ int AggExpression::ExecuteWithParam(int batchSize,
                                     const std::vector<int64_t>& dataBuffers,
                                     const std::vector<int64_t>& nullBuffers,
                                     std::vector<int8_t>& outBuffers) {
-  child->ExecuteWithParam(batchSize, dataBuffers, nullBuffers, outBuffers);
+  if (!done) {
+    child->ExecuteWithParam(batchSize, dataBuffers, nullBuffers, outBuffers);
+    done = true;
+  }
   return 0;
 }
 
@@ -69,59 +74,65 @@ int ArithmeticExpression::ExecuteWithParam(int batchSize,
                                            const std::vector<int64_t>& dataBuffers,
                                            const std::vector<int64_t>& nullBuffers,
                                            std::vector<int8_t>& outBuffers) {
-  leftChild->ExecuteWithParam(batchSize, dataBuffers, nullBuffers, outBuffers);
-  rightChild->ExecuteWithParam(batchSize, dataBuffers, nullBuffers, outBuffers);
+  if (!done) {
+    leftChild->ExecuteWithParam(batchSize, dataBuffers, nullBuffers, outBuffers);
+    rightChild->ExecuteWithParam(batchSize, dataBuffers, nullBuffers, outBuffers);
+    // done = true;
+  }
   return 0;
 }
 
 int AttributeReferenceExpression::ExecuteWithParam(
     int batchSize, const std::vector<int64_t>& dataBuffers,
     const std::vector<int64_t>& nullBuffers, std::vector<int8_t>& outBuffers) {
-  int64_t dataPtr = dataBuffers[columnIndex];
-  int64_t nullPtr = nullBuffers[columnIndex];
-  parquet::Type::type columnType = (*schema)[columnIndex].getColType();
-  if (isDecimalType(dataType)) {
-    int precision, scale;
-    getPrecisionAndScaleFromDecimalType(dataType, precision, scale);
-    result.data.clear();
-    if (result.data.capacity() < batchSize) {
-      result.data.reserve(batchSize);
-    }
-    if (columnType == parquet::Type::INT64) {
-      DecimalConvertor::ConvertIntegerToDecimal128<parquet::Int64Type>(
-          (const uint8_t*)(dataPtr), batchSize, precision, scale, result);
-    } else if (columnType == parquet::Type::INT32) {
-      DecimalConvertor::ConvertIntegerToDecimal128<parquet::Int32Type>(
-          (const uint8_t*)(dataPtr), batchSize, precision, scale, result);
-    } else if (columnType == parquet::Type::FIXED_LEN_BYTE_ARRAY) {
-      int typeLength = (*schema)[columnIndex].getTypeLength();
-      DecimalConvertor::ConvertFixLengthByteArrayToDecimal128(
-          (const uint8_t*)(dataPtr), batchSize, typeLength, precision, scale, result);
-    } else if (columnType == parquet::Type::BYTE_ARRAY) {
-      DecimalConvertor::ConvertByteArrayToDecimal128((const uint8_t*)(dataPtr), batchSize,
-                                                     precision, scale, result);
-    }
-  } else {
-    if (columnType == parquet::Type::INT64) {
-      DecimalConvertor::ConvertIntegerToDecimal128<parquet::Int64Type>(
-          (const uint8_t*)(dataPtr), batchSize, 18, 0, result);
-    } else if (columnType == parquet::Type::INT32) {
-      DecimalConvertor::ConvertIntegerToDecimal128<parquet::Int32Type>(
-          (const uint8_t*)(dataPtr), batchSize, 9, 0, result);
-    } else if (columnType == parquet::Type::DOUBLE) {
-      // TODO: get precision,scale
-      // getPrecisionAndScaleFromDecimalType(dataType, precision, scale);
-      int precision = 38, scale = 2;
-      DecimalConvertor::ConvertRealToDecimal128<parquet::DoubleType>(
-          (const uint8_t*)(dataPtr), batchSize, precision, scale, result);
-    } else if (columnType == parquet::Type::FLOAT) {
-      // TODO: get precision,scale
-      // getPrecisionAndScaleFromDecimalType(dataType, precision, scale);
-      int precision = 38, scale = 2;
-      DecimalConvertor::ConvertRealToDecimal128<parquet::FloatType>(
-          (const uint8_t*)(dataPtr), batchSize, precision, scale, result);
+  if (!done) {
+    done = true;
+    int64_t dataPtr = dataBuffers[columnIndex];
+    int64_t nullPtr = nullBuffers[columnIndex];
+    parquet::Type::type columnType = (*schema)[columnIndex].getColType();
+    if (isDecimalType(dataType)) {
+      int precision, scale;
+      getPrecisionAndScaleFromDecimalType(dataType, precision, scale);
+      result.data.clear();
+      if (result.data.capacity() < batchSize) {
+        result.data.reserve(batchSize);
+      }
+      if (columnType == parquet::Type::INT64) {
+        DecimalConvertor::ConvertIntegerToDecimal128<parquet::Int64Type>(
+            (const uint8_t*)(dataPtr), batchSize, precision, scale, result);
+      } else if (columnType == parquet::Type::INT32) {
+        DecimalConvertor::ConvertIntegerToDecimal128<parquet::Int32Type>(
+            (const uint8_t*)(dataPtr), batchSize, precision, scale, result);
+      } else if (columnType == parquet::Type::FIXED_LEN_BYTE_ARRAY) {
+        int typeLength = (*schema)[columnIndex].getTypeLength();
+        DecimalConvertor::ConvertFixLengthByteArrayToDecimal128(
+            (const uint8_t*)(dataPtr), batchSize, typeLength, precision, scale, result);
+      } else if (columnType == parquet::Type::BYTE_ARRAY) {
+        DecimalConvertor::ConvertByteArrayToDecimal128(
+            (const uint8_t*)(dataPtr), batchSize, precision, scale, result);
+      }
     } else {
-      ARROW_LOG(ERROR) << "Unsupport dataType: " << columnType;
+      if (columnType == parquet::Type::INT64) {
+        DecimalConvertor::ConvertIntegerToDecimal128<parquet::Int64Type>(
+            (const uint8_t*)(dataPtr), batchSize, 18, 0, result);
+      } else if (columnType == parquet::Type::INT32) {
+        DecimalConvertor::ConvertIntegerToDecimal128<parquet::Int32Type>(
+            (const uint8_t*)(dataPtr), batchSize, 9, 0, result);
+      } else if (columnType == parquet::Type::DOUBLE) {
+        // TODO: get precision,scale
+        // getPrecisionAndScaleFromDecimalType(dataType, precision, scale);
+        int precision = 38, scale = 2;
+        DecimalConvertor::ConvertRealToDecimal128<parquet::DoubleType>(
+            (const uint8_t*)(dataPtr), batchSize, precision, scale, result);
+      } else if (columnType == parquet::Type::FLOAT) {
+        // TODO: get precision,scale
+        // getPrecisionAndScaleFromDecimalType(dataType, precision, scale);
+        int precision = 38, scale = 2;
+        DecimalConvertor::ConvertRealToDecimal128<parquet::FloatType>(
+            (const uint8_t*)(dataPtr), batchSize, precision, scale, result);
+      } else {
+        ARROW_LOG(ERROR) << "Unsupport dataType: " << columnType;
+      }
     }
   }
   return 0;

@@ -21,6 +21,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 #include <nlohmann/json.hpp>
 
@@ -41,13 +42,16 @@ class JsonConvertor {
       nlohmann::json root);
 
   static std::vector<std::shared_ptr<Expression>> parseToAggExpressions(
-      std::string jsonString);
+      std::string jsonString,
+      std::unordered_map<std::string, std::shared_ptr<WithResultExpression>>& cache);
   static std::vector<std::shared_ptr<Expression>> parseToAggExpressions(
-      nlohmann::json root);
+      nlohmann::json root,
+      std::unordered_map<std::string, std::shared_ptr<WithResultExpression>>& cache);
 
  private:
   static std::shared_ptr<WithResultExpression> parseToAggExpressionsHelper(
-      nlohmann::json root);
+      nlohmann::json root,
+      std::unordered_map<std::string, std::shared_ptr<WithResultExpression>>& cache);
 };
 
 }  // namespace ape
