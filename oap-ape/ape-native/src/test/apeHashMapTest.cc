@@ -112,7 +112,8 @@ TEST(ApeHashMapTest, GropuByTest) {
     for (int j = 0; j < tmp_key.size(); j++) {
       ape::PartialKey partial_key = tmp_key[j];
       if (j == 0)
-        std::cout << std::get<0>(partial_key) << " "; // consider how to convert type back.
+        std::cout << std::get<0>(partial_key)
+                  << " ";  // consider how to convert type back.
       else
         std::cout << std::get<4>(partial_key) << " ";
     }
