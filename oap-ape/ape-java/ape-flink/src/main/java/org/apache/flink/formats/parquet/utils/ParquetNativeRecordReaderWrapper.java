@@ -143,6 +143,7 @@ public class ParquetNativeRecordReaderWrapper {
         InputStream footerBytesStream = getFooterBytesStream(split, configuration);
         filterFileMetaDataByMidpoint(readFileMetaData(footerBytesStream),
                 splitStart, splitStart + splitSize);
+        footerBytesStream.close();
     }
 
     private InputStream getFooterBytesStream(FileSourceSplit split,
@@ -181,6 +182,7 @@ public class ParquetNativeRecordReaderWrapper {
         f.seek(footerIndex);
         ByteBuffer footerBytesBuffer = ByteBuffer.allocate(footerLength);
         f.readFully(footerBytesBuffer);
+        f.close();
         LOG.debug("Finished to read all footer bytes.");
         footerBytesBuffer.flip();
         InputStream footerBytesStream = ByteBufferInputStream.wrap(footerBytesBuffer);
