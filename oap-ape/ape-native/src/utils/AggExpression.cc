@@ -65,9 +65,26 @@ int AggExpression::ExecuteWithParam(int batchSize,
                                     std::vector<int8_t>& outBuffers) {
   if (!done) {
     child->ExecuteWithParam(batchSize, dataBuffers, nullBuffers, outBuffers);
-    done = true;
   }
   return 0;
+}
+
+void Count::getResult(DecimalVector& result) {
+  if (typeid(*child) == typeid(LiteralExpression)) {  // for count(*) or count(1)
+    result.data.push_back(arrow::BasicDecimal128(batchSize_));
+    return;
+  }
+  if (!done) {
+    done = true;
+    auto tmp = DecimalVector();
+    child->getResult(tmp);
+    ARROW_LOG(INFO) << "count node child size: " << tmp.data.size();
+    for (int i = 0; i < tmp.data.size(); i++) {
+      if (tmp.nullVector->at(i)) count++;
+    }
+  }
+  result.data.push_back(arrow::BasicDecimal128(count));
+  result.type = ResultType::LongType;
 }
 
 int ArithmeticExpression::ExecuteWithParam(int batchSize,
@@ -89,6 +106,9 @@ int AttributeReferenceExpression::ExecuteWithParam(
     done = true;
     int64_t dataPtr = dataBuffers[columnIndex];
     int64_t nullPtr = nullBuffers[columnIndex];
+    std::vector<uint8_t> nullVec(batchSize);
+    std::memcpy(nullVec.data(), (uint8_t*)nullPtr, batchSize);
+    result.nullVector = std::make_shared<std::vector<uint8_t>>(nullVec);
     parquet::Type::type columnType = (*schema)[columnIndex].getColType();
     if (isDecimalType(dataType)) {
       int precision, scale;
