@@ -1,12 +1,17 @@
 #Introduction
-APE targets to improve data source side performance for multiple bigdata analytic framework such as Apache Spark and Apache Flink. Compare to other row based execution engine, Ape could utilize column format and do batch computation, which will boost performance in Ad-hoc queries.
-Currently, we have implemented a native parquet data source with powerful filter push down and aggregation push down. We also provide both Spark ape-parquet adapter and Flink ape-parquet adapter. At the same time, APE provides a ColumnChunk level data source cache, which is based on Plasma, a share-memory object store. 
+APE targets to improve data source side performance for multiple bigdata analytic framework such as Apache Spark and Apache Flink. Compare to other row based execution engine, Ape could utilize column format and do batch computation, which will boost performance in Ad-hoc queries. APE architecture is like below.  
+
+![image](../docs/image/ape_arch.jpg)
+
+Currently, we have implemented a native parquet data source with powerful filter push down and aggregation push down. We also provide both Spark ape-parquet adapter and Flink ape-parquet adapter. At the same time, APE provides a ColumnChunk level data source cache, which is based on Plasma, a share-memory object store.   
+
 In the future, we will support more CPU features like AVX-512. Meanwhile, we will optimize other operators in SQL. 
 
-#Development Status
+# Development Status
+
 Native Parquet reader and Spark/Flink adapter - Done  
 Fine-grained filter pushing down - Done  
-Parquet ColumnChunk level Cache - Done
+Parquet ColumnChunk level Cache - Done  
 Aggregation pushing down - WIP
 
 
@@ -25,6 +30,7 @@ APE currently has such third party libraries and Intel hosted libraries dependen
 # You need to pre-install these libraries on your worker nodes.
 git clone https://github.com/oap-project 
 cd oap-project
+git checkout ape
 sh ci_scripts/install_APE_dependency.sh
 sh ci_scripts/install_arrow.sh
 # install Java dependency pmem-common.jar
@@ -56,6 +62,7 @@ export LIBHDFS3_CONF=/path/to/your/hdfs-site.xml
 ## APE Build
 
 Java build, we will use `$OAP_ROOT_DIR/oap-ape/ape-java/ape-common/target/ape-common-1.1.0-SNAPSHOT.jar`, `$OAP_ROOT_DIR/oap-ape/ape-java/ape-spark/target/ape-spark-1.1.0-SNAPSHOT.jar`, `$OAP_ROOT_DIR/oap-ape/ape-java/ape-flink/target/ape-flink-1.1.0-SNAPSHOT.jar` later.
+
 ```
 cd $OAP_ROOT_DIR/oap-ape/ape-java
 mvn clean package -am
@@ -82,7 +89,7 @@ spark.driver.extraClassPath         file:///path/to/ape-common-1.1.0-SNAPSHOT-ja
 
  3. run spark-sql workload
 
-Extra configuration to enable other features
+Extra configuration to enable ape features:
 
 | configuration name | description | default value   
 | :---: | :---: | :---: | 
@@ -113,7 +120,7 @@ export CLASSPATH=${HADOOP_HOME}/etc/hadoop:`find ${HADOOP_HOME}/share/hadoop/ | 
 export LD_LIBRARY_PATH="${HADOOP_HOME}/lib/native":$LD_LIBRARY_PATH
 ```
 
-## Others
+# Others
 For developers, before you commit cpp code, please run this command to keep code style clean(you need to install clang-format).
 ```
 cd oap-ape/ape-native/ 
