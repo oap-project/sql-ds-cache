@@ -99,7 +99,10 @@ Extra configuration to enable ape features:
 |
 
 ## Run Flink with APE
-TODO: will attach a link later
+[https://github.com/oap-project/sql-ds-cache/tree/ape/oap-ape/ape-java/ape-flink/README.md](https://github.com/oap-project/sql-ds-cache/tree/ape/oap-ape/ape-java/ape-flink/README.md)
+
+(You can skip to step [6. Build APE-java](https://github.com/oap-project/sql-ds-cache/tree/ape/oap-ape/ape-java/ape-flink/README.md#6-build-ape-java)
+if Hadoop cluster, Flink client, and above dependencies are ready.)
 
 ## Troubleshooting
 Make sure you have set up `$HADOOP_HOME` environment variables. Make sure `libjvm.so` is in your `$LD_LIBRARY_PATH`.  
