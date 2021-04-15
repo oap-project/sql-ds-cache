@@ -31,11 +31,11 @@ Before you run `$SPARK_HOME/bin/spark-shell `, you need to configure Spark for i
 ```bash
 spark.sql.extensions              org.apache.spark.sql.OapExtensions
 # absolute path of the jar on your working node
-spark.files                       $HOME/miniconda2/envs/oapenv/oap_jars/oap-cache-<version>-with-spark-<version>.jar,$HOME/miniconda2/envs/oapenv/oap_jars/oap-common-<version>-with-spark-<version>.jar
+spark.files                       $HOME/miniconda2/envs/oapenv/oap_jars/plasma-sql-ds-cache-<version>-with-spark-<version>.jar,$HOME/miniconda2/envs/oapenv/oap_jars/pmem-common-<version>-with-spark-<version>.jar
 # relative path to spark.files, just specify jar name in current dir
-spark.executor.extraClassPath     ./oap-cache-<version>-with-spark-<version>.jar:./oap-common-<version>-with-spark-<version>.jar
+spark.executor.extraClassPath     ./plasma-sql-ds-cache-<version>-with-spark-<version>.jar:./pmem-common-<version>-with-spark-<version>.jar
 # absolute path of the jar on your working node
-spark.driver.extraClassPath       $HOME/miniconda2/envs/oapenv/oap_jars/oap-cache-<version>-with-spark-<version>.jar:$HOME/miniconda2/envs/oapenv/oap_jars/oap-common-<version>-with-spark-<version>.jar
+spark.driver.extraClassPath       $HOME/miniconda2/envs/oapenv/oap_jars/plasma-sql-ds-cache-<version>-with-spark-<version>.jar:$HOME/miniconda2/envs/oapenv/oap_jars/pmem-common-<version>-with-spark-<version>.jar
 ```
 ### Verify Integration 
 
@@ -44,7 +44,7 @@ After configuration, you can follow these steps to verify the OAP integration is
 1. Create a test data path on your HDFS. `hdfs:///user/oap/` for example.
 
 ```
-   hadoop fs -mkdir /user/oap/
+   hadoop fs -mkdir -p /user/oap/
 ```
 
 2. Launch Spark Shell using the following command on your working node.
@@ -78,11 +78,11 @@ Add the following OAP configuration settings to `$SPARK_HOME/conf/spark-defaults
 ```
 spark.sql.extensions              org.apache.spark.sql.OapExtensions
 # absolute path on your working node
-spark.files                       $HOME/miniconda2/envs/oapenv/oap_jars/oap-cache-<version>-with-spark-<version>.jar,$HOME/miniconda2/envs/oapenv/oap_jars/oap-common-<version>-with-spark-<version>.jar
+spark.files                       $HOME/miniconda2/envs/oapenv/oap_jars/plasma-sql-ds-cache-<version>-with-spark-<version>.jar,$HOME/miniconda2/envs/oapenv/oap_jars/pmem-common-<version>-with-spark-<version>.jar
 # relative path to spark.files, just specify jar name in current dir   
-spark.executor.extraClassPath     ./oap-cache-<version>-with-spark-<version>.jar:./oap-common-<version>-with-spark-<version>.jar
+spark.executor.extraClassPath     ./plasma-sql-ds-cache-<version>-with-spark-<version>.jar:./pmem-common-<version>-with-spark-<version>.jar
 # relative path to spark.files, just specify jar name in current dir
-spark.driver.extraClassPath       ./oap-cache-<version>-with-spark-<version>.jar:./oap-common-<version>-with-spark-<version>.jar
+spark.driver.extraClassPath       ./plasma-sql-ds-cache-<version>-with-spark-<version>.jar:./pmem-common-<version>-with-spark-<version>.jar
 ```
 
 ## Configuration for Spark Standalone Mode
@@ -94,9 +94,9 @@ In addition to running on the YARN cluster manager, Spark also provides a simple
 ```
 spark.sql.extensions               org.apache.spark.sql.OapExtensions
 # absolute path on worker nodes
-spark.executor.extraClassPath      $HOME/miniconda2/envs/oapenv/oap_jars/oap-cache-<version>-with-spark-<version>.jar:$HOME/miniconda2/envs/oapenv/oap_jars/oap-common-<version>-with-spark-<version>.jar
+spark.executor.extraClassPath      $HOME/miniconda2/envs/oapenv/oap_jars/plasma-sql-ds-cache-<version>-with-spark-<version>.jar:$HOME/miniconda2/envs/oapenv/oap_jars/pmem-common-<version>-with-spark-<version>.jar
 # absolute path on worker nodes
-spark.driver.extraClassPath        $HOME/miniconda2/envs/oapenv/oap_jars/oap-cache-<version>-with-spark-<version>.jar:$HOME/miniconda2/envs/oapenv/oap_jars/oap-common-<version>-with-spark-<version>.jar
+spark.driver.extraClassPath        $HOME/miniconda2/envs/oapenv/oap_jars/plasma-sql-ds-cache-<version>-with-spark-<version>.jar:$HOME/miniconda2/envs/oapenv/oap_jars/pmem-common-<version>-with-spark-<version>.jar
 ```
 
 ## Working with SQL Index
@@ -274,11 +274,11 @@ spark.yarn.numa.enabled           true
 spark.sql.extensions              org.apache.spark.sql.OapExtensions
 
 # absolute path of the jar on your working node, when in Yarn client mode
-spark.files                       $HOME/miniconda2/envs/oapenv/oap_jars/oap-cache-<version>-with-spark-<version>.jar,$HOME/miniconda2/envs/oapenv/oap_jars/oap-common-<version>-with-spark-<version>.jar
+spark.files                       $HOME/miniconda2/envs/oapenv/oap_jars/plasma-sql-ds-cache-<version>-with-spark-<version>.jar,$HOME/miniconda2/envs/oapenv/oap_jars/pmem-common-<version>-with-spark-<version>.jar
 # relative path to spark.files, just specify jar name in current dir, when in Yarn client mode
-spark.executor.extraClassPath     ./oap-cache-<version>-with-spark-<version>.jar:./oap-common-<version>-with-spark-<version>.jar
+spark.executor.extraClassPath     ./plasma-sql-ds-cache-<version>-with-spark-<version>.jar:./pmem-common-<version>-with-spark-<version>.jar
 # absolute path of the jar on your working node,when in Yarn client mode
-spark.driver.extraClassPath       $HOME/miniconda2/envs/oapenv/oap_jars/oap-cache-<version>-with-spark-<version>.jar:$HOME/miniconda2/envs/oapenv/oap_jars/oap-common-<version>-with-spark-<version>.jar
+spark.driver.extraClassPath       $HOME/miniconda2/envs/oapenv/oap_jars/plasma-sql-ds-cache-<version>-with-spark-<version>.jar:$HOME/miniconda2/envs/oapenv/oap_jars/pmem-common-<version>-with-spark-<version>.jar
 
 # for parquet file format, enable binary cache
 spark.sql.oap.parquet.binary.cache.enabled                   true
