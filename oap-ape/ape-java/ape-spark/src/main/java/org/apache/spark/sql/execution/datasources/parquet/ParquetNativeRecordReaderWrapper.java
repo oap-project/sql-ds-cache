@@ -109,7 +109,9 @@ public class ParquetNativeRecordReaderWrapper extends RecordReader<Void, Object>
 
     boolean flag = false;
     for (BlockMetaData blockMetaData : blocks) {
-      if (splitStart <= currentOffset && splitStart + splitSize >= currentOffset) {
+      // check mid point rather than start point to avoid data/task skew.
+      if (splitStart <= currentOffset + blockMetaData.getCompressedSize() / 2 &&
+          splitStart + splitSize >= currentOffset + blockMetaData.getCompressedSize() / 2) {
         if (!flag) {
           flag = true;
           inputSplitRowGroupStartIndex = rowGroupIndex;
