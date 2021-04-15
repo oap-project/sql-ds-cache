@@ -22,10 +22,15 @@
 #include <assert.h>
 
 #include "src/reader.h"
+#include "src/utils/ApeHashMap.h"
+#include "src/utils/GroupByUtils.h"
 
 namespace ape {
 
-Reader::Reader() {}
+Reader::Reader() {
+  // arrow::util::ArrowLog::StartArrowLog("ape", arrow::util::ArrowLogLevel::ARROW_DEBUG);
+  // arrow::util::ArrowLog::InstallFailureSignalHandler();
+}
 
 void Reader::init(std::string fileName, std::string hdfsHost, int hdfsPort,
                   std::string requiredSchema, int firstRowGroup, int rowGroupToRead) {
@@ -329,38 +334,86 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
 
   if (rowsRet > 0 && aggExprs.size()) {  // if rows after filter is 0, no need to do agg.
     auto start = std::chrono::steady_clock::now();
-    int index = 0;
-    for (int i = 0; i < aggExprs.size(); i++) {
-      auto agg = aggExprs[i];
-      if (typeid(*agg) == typeid(RootAggExpression)) {
-        std::vector<int8_t> tmp(0);
-        agg->ExecuteWithParam(rowsRet, buffersPtr, nullsPtr, tmp);
-        DecimalVector result;
-        std::dynamic_pointer_cast<RootAggExpression>(agg)->getResult(result);
-        if (result.data.size() == 1) {
+    int groupBySize = groupByExprs.size();
+    if (groupBySize > 0) {
+      // build hash map and index
+      ApeHashMap map;
+      std::vector<int> indexes(rowsRet);
+      std::vector<Key> keys;
+
+      GroupByUtils::groupBy(map, indexes, rowsRet, groupByExprs, buffersPtr, nullsPtr,
+                            keys);
+
+      // do agg based on indexes
+      int index = 0;
+      for (int i = 0; i < groupBySize; i++) {
+        // dumpGroupByKeyToJavaBuffer(keys[i], buffersPtr_[index]);
+        index++;
+      }
+
+      for (int i = 0; i < aggExprs.size(); i++) {
+        auto agg = aggExprs[i];
+        if (typeid(*agg) == typeid(RootAggExpression)) {
+          std::vector<int8_t> tmp(0);
+          agg->ExecuteWithParam(rowsRet, buffersPtr, nullsPtr, tmp);
+          DecimalVector result;
+          std::dynamic_pointer_cast<RootAggExpression>(agg)->getResult(
+              result, keys.size(), indexes);
+          // if (result.data.size() == 1) {
           // TODO: for group by
-          dumpToJavaBuffer((uint8_t*)(buffersPtr_[index]), result);
-          *(uint8_t*)(nullsPtr_[index]) = 1;
+          dumpToJavaBuffer((uint8_t*)(buffersPtr_[index]), (uint8_t*)(nullsPtr_[index]),
+                           result);
+          // *(uint8_t*)(nullsPtr_[index]) = 1;
           index++;
-        } else {
-          ARROW_LOG(DEBUG) << "Oops... why return " << result.data.size() << " results";
+          // } else {
+          // ARROW_LOG(DEBUG) << "Oops... why return " << result.data.size() << "
+          // results";
+          // }
+        } else if (typeid(*agg) == typeid(AttributeReferenceExpression)) {
+          // TODO
         }
-      } else if (typeid(*agg) == typeid(AttributeReferenceExpression)) {
-        // TODO
       }
-    }
 
-    for (int i = 0; i < aggExprs.size(); i++) {
-      auto agg = aggExprs[i];
-      if (typeid(*agg) == typeid(RootAggExpression)) {
-        std::dynamic_pointer_cast<RootAggExpression>(agg)->reset();
+      for (int i = 0; i < aggExprs.size(); i++) {
+        auto agg = aggExprs[i];
+        if (typeid(*agg) == typeid(RootAggExpression)) {
+          std::dynamic_pointer_cast<RootAggExpression>(agg)->reset();
+        }
       }
+      rowsRet = keys.size();
+    } else {
+      int index = 0;
+      for (int i = 0; i < aggExprs.size(); i++) {
+        auto agg = aggExprs[i];
+        if (typeid(*agg) == typeid(RootAggExpression)) {
+          std::vector<int8_t> tmp(0);
+          agg->ExecuteWithParam(rowsRet, buffersPtr, nullsPtr, tmp);
+          DecimalVector result;
+          std::dynamic_pointer_cast<RootAggExpression>(agg)->getResult(result);
+          if (result.data.size() == 1) {
+            // TODO: for group by
+            dumpToJavaBuffer((uint8_t*)(buffersPtr_[index]), (uint8_t*)(nullsPtr_[index]),
+                             result);
+            // *(uint8_t*)(nullsPtr_[index]) = 1;
+            index++;
+          } else {
+            ARROW_LOG(DEBUG) << "Oops... why return " << result.data.size() << " results";
+          }
+        } else if (typeid(*agg) == typeid(AttributeReferenceExpression)) {
+          // TODO
+        }
+      }
+
+      for (int i = 0; i < aggExprs.size(); i++) {
+        auto agg = aggExprs[i];
+        if (typeid(*agg) == typeid(RootAggExpression)) {
+          std::dynamic_pointer_cast<RootAggExpression>(agg)->reset();
+        }
+      }
+      rowsRet = 1;
     }
-    rowsRet = 1;
     aggTime += std::chrono::steady_clock::now() - start;
-  } else {
   }
-
   ARROW_LOG(DEBUG) << "ret rows " << rowsRet;
   return rowsRet;
 }
@@ -678,7 +731,6 @@ void Reader::setAggColumnNames(std::shared_ptr<Expression> agg) {
 }
 
 void Reader::setAgg(std::string aggStr) {
-  // do nothing now
   groupByExprs = JsonConvertor::parseToGroupByExpressions(aggStr);
   std::unordered_map<std::string, std::shared_ptr<WithResultExpression>> cache;
   aggExprs = JsonConvertor::parseToAggExpressions(aggStr, cache);
@@ -716,7 +768,9 @@ void Reader::setAgg(std::string aggStr) {
   for (auto agg : aggExprs) {
     agg->setSchema(schema);
   }
-
+  for (auto agg : groupByExprs) {
+    agg->setSchema(schema);
+  }
   aggReset = true;
 }
 

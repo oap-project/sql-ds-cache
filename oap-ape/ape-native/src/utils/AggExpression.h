@@ -38,7 +38,8 @@ class WithResultExpression : public Expression {
   void Execute() {}
   ~WithResultExpression() {}
 
-  virtual void getResult(DecimalVector& result) {
+  virtual void getResult(DecimalVector& result, const int& groupNum = 1,
+                         const std::vector<int>& index = std::vector<int>()) {
     // should never be called.
   }
 
@@ -79,7 +80,10 @@ class RootAggExpression : public WithResultExpression {
     child->setSchema(schema);
   }
 
-  void getResult(DecimalVector& result) override { child->getResult(result); }
+  void getResult(DecimalVector& result, const int& groupNum = 1,
+                 const std::vector<int>& index = std::vector<int>()) override {
+    child->getResult(result, groupNum, index);
+  }
 
  private:
   bool isDistinct;
@@ -101,10 +105,15 @@ class AggExpression : public WithResultExpression {
     done = false;
     child->reset();
   }
-  void getResult(DecimalVector& result) override {
+  void getResult(DecimalVector& result, const int& groupNum = 1,
+                 const std::vector<int>& index = std::vector<int>()) override {
     if (!done) {
       done = true;
-      getResultInternal(resultCache);
+      if (groupNum == 1) {
+        getResultInternal(resultCache);
+      } else {
+        getResultInternalWithGroup(resultCache, groupNum, index);
+      }
     }
     result = resultCache;
   }
@@ -113,6 +122,11 @@ class AggExpression : public WithResultExpression {
   virtual void getResultInternal(DecimalVector& result) {
     ARROW_LOG(INFO) << "should never be called";
   };
+
+  virtual void getResultInternalWithGroup(DecimalVector& result, const int& groupNum,
+                                          const std::vector<int>& index) {
+    ARROW_LOG(INFO) << "should never be called";
+  }
 
   void setSchema(std::shared_ptr<std::vector<Schema>> schema_) {
     schema = schema_;
@@ -138,6 +152,25 @@ class Sum : public AggExpression {
     }
     result.data.clear();
     result.data.push_back(out);
+    result.precision = 38;  // tmp.precision;
+    result.scale = tmp.scale;
+    result.type = GetResultType(dataType);
+  }
+
+  void getResultInternalWithGroup(DecimalVector& result, const int& groupNum,
+                                  const std::vector<int>& index) override {
+    auto tmp = DecimalVector();
+    child->getResult(tmp);
+    std::vector<arrow::BasicDecimal128> outs(groupNum);
+    ARROW_LOG(INFO) << "data size " << tmp.data.size() << "indexes size " << index.size();
+    assert(tmp.data.size() == index.size());
+    for (int i = 0; i < tmp.data.size(); i++) {
+      if (tmp.nullVector->at(i)) {
+        outs[index[i]] += tmp.data[i];
+      }
+    }
+    result.data.clear();
+    result.data = outs;
     result.precision = 38;  // tmp.precision;
     result.scale = tmp.scale;
     result.type = GetResultType(dataType);
@@ -188,7 +221,8 @@ class Max : public AggExpression {
 class Count : public AggExpression {
  public:
   ~Count() {}
-  void getResult(DecimalVector& result) override;
+  void getResult(DecimalVector& result, const int& groupNum,
+                 const std::vector<int>& index) override;
   int ExecuteWithParam(int batchSize, const std::vector<int64_t>& dataBuffers,
                        const std::vector<int64_t>& nullBuffers,
                        std::vector<int8_t>& outBuffers) override {
@@ -227,7 +261,8 @@ class ArithmeticExpression : public WithResultExpression {
     rightChild->setSchema(schema);
   }
 
-  void getResult(DecimalVector& result) override {
+  void getResult(DecimalVector& result, const int& groupNum = 1,
+                 const std::vector<int>& index = std::vector<int>()) override {
     if (!done) {
       getResultInternal(resultCache);
       done = true;
@@ -446,9 +481,11 @@ class Mod : public ArithmeticExpression {
 
 class AttributeReferenceExpression : public WithResultExpression {
  public:
+  int columnIndex = 0;
   ~AttributeReferenceExpression() {}
   // TODO: get value buffer and trans to Decimal()
-  void getResult(DecimalVector& res) override {
+  void getResult(DecimalVector& res, const int& groupNum = 1,
+                 const std::vector<int>& index = std::vector<int>()) override {
     res.data.clear();
     for (auto e : result.data) {
       res.data.push_back(e);
@@ -476,13 +513,13 @@ class AttributeReferenceExpression : public WithResultExpression {
  private:
   DecimalVector result;
   bool PromotePrecision;
-  int columnIndex;
 };
 
 class LiteralExpression : public WithResultExpression {
  public:
   ~LiteralExpression() {}
-  void getResult(DecimalVector& res) override {
+  void getResult(DecimalVector& res, const int& groupNum = 1,
+                 const std::vector<int>& index = std::vector<int>()) override {
     res.data.clear();
     res.data.push_back(value);
     res.precision = precision_;

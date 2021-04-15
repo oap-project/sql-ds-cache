@@ -84,35 +84,40 @@ static ResultType GetResultType(std::string s) {
   return ErrorType;
 }
 
-static void dumpToJavaBuffer(uint8_t* bufferAddr, DecimalVector& result) {
-  switch (result.type) {
-    case ResultType::IntType: {
-      *((int32_t*)bufferAddr) = static_cast<int32_t>(result.data[0].low_bits());
-      break;
-    }
-    case ResultType::LongType: {
-      *((int64_t*)bufferAddr) = static_cast<int64_t>(result.data[0].low_bits());
-      break;
-    }
-    case ResultType::FloatType: {
-      // TODO: convert
-      break;
-    }
-    case ResultType::DoubleType: {
-      // TODO: convert
-      break;
-    }
-    case ResultType::Decimal64Type: {
-      *((int64_t*)bufferAddr) = static_cast<int64_t>(result.data[0].low_bits());
-      break;
-    }
-    case ResultType::Decimal128Type: {
-      decimalToBytes(result.data[0], result.precision, (uint8_t*)(bufferAddr));
-      break;
-    }
-    default: {
-      ARROW_LOG(WARNING) << "Type not support!";
-      break;
+static void dumpToJavaBuffer(uint8_t* bufferAddr, uint8_t* nullAddr,
+                             DecimalVector& result) {
+  for (int i = 0; i < result.data.size(); i++) {
+    ARROW_LOG(INFO) << " dump result " << static_cast<int64_t>(result.data[i].low_bits());
+    *(nullAddr + i) = 1;
+    switch (result.type) {
+      case ResultType::IntType: {
+        *((int32_t*)bufferAddr + i) = static_cast<int32_t>(result.data[i].low_bits());
+        break;
+      }
+      case ResultType::LongType: {
+        *((int64_t*)bufferAddr + i) = static_cast<int64_t>(result.data[i].low_bits());
+        break;
+      }
+      case ResultType::FloatType: {
+        // TODO: convert
+        break;
+      }
+      case ResultType::DoubleType: {
+        // TODO: convert
+        break;
+      }
+      case ResultType::Decimal64Type: {
+        *((int64_t*)bufferAddr + i) = static_cast<int64_t>(result.data[i].low_bits());
+        break;
+      }
+      case ResultType::Decimal128Type: {
+        decimalToBytes(result.data[i], result.precision, (uint8_t*)(bufferAddr + i * 16));
+        break;
+      }
+      default: {
+        ARROW_LOG(WARNING) << "Type not support!";
+        break;
+      }
     }
   }
 }

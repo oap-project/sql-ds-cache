@@ -119,6 +119,7 @@ std::vector<std::shared_ptr<Expression>> JsonConvertor::parseToGroupByExpression
   std::unordered_map<std::string, std::shared_ptr<WithResultExpression>> cache;
   for (int i = 0; i < exprs.size(); i++) {
     auto expr = exprs[i];
+    ARROW_LOG(INFO) << "group by expr " << expr;
     v.push_back(parseToAggExpressionsHelper(expr, cache));
   }
   std::chrono::duration<double> duration = std::chrono::steady_clock::now() - start;

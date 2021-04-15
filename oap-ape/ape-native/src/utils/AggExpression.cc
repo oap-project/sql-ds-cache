@@ -40,6 +40,8 @@ void AttributeReferenceExpression::setSchema(
   ptrdiff_t pos = std::distance(
       schema->begin(), std::find_if(schema->begin(), schema->end(), finder(columnName)));
   columnIndex = pos;
+  ARROW_LOG(INFO) << "set schema, col name " << schema->at(columnIndex).getColName()
+                  << " col index " << columnIndex;
 }
 
 int RootAggExpression::ExecuteWithParam(int batchSize,
@@ -69,7 +71,8 @@ int AggExpression::ExecuteWithParam(int batchSize,
   return 0;
 }
 
-void Count::getResult(DecimalVector& result) {
+void Count::getResult(DecimalVector& result, const int& groupNum = 1,
+                         const std::vector<int>& index = std::vector<int>()) {
   if (typeid(*child) == typeid(LiteralExpression)) {  // for count(*) or count(1)
     result.data.push_back(arrow::BasicDecimal128(batchSize_));
     return;
