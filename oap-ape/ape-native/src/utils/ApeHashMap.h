@@ -20,13 +20,26 @@
 #include <variant>
 #include <vector>
 #include <unordered_map>
+#include <functional>
 
 #include <arrow/util/logging.h>
+#include <parquet/api/reader.h>
+
+namespace std {
+
+template <>
+struct hash<parquet::ByteArray> {
+  std::size_t operator()(parquet::ByteArray const& s) const noexcept {
+    return (std::size_t)(s.ptr);
+  }
+};
+
+}  // namespace std
 
 namespace ape {
 
-// TODO: use Parquet types
-using PartialKey = std::variant<int32_t, int64_t, float, double, std::string>;
+// TODO: add FixedLenByteArray
+using PartialKey = std::variant<int32_t, int64_t, float, double, parquet::ByteArray>;
 using Key = std::vector<PartialKey>;
 
 struct container_hash {
