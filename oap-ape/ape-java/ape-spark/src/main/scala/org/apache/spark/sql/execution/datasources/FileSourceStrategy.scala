@@ -17,6 +17,8 @@
 
 package org.apache.spark.sql.execution.datasources
 
+import com.intel.ape.ParquetReaderJNI
+
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql._
 import org.apache.spark.sql.catalyst.catalog.BucketSpec
@@ -143,7 +145,7 @@ object FileSourceStrategy extends Strategy with Logging {
     l@LogicalRelation(fsRelation: HadoopFsRelation, _, table, _)) =>
       // TODO: use APE specific config rather than current spark config
       val APEFilterPDEnable = SparkSession.getActiveSession.get.conf.get(PARQUET_FILTER_PUSHDOWN_ENABLED,
-        PARQUET_FILTER_PUSHDOWN_ENABLED.defaultValue.get)
+        PARQUET_FILTER_PUSHDOWN_ENABLED.defaultValue.get) && ParquetReaderJNI.isNativeEnabled
       // Filters on this relation fall into four categories based on where we can use them to avoid
       // reading unneeded data:
       //  - partition keys only - used to prune directories to read

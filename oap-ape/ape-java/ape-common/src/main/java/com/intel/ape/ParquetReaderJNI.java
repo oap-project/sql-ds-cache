@@ -55,4 +55,6 @@ public class ParquetReaderJNI {
 
   public static native void setPlasmaCacheRedis(long reader, String host,
                                                 int port, String password);
+
+  public static native boolean isNativeEnabled();
 }

@@ -18,6 +18,8 @@
 #include <algorithm>
 #include <nlohmann/json.hpp>
 
+#include "arrow/util/cpu_info.h"
+
 #undef NDEBUG
 #include <assert.h>
 
@@ -320,7 +322,7 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
   ARROW_LOG(DEBUG) << "total rows read yet: " << totalRowsRead;
 
   int rowsRet = rowsToRead;
-  if (filterExpression) {
+  if (filterExpression && isNativeEnabled()) {
     auto start = std::chrono::steady_clock::now();
     std::vector<int8_t> tmp(0);
     rowsRet = filterExpression->ExecuteWithParam(rowsToRead, buffersPtr, nullsPtr, tmp);
@@ -740,5 +742,10 @@ void Reader::setPlasmaCacheRedis(std::string host, int port, std::string passwor
 }
 
 void Reader::setPreBufferEnabled(bool isEnabled) { preBufferEnabled = isEnabled; }
+
+bool Reader::isNativeEnabled() {
+  return arrow::internal::CpuInfo::GetInstance()->vendor() ==
+         arrow::internal::CpuInfo::Vendor::Intel;
+}
 
 }  // namespace ape

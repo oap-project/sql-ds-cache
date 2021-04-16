@@ -62,6 +62,8 @@ class Reader {
 
   void setPreBufferEnabled(bool isEnabled);
 
+  static bool isNativeEnabled();
+
  private:
   void convertSchema(std::string requiredColumnName);
 

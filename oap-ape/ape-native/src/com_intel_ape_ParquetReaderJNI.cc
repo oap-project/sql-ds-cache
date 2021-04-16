@@ -98,3 +98,8 @@ JNIEXPORT void JNICALL Java_com_intel_ape_ParquetReaderJNI_setPlasmaCacheRedis(
   std::string password_ = env->GetStringUTFChars(password, nullptr);
   reader->setPlasmaCacheRedis(host_, port, password_);
 }
+
+JNIEXPORT jboolean JNICALL
+Java_com_intel_ape_ParquetReaderJNI_isNativeEnabled(JNIEnv* env, jclass cls) {
+  return ape::Reader::isNativeEnabled();
+}
