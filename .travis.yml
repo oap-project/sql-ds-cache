@@ -28,8 +28,8 @@ jobs:
       - git clone https://github.com/oap-project/pmem-common.git
       - ./pmem-common/src/native/memkind/compile.sh
       - ./pmem-common/src/native/libpmemblk/compile.sh
-      - sudo cp ./oap-common/src/resources/linux/64/lib/libpmplatform.so /usr/lib/
-      - sudo cp ./oap-common/src/resources/linux/64/lib/libpmblkplatform.so /usr/lib/
+      - sudo cp ./pmem-common/src/resources/linux/64/lib/libpmplatform.so /usr/lib/
+      - sudo cp ./pmem-common/src/resources/linux/64/lib/libpmblkplatform.so /usr/lib/
       - sudo ldconfig /usr/lib
       - cd pmem-common
       - mvn install -Ppersistent-memory -Pvmemcache -Plibpmemblk
