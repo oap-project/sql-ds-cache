@@ -71,8 +71,8 @@ int AggExpression::ExecuteWithParam(int batchSize,
   return 0;
 }
 
-void Count::getResult(DecimalVector& result, const int& groupNum = 1,
-                         const std::vector<int>& index = std::vector<int>()) {
+void Count::getResultInternal(DecimalVector& result) {
+  result.data.clear();
   if (typeid(*child) == typeid(LiteralExpression)) {  // for count(*) or count(1)
     result.data.push_back(arrow::BasicDecimal128(batchSize_));
     return;
@@ -88,6 +88,38 @@ void Count::getResult(DecimalVector& result, const int& groupNum = 1,
   }
   result.data.push_back(arrow::BasicDecimal128(count));
   result.type = ResultType::LongType;
+}
+
+void Count::getResultInternalWithGroup(DecimalVector& result, const int& groupNum,
+                                       const std::vector<int>& index) {
+  result.data.clear();
+  group.clear();
+  group.resize(groupNum);
+  if (!done) {
+    done = true;
+    if (typeid(*child) == typeid(LiteralExpression)) {  // for count(*) or count(1)
+      for (int i = 0; i < index.size(); i++) {
+        group[index[i]]++;
+      }
+    } else {
+      auto tmp = DecimalVector();
+      child->getResult(tmp);
+      ARROW_LOG(INFO) << "count node child size: " << tmp.data.size() << " index size "
+                      << index.size();
+      for (int i = 0; i < index.size(); i++) {
+        if (tmp.nullVector->at(i)) {
+          group[index[i]]++;
+        }
+      }
+    }
+  }
+  result.data.reserve(groupNum);
+  for (int i = 0; i < groupNum; i++) {
+    ARROW_LOG(INFO) << "count:: group " << i << " res " << group[i];
+    result.data.push_back(arrow::BasicDecimal128(group[i]));
+  }
+  result.type = ResultType::LongType;
+  return;
 }
 
 int ArithmeticExpression::ExecuteWithParam(int batchSize,

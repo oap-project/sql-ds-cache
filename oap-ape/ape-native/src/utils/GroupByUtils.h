@@ -23,6 +23,7 @@
 
 #include "src/utils/ApeHashMap.h"
 #include "src/utils/AggExpression.h"
+#include "src/utils/Expression.h"
 
 namespace ape {
 class GroupByUtils {

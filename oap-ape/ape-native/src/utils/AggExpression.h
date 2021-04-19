@@ -108,12 +108,13 @@ class AggExpression : public WithResultExpression {
   void getResult(DecimalVector& result, const int& groupNum = 1,
                  const std::vector<int>& index = std::vector<int>()) override {
     if (!done) {
-      done = true;
+      
       if (groupNum == 1) {
         getResultInternal(resultCache);
       } else {
         getResultInternalWithGroup(resultCache, groupNum, index);
       }
+      done = true;
     }
     result = resultCache;
   }
@@ -221,8 +222,8 @@ class Max : public AggExpression {
 class Count : public AggExpression {
  public:
   ~Count() {}
-  void getResult(DecimalVector& result, const int& groupNum,
-                 const std::vector<int>& index) override;
+  // void getResult(DecimalVector& result, const int& groupNum,
+  //                const std::vector<int>& index) override;
   int ExecuteWithParam(int batchSize, const std::vector<int64_t>& dataBuffers,
                        const std::vector<int64_t>& nullBuffers,
                        std::vector<int8_t>& outBuffers) override {
@@ -233,9 +234,13 @@ class Count : public AggExpression {
     }
     return 0;
   }
+  void getResultInternal(DecimalVector& result) override;
+  void getResultInternalWithGroup(DecimalVector& result, const int& groupNum,
+                                  const std::vector<int>& index) override;
 
  private:
   int count = 0;
+  std::vector<int> group;
   int batchSize_ = 0;
 };
 

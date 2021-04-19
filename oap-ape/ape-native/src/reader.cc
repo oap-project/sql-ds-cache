@@ -143,6 +143,14 @@ void convertBitMap(uint8_t* srcBitMap, uint8_t* dstByteMap, int len) {
   }
 }
 
+ void dumpGroupByKeyToJavaBuffer(const std::vector<Key>& keys, uint8_t* bufferAddr,
+                                       const int index) {
+  int len = keys.size();
+  for (int i = 0; i < len; i++) {
+    *((parquet::ByteArray*)(bufferAddr) + i) = std::get<4>(keys[i][index]);
+  }
+}
+
 int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr_) {
   // Pre buffer row groups.
   // This is not called in `init` because `requiredColumnIndex`
@@ -347,7 +355,7 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
       // do agg based on indexes
       int index = 0;
       for (int i = 0; i < groupBySize; i++) {
-        // dumpGroupByKeyToJavaBuffer(keys[i], buffersPtr_[index]);
+        dumpGroupByKeyToJavaBuffer(keys, (uint8_t*)(buffersPtr_[index]), index);
         index++;
       }
 
