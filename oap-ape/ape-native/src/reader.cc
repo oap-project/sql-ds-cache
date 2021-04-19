@@ -322,7 +322,7 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
   ARROW_LOG(DEBUG) << "total rows read yet: " << totalRowsRead;
 
   int rowsRet = rowsToRead;
-  if (filterExpression && isNativeEnabled()) {
+  if (filterExpression) {
     auto start = std::chrono::steady_clock::now();
     std::vector<int8_t> tmp(0);
     rowsRet = filterExpression->ExecuteWithParam(rowsToRead, buffersPtr, nullsPtr, tmp);

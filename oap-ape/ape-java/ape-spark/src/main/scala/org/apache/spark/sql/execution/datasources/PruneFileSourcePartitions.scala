@@ -17,6 +17,8 @@
 
 package org.apache.spark.sql.execution.datasources
 
+import com.intel.ape.ParquetReaderJNI
+
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.catalog.CatalogStatistics
 import org.apache.spark.sql.catalyst.expressions._
@@ -80,7 +82,8 @@ private[sql] object PruneFileSourcePartitions extends Rule[LogicalPlan] {
         logicalRelation @
           LogicalRelation(fsRelation: HadoopFsRelation, _, _, _ )) =>
             // TODO: whether this agg could pushDown
-            val PDEnable = SparkSession.getActiveSession.get.sessionState.conf.apeAggPDEnabled
+            val PDEnable = SparkSession.getActiveSession.get.sessionState.conf.apeAggPDEnabled &&
+                ParquetReaderJNI.isNativeEnabled
             op match {
               case PhysicalAggregation(aggGroupingExpressions, aggExpressions, aggResultExpressions, child) =>
                 val canPD = DataSourceStrategy.canAggExprPushDown(groupingExpressions, resultExpressions)
