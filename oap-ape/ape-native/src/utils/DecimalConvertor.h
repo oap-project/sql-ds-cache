@@ -87,7 +87,8 @@ static ResultType GetResultType(std::string s) {
 static void dumpToJavaBuffer(uint8_t* bufferAddr, uint8_t* nullAddr,
                              DecimalVector& result) {
   for (int i = 0; i < result.data.size(); i++) {
-    // ARROW_LOG(INFO) << " dump result " << static_cast<int64_t>(result.data[i].low_bits());
+    // ARROW_LOG(INFO) << " dump result " <<
+    // static_cast<int64_t>(result.data[i].low_bits());
     *(nullAddr + i) = 1;
     switch (result.type) {
       case ResultType::IntType: {

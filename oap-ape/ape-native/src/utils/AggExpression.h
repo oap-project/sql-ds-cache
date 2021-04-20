@@ -108,7 +108,6 @@ class AggExpression : public WithResultExpression {
   void getResult(DecimalVector& result, const int& groupNum = 1,
                  const std::vector<int>& index = std::vector<int>()) override {
     if (!done) {
-      
       if (groupNum == 1) {
         getResultInternal(resultCache);
       } else {
