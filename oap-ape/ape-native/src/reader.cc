@@ -143,11 +143,48 @@ void convertBitMap(uint8_t* srcBitMap, uint8_t* dstByteMap, int len) {
   }
 }
 
- void dumpGroupByKeyToJavaBuffer(const std::vector<Key>& keys, uint8_t* bufferAddr,
-                                       const int index) {
+void dumpGroupByKeyToJavaBuffer(const std::vector<Key>& keys, uint8_t* bufferAddr,
+                                const int index, const parquet::Type::type pType) {
   int len = keys.size();
-  for (int i = 0; i < len; i++) {
-    *((parquet::ByteArray*)(bufferAddr) + i) = std::get<4>(keys[i][index]);
+  switch (pType) {
+    case parquet::Type::INT32: {
+      for (int i = 0; i < len; i++) {
+        *((int32_t*)(bufferAddr) + i) = std::get<0>(keys[i][index]);
+      }
+      break;
+    }
+
+    case parquet::Type::INT64: {
+      for (int i = 0; i < len; i++) {
+        *((int64_t*)(bufferAddr) + i) = std::get<1>(keys[i][index]);
+      }
+      break;
+    }
+
+    case parquet::Type::FLOAT: {
+      for (int i = 0; i < len; i++) {
+        *((float*)(bufferAddr) + i) = std::get<2>(keys[i][index]);
+      }
+      break;
+    }
+    case parquet::Type::DOUBLE: {
+      for (int i = 0; i < len; i++) {
+        *((double*)(bufferAddr) + i) = std::get<3>(keys[i][index]);
+      }
+      break;
+    }
+
+    case parquet::Type::BYTE_ARRAY: {
+      for (int i = 0; i < len; i++) {
+        *((parquet::ByteArray*)(bufferAddr) + i) = std::get<4>(keys[i][index]);
+      }
+      break;
+    }
+
+    default: {
+      ARROW_LOG(WARNING) << "Do not support yet";
+      break;
+    }
   }
 }
 
@@ -225,7 +262,7 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
     // ReadBatchSpaced API will return rows left in a data page
     while (rows < rowsToRead) {
       // TODO: refactor. it's ugly, but didn't find some better way.
-      switch (fileMetaData->schema()->Column(requiredColumnIndex[i])->physical_type()) {
+      switch (typeVector[i]) {
         case parquet::Type::BOOLEAN: {
           parquet::BoolReader* boolReader =
               static_cast<parquet::BoolReader*>(columnReaders[i].get());
@@ -350,12 +387,13 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
       std::vector<Key> keys;
 
       GroupByUtils::groupBy(map, indexes, rowsRet, groupByExprs, buffersPtr, nullsPtr,
-                            keys);
+                            keys, typeVector);
 
       // do agg based on indexes
       int index = 0;
       for (int i = 0; i < groupBySize; i++) {
-        dumpGroupByKeyToJavaBuffer(keys, (uint8_t*)(buffersPtr_[index]), index);
+        dumpGroupByKeyToJavaBuffer(keys, (uint8_t*)(buffersPtr_[index]), index,
+                                   typeVector[index]);
         index++;
       }
 
@@ -367,16 +405,9 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
           DecimalVector result;
           std::dynamic_pointer_cast<RootAggExpression>(agg)->getResult(
               result, keys.size(), indexes);
-          // if (result.data.size() == 1) {
-          // TODO: for group by
           dumpToJavaBuffer((uint8_t*)(buffersPtr_[index]), (uint8_t*)(nullsPtr_[index]),
                            result);
-          // *(uint8_t*)(nullsPtr_[index]) = 1;
           index++;
-          // } else {
-          // ARROW_LOG(DEBUG) << "Oops... why return " << result.data.size() << "
-          // results";
-          // }
         } else if (typeid(*agg) == typeid(AttributeReferenceExpression)) {
           // TODO
         }
@@ -399,10 +430,8 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
           DecimalVector result;
           std::dynamic_pointer_cast<RootAggExpression>(agg)->getResult(result);
           if (result.data.size() == 1) {
-            // TODO: for group by
             dumpToJavaBuffer((uint8_t*)(buffersPtr_[index]), (uint8_t*)(nullsPtr_[index]),
                              result);
-            // *(uint8_t*)(nullsPtr_[index]) = 1;
             index++;
           } else {
             ARROW_LOG(DEBUG) << "Oops... why return " << result.data.size() << " results";
@@ -512,6 +541,13 @@ void Reader::checkEndOfRowGroup() {
 
   for (int i = 0; i < requiredColumnIndex.size(); i++) {
     columnReaders[i] = rowGroupReader->Column(requiredColumnIndex[i]);
+  }
+
+  if (typeVector.size() == 0) {
+    for (int i = 0; i < requiredColumnIndex.size(); i++) {
+      typeVector.push_back(
+          fileMetaData->schema()->Column(requiredColumnIndex[i])->physical_type());
+    }
   }
 
   totalRowsLoadedSoFar += rowGroupReader->metadata()->num_rows();

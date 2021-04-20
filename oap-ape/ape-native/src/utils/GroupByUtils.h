@@ -31,9 +31,8 @@ class GroupByUtils {
   static void groupBy(ApeHashMap& map, std::vector<int>& index, const int& batchSize,
                       std::vector<std::shared_ptr<Expression>>& groupByExprs,
                       const std::vector<int64_t>& buffersPtr,
-                      const std::vector<int64_t>& nullPtr,
-                      std::vector<Key>& keys) {
-    ARROW_LOG(INFO) << " Start!";
+                      const std::vector<int64_t>& nullPtr, std::vector<Key>& keys,
+                      const std::vector<parquet::Type::type> typeVector) {
     int groupBySize = groupByExprs.size();
     int totalGroup = 0;
     std::vector<int> columnIndexes(groupBySize);
@@ -42,13 +41,42 @@ class GroupByUtils {
           std::static_pointer_cast<AttributeReferenceExpression>(groupByExprs[i]);
 
       columnIndexes[i] = groupByExpr->columnIndex;
-      ARROW_LOG(INFO) << " columnIndex is " << columnIndexes[i];
+      ARROW_LOG(DEBUG) << " columnIndex is " << columnIndexes[i];
     }
     for (int i = 0; i < batchSize; i++) {
       Key key;
-
       for (int j = 0; j < groupBySize; j++) {
-        PartialKey pKey = *((parquet::ByteArray*)(buffersPtr[columnIndexes[j]]) + i);
+        PartialKey pKey;
+        switch (typeVector[columnIndexes[j]]) {
+          case parquet::Type::INT32: {
+            pKey = *((int32_t*)(buffersPtr[columnIndexes[j]]) + i);
+            break;
+          }
+
+          case parquet::Type::INT64: {
+            pKey = *((int64_t*)(buffersPtr[columnIndexes[j]]) + i);
+            break;
+          }
+
+          case parquet::Type::FLOAT: {
+            pKey = *((float*)(buffersPtr[columnIndexes[j]]) + i);
+            break;
+          }
+          case parquet::Type::DOUBLE: {
+            pKey = *((double*)(buffersPtr[columnIndexes[j]]) + i);
+            break;
+          }
+
+          case parquet::Type::BYTE_ARRAY: {
+            pKey = *((parquet::ByteArray*)(buffersPtr[columnIndexes[j]]) + i);
+            break;
+          }
+
+          default: {
+            ARROW_LOG(WARNING) << "Do not support yet";
+            break;
+          }
+        }
         key.push_back(pKey);
       }
       if (map.find(key) == map.end()) {
@@ -61,16 +89,16 @@ class GroupByUtils {
       }
     }
     ARROW_LOG(INFO) << "Total group num: " << totalGroup;
-    for (auto iter = map.begin(); iter != map.end(); iter++) {
-      Key key = iter->first;
-      std::cerr << "Key size " << key.size() << " key is ";
-      for (int j = 0; j < key.size(); j++) {
-        PartialKey tmp_key = key[j];
-        parquet::ByteArray a = std::get<4>(tmp_key);
-        std::cerr << a.ptr << "  ";
-      }
-      std::cerr << " ." << std::endl;
-    }
+    // for (auto iter = map.begin(); iter != map.end(); iter++) {
+    //   Key key = iter->first;
+    //   std::cerr << "Key size " << key.size() << " key is ";
+    //   for (int j = 0; j < key.size(); j++) {
+    //     PartialKey tmp_key = key[j];
+    //     parquet::ByteArray a = std::get<4>(tmp_key);
+    //     std::cerr << a.ptr << "  ";
+    //   }
+    //   std::cerr << " ." << std::endl;
+    // }
   }
 };
 
