@@ -22,8 +22,6 @@
 #include <assert.h>
 
 #include "src/reader.h"
-#include "src/utils/ApeHashMap.h"
-#include "src/utils/GroupByUtils.h"
 
 namespace ape {
 
@@ -140,51 +138,6 @@ void convertBitMap(uint8_t* srcBitMap, uint8_t* dstByteMap, int len) {
   }
   for (int i = 0; i < len % 8; i++) {
     dstByteMap[len / 8 * 8 + i] = (srcBitMap[len / 8] & (1 << i)) != 0;
-  }
-}
-
-void dumpGroupByKeyToJavaBuffer(const std::vector<Key>& keys, uint8_t* bufferAddr,
-                                const int index, const parquet::Type::type pType) {
-  int len = keys.size();
-  switch (pType) {
-    case parquet::Type::INT32: {
-      for (int i = 0; i < len; i++) {
-        *((int32_t*)(bufferAddr) + i) = std::get<0>(keys[i][index]);
-      }
-      break;
-    }
-
-    case parquet::Type::INT64: {
-      for (int i = 0; i < len; i++) {
-        *((int64_t*)(bufferAddr) + i) = std::get<1>(keys[i][index]);
-      }
-      break;
-    }
-
-    case parquet::Type::FLOAT: {
-      for (int i = 0; i < len; i++) {
-        *((float*)(bufferAddr) + i) = std::get<2>(keys[i][index]);
-      }
-      break;
-    }
-    case parquet::Type::DOUBLE: {
-      for (int i = 0; i < len; i++) {
-        *((double*)(bufferAddr) + i) = std::get<3>(keys[i][index]);
-      }
-      break;
-    }
-
-    case parquet::Type::BYTE_ARRAY: {
-      for (int i = 0; i < len; i++) {
-        *((parquet::ByteArray*)(bufferAddr) + i) = std::get<4>(keys[i][index]);
-      }
-      break;
-    }
-
-    default: {
-      ARROW_LOG(WARNING) << "Do not support yet";
-      break;
-    }
   }
 }
 
@@ -392,8 +345,8 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
       // do agg based on indexes
       int index = 0;
       for (int i = 0; i < groupBySize; i++) {
-        dumpGroupByKeyToJavaBuffer(keys, (uint8_t*)(buffersPtr_[index]), index,
-                                   typeVector[index]);
+        DumpUtils::dumpGroupByKeyToJavaBuffer(keys, (uint8_t*)(buffersPtr_[index]), index,
+                                              typeVector[index]);
         index++;
       }
 
@@ -405,8 +358,8 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
           DecimalVector result;
           std::dynamic_pointer_cast<RootAggExpression>(agg)->getResult(
               result, keys.size(), indexes);
-          dumpToJavaBuffer((uint8_t*)(buffersPtr_[index]), (uint8_t*)(nullsPtr_[index]),
-                           result);
+          DumpUtils::dumpToJavaBuffer((uint8_t*)(buffersPtr_[index]),
+                                      (uint8_t*)(nullsPtr_[index]), result);
           index++;
         } else if (typeid(*agg) == typeid(AttributeReferenceExpression)) {
           // TODO
@@ -430,8 +383,8 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
           DecimalVector result;
           std::dynamic_pointer_cast<RootAggExpression>(agg)->getResult(result);
           if (result.data.size() == 1) {
-            dumpToJavaBuffer((uint8_t*)(buffersPtr_[index]), (uint8_t*)(nullsPtr_[index]),
-                             result);
+            DumpUtils::dumpToJavaBuffer((uint8_t*)(buffersPtr_[index]),
+                                        (uint8_t*)(nullsPtr_[index]), result);
             index++;
           } else {
             ARROW_LOG(DEBUG) << "Oops... why return " << result.data.size() << " results";

@@ -40,8 +40,6 @@ void AttributeReferenceExpression::setSchema(
   ptrdiff_t pos = std::distance(
       schema->begin(), std::find_if(schema->begin(), schema->end(), finder(columnName)));
   columnIndex = pos;
-  ARROW_LOG(INFO) << "set schema, col name " << schema->at(columnIndex).getColName()
-                  << " col index " << columnIndex;
 }
 
 int RootAggExpression::ExecuteWithParam(int batchSize,
@@ -81,7 +79,6 @@ void Count::getResultInternal(DecimalVector& result) {
     done = true;
     auto tmp = DecimalVector();
     child->getResult(tmp);
-    ARROW_LOG(INFO) << "count node child size: " << tmp.data.size();
     for (int i = 0; i < tmp.data.size(); i++) {
       if (tmp.nullVector->at(i)) count++;
     }
@@ -104,8 +101,6 @@ void Count::getResultInternalWithGroup(DecimalVector& result, const int& groupNu
     } else {
       auto tmp = DecimalVector();
       child->getResult(tmp);
-      ARROW_LOG(INFO) << "count node child size: " << tmp.data.size() << " index size "
-                      << index.size();
       for (int i = 0; i < index.size(); i++) {
         if (tmp.nullVector->at(i)) {
           group[index[i]]++;
@@ -115,7 +110,6 @@ void Count::getResultInternalWithGroup(DecimalVector& result, const int& groupNu
   }
   result.data.reserve(groupNum);
   for (int i = 0; i < groupNum; i++) {
-    ARROW_LOG(INFO) << "count:: group " << i << " res " << group[i];
     result.data.push_back(arrow::BasicDecimal128(group[i]));
   }
   result.type = ResultType::LongType;
@@ -129,7 +123,6 @@ int ArithmeticExpression::ExecuteWithParam(int batchSize,
   if (!done) {
     leftChild->ExecuteWithParam(batchSize, dataBuffers, nullBuffers, outBuffers);
     rightChild->ExecuteWithParam(batchSize, dataBuffers, nullBuffers, outBuffers);
-    // done = true;
   }
   return 0;
 }

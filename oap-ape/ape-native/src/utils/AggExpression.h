@@ -105,6 +105,7 @@ class AggExpression : public WithResultExpression {
     done = false;
     child->reset();
   }
+
   void getResult(DecimalVector& result, const int& groupNum = 1,
                  const std::vector<int>& index = std::vector<int>()) override {
     if (!done) {
@@ -118,6 +119,15 @@ class AggExpression : public WithResultExpression {
     result = resultCache;
   }
 
+  void setSchema(std::shared_ptr<std::vector<Schema>> schema_) {
+    schema = schema_;
+    child->setSchema(schema);
+  }
+
+ protected:
+  std::shared_ptr<WithResultExpression> child;
+  DecimalVector resultCache;
+
   // build cached DecimalVector resultCache
   virtual void getResultInternal(DecimalVector& result) {
     ARROW_LOG(INFO) << "should never be called";
@@ -127,20 +137,13 @@ class AggExpression : public WithResultExpression {
                                           const std::vector<int>& index) {
     ARROW_LOG(INFO) << "should never be called";
   }
-
-  void setSchema(std::shared_ptr<std::vector<Schema>> schema_) {
-    schema = schema_;
-    child->setSchema(schema);
-  }
-
- protected:
-  std::shared_ptr<WithResultExpression> child;
-  DecimalVector resultCache;
 };
 
 class Sum : public AggExpression {
  public:
   ~Sum() {}
+
+ private:
   void getResultInternal(DecimalVector& result) override {
     auto tmp = DecimalVector();
     child->getResult(tmp);
@@ -162,8 +165,6 @@ class Sum : public AggExpression {
     auto tmp = DecimalVector();
     child->getResult(tmp);
     std::vector<arrow::BasicDecimal128> outs(groupNum);
-    ARROW_LOG(INFO) << "data size " << tmp.data.size() << "indexes size " << index.size();
-    assert(tmp.data.size() == index.size());
     for (int i = 0; i < tmp.data.size(); i++) {
       if (tmp.nullVector->at(i)) {
         outs[index[i]] += tmp.data[i];
@@ -181,6 +182,7 @@ class Min : public AggExpression {
  public:
   ~Min() {}
 
+ private:
   void getResultInternal(DecimalVector& result) override {
     auto tmp = DecimalVector();
     child->getResult(tmp);
@@ -196,11 +198,35 @@ class Min : public AggExpression {
     result.scale = tmp.scale;
     result.type = GetResultType(dataType);
   }
+
+  void getResultInternalWithGroup(DecimalVector& result, const int& groupNum,
+                                  const std::vector<int>& index) override {
+    auto tmp = DecimalVector();
+    child->getResult(tmp);
+    std::vector<arrow::BasicDecimal128> outs(groupNum);
+    std::vector<bool> init(groupNum, false);
+    for (int i = 0; i < tmp.data.size(); i++) {
+      if (tmp.nullVector->at(i)) {
+        if (!init[index[i]]) {
+          init[index[i]] = true;
+          outs[index[i]] = tmp.data[i];
+        } else
+          outs[index[i]] = outs[index[i]] < tmp.data[i] ? outs[index[i]] : tmp.data[i];
+      }
+    }
+    result.data.clear();
+    result.data = outs;
+    result.precision = 38;  // tmp.precision;
+    result.scale = tmp.scale;
+    result.type = GetResultType(dataType);
+  }
 };
 
 class Max : public AggExpression {
  public:
   ~Max() {}
+
+ private:
   void getResultInternal(DecimalVector& result) override {
     auto tmp = DecimalVector();
     child->getResult(tmp);
@@ -216,13 +242,33 @@ class Max : public AggExpression {
     result.scale = tmp.scale;
     result.type = GetResultType(dataType);
   }
+
+  void getResultInternalWithGroup(DecimalVector& result, const int& groupNum,
+                                  const std::vector<int>& index) override {
+    auto tmp = DecimalVector();
+    child->getResult(tmp);
+    std::vector<arrow::BasicDecimal128> outs(groupNum);
+    std::vector<bool> init(groupNum, false);
+    for (int i = 0; i < tmp.data.size(); i++) {
+      if (tmp.nullVector->at(i)) {
+        if (!init[index[i]]) {
+          init[index[i]] = true;
+          outs[index[i]] = tmp.data[i];
+        } else
+          outs[index[i]] = outs[index[i]] > tmp.data[i] ? outs[index[i]] : tmp.data[i];
+      }
+    }
+    result.data.clear();
+    result.data = outs;
+    result.precision = 38;  // tmp.precision;
+    result.scale = tmp.scale;
+    result.type = GetResultType(dataType);
+  }
 };
 
 class Count : public AggExpression {
  public:
   ~Count() {}
-  // void getResult(DecimalVector& result, const int& groupNum,
-  //                const std::vector<int>& index) override;
   int ExecuteWithParam(int batchSize, const std::vector<int64_t>& dataBuffers,
                        const std::vector<int64_t>& nullBuffers,
                        std::vector<int8_t>& outBuffers) override {
@@ -233,14 +279,14 @@ class Count : public AggExpression {
     }
     return 0;
   }
-  void getResultInternal(DecimalVector& result) override;
-  void getResultInternalWithGroup(DecimalVector& result, const int& groupNum,
-                                  const std::vector<int>& index) override;
 
  private:
   int count = 0;
   std::vector<int> group;
   int batchSize_ = 0;
+  void getResultInternal(DecimalVector& result) override;
+  void getResultInternalWithGroup(DecimalVector& result, const int& groupNum,
+                                  const std::vector<int>& index) override;
 };
 
 class ArithmeticExpression : public WithResultExpression {

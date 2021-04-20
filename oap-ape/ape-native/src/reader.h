@@ -33,6 +33,9 @@
 #include "utils/PlasmaCacheManager.h"
 #include "utils/JsonConvertor.h"
 #include "utils/Type.h"
+#include "src/utils/ApeHashMap.h"
+#include "src/utils/GroupByUtils.h"
+#include "src/utils/DumpUtils.h"
 
 namespace ape {
 class Reader {
