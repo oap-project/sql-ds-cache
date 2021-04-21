@@ -21,11 +21,14 @@
 
 TEST(ApeHashMapTest, KeyTest) {
   ape::Key key;
-  key.push_back(1);      // int
-  key.push_back(100L);   // long
-  key.push_back(1.0f);   // float
-  key.push_back(0.1);    // double
-  key.push_back("aaa");  // std::string
+  key.push_back(1);     // int
+  key.push_back(100L);  // long
+  key.push_back(1.0f);  // float
+  key.push_back(0.1);   // double
+
+  const uint8_t str[] = "aaa";
+  parquet::ByteArray byteArray(sizeof(str) / sizeof(str[0]), str);
+  key.push_back(byteArray);  // parquet::ByteArray
 
   EXPECT_EQ(key.size(), 5);
   EXPECT_EQ(key[0].index(), 0);
@@ -37,11 +40,13 @@ TEST(ApeHashMapTest, KeyTest) {
 
 TEST(ApeHashMapTest, HashMapTest) {
   ape::Key key;
-  key.push_back(1);      // int
-  key.push_back(100L);   // long
-  key.push_back(1.0f);   // float
-  key.push_back(0.1);    // double
-  key.push_back("aaa");  // std::string
+  key.push_back(1);     // int
+  key.push_back(100L);  // long
+  key.push_back(1.0f);  // float
+  key.push_back(0.1);   // double
+  const uint8_t str[] = "aaa";
+  parquet::ByteArray byteArray(sizeof(str) / sizeof(str[0]), str);
+  key.push_back(byteArray);  // parquet::ByteArray
 
   ape::ApeHashMap map;
   map.insert({key, 1});
@@ -58,9 +63,13 @@ TEST(ApeHashMapTest, GropuByTest) {
   int row_num = 10000;
   // sum(column3) group by column1, column2
   std::vector<int32_t> column1(row_num);
-  std::vector<std::string> column2(row_num);
+  std::vector<parquet::ByteArray> column2(row_num);
   std::vector<int64_t> column3(row_num);
   std::vector<int32_t> index(row_num);
+
+  const uint8_t stra[] = "aaaa";
+  const uint8_t strb[] = "bbbb";
+  const uint8_t strc[] = "cccc";
 
   for (int i = 0; i < row_num; i++) {
     if (i % 2 == 0)
@@ -69,11 +78,12 @@ TEST(ApeHashMapTest, GropuByTest) {
       column1[i] = 20;
 
     if (i % 3 == 0)
-      column2[i] = "aaaa";
+      column2[i] = parquet::ByteArray(sizeof(stra) / sizeof(stra[0]), stra);
     else if (i % 3 == 1)
-      column2[i] = "bbbb";
+      column2[i] = parquet::ByteArray(sizeof(strb) / sizeof(strb[0]), strb);
+
     else
-      column2[i] = "cccc";
+      column2[i] = parquet::ByteArray(sizeof(strc) / sizeof(strc[0]), strc);
 
     column3[i] = i;
   }
@@ -115,7 +125,7 @@ TEST(ApeHashMapTest, GropuByTest) {
         std::cout << std::get<0>(partial_key)
                   << " ";  // consider how to convert type back.
       else
-        std::cout << std::get<4>(partial_key) << " ";
+        std::cout << ((parquet::ByteArray)std::get<4>(partial_key)).ptr << " ";
     }
     std::cout << " result " << result[iter->second] << std::endl;
   }

@@ -19,7 +19,7 @@ cmake_minimum_required(VERSION 3.12)
 
 project(APE)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 
 find_library(ARROW_LIB arrow)
 find_library(PARQUET_LIB parquet)

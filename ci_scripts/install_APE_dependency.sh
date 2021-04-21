@@ -22,7 +22,7 @@ git clone https://github.com/sewenew/redis-plus-plus.git
 cd redis-plus-plus
 mkdir compile
 cd compile
-cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$INSTALL_DIR ..
+cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$INSTALL_DIR -DREDIS_PLUS_PLUS_CXX_STANDARD=17 ..
 make -j2
 sudo make install
 
