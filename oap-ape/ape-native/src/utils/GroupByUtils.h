@@ -89,16 +89,6 @@ class GroupByUtils {
       }
     }
     ARROW_LOG(INFO) << "Total group num: " << totalGroup;
-    // for (auto iter = map.begin(); iter != map.end(); iter++) {
-    //   Key key = iter->first;
-    //   std::cerr << "Key size " << key.size() << " key is ";
-    //   for (int j = 0; j < key.size(); j++) {
-    //     PartialKey tmp_key = key[j];
-    //     parquet::ByteArray a = std::get<4>(tmp_key);
-    //     std::cerr << a.ptr << "  ";
-    //   }
-    //   std::cerr << " ." << std::endl;
-    // }
   }
 };
 

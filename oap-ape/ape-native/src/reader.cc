@@ -25,10 +25,7 @@
 
 namespace ape {
 
-Reader::Reader() {
-  // arrow::util::ArrowLog::StartArrowLog("ape", arrow::util::ArrowLogLevel::ARROW_DEBUG);
-  // arrow::util::ArrowLog::InstallFailureSignalHandler();
-}
+Reader::Reader() {}
 
 void Reader::init(std::string fileName, std::string hdfsHost, int hdfsPort,
                   std::string requiredSchema, int firstRowGroup, int rowGroupToRead) {
