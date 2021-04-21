@@ -92,6 +92,14 @@ JNIEXPORT void JNICALL Java_com_intel_ape_ParquetReaderJNI_setAggStr(JNIEnv*, jc
 JNIEXPORT void JNICALL Java_com_intel_ape_ParquetReaderJNI_setPlasmaCacheRedis(
     JNIEnv*, jclass, jlong, jstring, jint, jstring);
 
+/*
+ * Class:     com_intel_ape_ParquetReaderJNI
+ * Method:    isNativeEnabled
+ * Signature: ()Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_intel_ape_ParquetReaderJNI_isNativeEnabled(JNIEnv*,
+                                                                               jclass);
+
 #ifdef __cplusplus
 }
 #endif

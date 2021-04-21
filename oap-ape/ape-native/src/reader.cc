@@ -18,6 +18,8 @@
 #include <algorithm>
 #include <nlohmann/json.hpp>
 
+#include "arrow/util/cpu_info.h"
+
 #undef NDEBUG
 #include <assert.h>
 
@@ -740,5 +742,10 @@ void Reader::setPlasmaCacheRedis(std::string host, int port, std::string passwor
 }
 
 void Reader::setPreBufferEnabled(bool isEnabled) { preBufferEnabled = isEnabled; }
+
+bool Reader::isNativeEnabled() {
+  return arrow::internal::CpuInfo::GetInstance()->vendor() ==
+         arrow::internal::CpuInfo::Vendor::Intel;
+}
 
 }  // namespace ape

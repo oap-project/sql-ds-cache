@@ -24,6 +24,7 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.util.{Failure, Try}
 
+import com.intel.ape.ParquetReaderJNI
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileStatus, Path}
 import org.apache.hadoop.mapreduce._
@@ -178,7 +179,15 @@ class ParquetFileFormat
       partitionSchema: StructType,
       sqlConf: SQLConf): Option[Seq[String]] = {
     Option(Seq.fill(requiredSchema.fields.length + partitionSchema.fields.length)(
-      classOf[NativeColumnVector].getName
+      if (ParquetReaderJNI.isNativeEnabled) {
+        classOf[NativeColumnVector].getName
+      } else {
+        if (!sqlConf.offHeapColumnVectorEnabled) {
+          classOf[OnHeapColumnVector].getName
+        } else {
+          classOf[OffHeapColumnVector].getName
+        }
+      }
     ))
   }
 
@@ -334,21 +343,41 @@ class ParquetFileFormat
       }
       val taskContext = Option(TaskContext.get())
       if (enableVectorizedReader) {
-        logInfo("using ape")
-        val reader = new ParquetNativeRecordReaderWrapper(capacity)
-        val iter = new RecordReaderIterator(reader)
-        // SPARK-23457 Register a task completion listener before `initialization`.
-        taskContext.foreach(_.addTaskCompletionListener[Unit](_ => iter.close()))
-        reader.setCacheEnabled(cacheEnabled)
-        reader.setPreBufferEnabled(preBufferEnabled)
-        reader.initialize(split, hadoopAttemptContext)
-        if(cacheEnabled && redisEnabled) {
-          reader.setPlasmaCacheRedis(redisHost, redisPort, redisPasswd)
+        if (ParquetReaderJNI.isNativeEnabled) {
+          logInfo("using ape")
+          val reader = new ParquetNativeRecordReaderWrapper(capacity)
+          val iter = new RecordReaderIterator(reader)
+          // SPARK-23457 Register a task completion listener before `initialization`.
+          taskContext.foreach(_.addTaskCompletionListener[Unit](_ => iter.close()))
+          reader.setCacheEnabled(cacheEnabled)
+          reader.setPreBufferEnabled(preBufferEnabled)
+          reader.initialize(split, hadoopAttemptContext)
+          if(cacheEnabled && redisEnabled) {
+            reader.setPlasmaCacheRedis(redisHost, redisPort, redisPasswd)
+          }
+          if (enableParquetFilterPushDown && pushed.isDefined) reader.setFilter(pushed.get)
+          if (aggPdEnabled) reader.setAgg(aggExpr)
+          // UnsafeRowParquetRecordReader appends the columns internally to avoid another copy.
+          iter.asInstanceOf[Iterator[InternalRow]]
+        } else {
+          val vectorizedReader = new VectorizedParquetRecordReader(
+            convertTz.orNull,
+            datetimeRebaseMode.toString,
+            enableOffHeapColumnVector && taskContext.isDefined,
+            capacity)
+          val iter = new RecordReaderIterator(vectorizedReader)
+          // SPARK-23457 Register a task completion listener before `initialization`.
+          taskContext.foreach(_.addTaskCompletionListener[Unit](_ => iter.close()))
+          vectorizedReader.initialize(split, hadoopAttemptContext)
+          logDebug(s"Appending $partitionSchema ${file.partitionValues}")
+          vectorizedReader.initBatch(partitionSchema, file.partitionValues)
+          if (returningBatch) {
+            vectorizedReader.enableReturningBatches()
+          }
+
+          // UnsafeRowParquetRecordReader appends the columns internally to avoid another copy.
+          iter.asInstanceOf[Iterator[InternalRow]]
         }
-        if (enableParquetFilterPushDown && pushed.isDefined) reader.setFilter(pushed.get)
-        if (aggPdEnabled) reader.setAgg(aggExpr)
-        // UnsafeRowParquetRecordReader appends the columns internally to avoid another copy.
-        iter.asInstanceOf[Iterator[InternalRow]]
       } else {
         null
       }
