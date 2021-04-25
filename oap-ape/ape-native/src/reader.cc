@@ -329,63 +329,39 @@ int Reader::doAggregation(int batchSize, ApeHashMap& map, std::vector<Key>& keys
       aggExprs.size()) {  // if rows after filter is 0, no need to do agg.
     auto start = std::chrono::steady_clock::now();
     int groupBySize = groupByExprs.size();
+    std::vector<int> indexes(batchSize);
+
+    // build hash map and index
     if (groupBySize > 0) {
-      // build hash map and index
-      std::vector<int> indexes(batchSize);
       GroupByUtils::groupBy(map, indexes, batchSize, groupByExprs, buffersPtr, nullsPtr,
                             keys, typeVector);
+    }
 
-      // do agg based on indexes
-      results.resize(aggExprs.size());
-      for (int i = 0; i < aggExprs.size(); i++) {
-        auto agg = aggExprs[i];
-        if (typeid(*agg) == typeid(RootAggExpression)) {
-          std::vector<int8_t> tmp(0);
-          agg->ExecuteWithParam(batchSize, buffersPtr, nullsPtr, tmp);
+    results.resize(aggExprs.size());
+    for (int i = 0; i < aggExprs.size(); i++) {
+      auto agg = aggExprs[i];
+      if (typeid(*agg) == typeid(RootAggExpression)) {
+        std::vector<int8_t> tmp(0);
+        agg->ExecuteWithParam(batchSize, buffersPtr, nullsPtr, tmp);
+        if (groupBySize) {  // do agg based on indexes
           std::dynamic_pointer_cast<RootAggExpression>(agg)->getResult(
               results[i], keys.size(), indexes);
-
         } else {
-          ARROW_LOG(WARNING) << "Oops, ";
+          std::dynamic_pointer_cast<RootAggExpression>(agg)->getResult(results[i]);
         }
+      } else {
+        ARROW_LOG(WARNING) << "Oops, ";
       }
-
-      for (int i = 0; i < aggExprs.size(); i++) {
-        auto agg = aggExprs[i];
-        if (typeid(*agg) == typeid(RootAggExpression)) {
-          std::dynamic_pointer_cast<RootAggExpression>(agg)->reset();
-        }
-      }
-      rowsRet = keys.size();
-    } else {
-      int index = 0;
-      for (int i = 0; i < aggExprs.size(); i++) {
-        auto agg = aggExprs[i];
-        if (typeid(*agg) == typeid(RootAggExpression)) {
-          std::vector<int8_t> tmp(0);
-          agg->ExecuteWithParam(batchSize, buffersPtr, nullsPtr, tmp);
-          DecimalVector result;
-          std::dynamic_pointer_cast<RootAggExpression>(agg)->getResult(result);
-          if (result.data.size() == 1) {
-            // DumpUtils::dumpToJavaBuffer((uint8_t*)(oriBufferPtr[index]),
-            //                             (uint8_t*)(oriNullsPtr[index]), result);
-            index++;
-          } else {
-            ARROW_LOG(DEBUG) << "Oops... why return " << result.data.size() << " results";
-          }
-        } else if (typeid(*agg) == typeid(AttributeReferenceExpression)) {
-          // TODO
-        }
-      }
-
-      for (int i = 0; i < aggExprs.size(); i++) {
-        auto agg = aggExprs[i];
-        if (typeid(*agg) == typeid(RootAggExpression)) {
-          std::dynamic_pointer_cast<RootAggExpression>(agg)->reset();
-        }
-      }
-      rowsRet = 1;
     }
+
+    for (int i = 0; i < aggExprs.size(); i++) {
+      auto agg = aggExprs[i];
+      if (typeid(*agg) == typeid(RootAggExpression)) {
+        std::dynamic_pointer_cast<RootAggExpression>(agg)->reset();
+      }
+    }
+    rowsRet = groupBySize > 0 ? keys.size() : 1;
+
     aggTime += std::chrono::steady_clock::now() - start;
   }
   return rowsRet;
@@ -397,20 +373,15 @@ int Reader::dumpBufferAfterAgg(int groupBySize, int aggExprsSize,
                                const std::vector<DecimalVector>& results,
                                int64_t* oriBufferPtr, int64_t* oriNullsPtr) {
   // dump buffers
-  ARROW_LOG(INFO) << "groupby expr " << groupBySize << " group num " << keys.size()
-                  << "agg expr " << aggExprsSize << " results size: " << results.size();
-
   for (int i = 0; i < groupBySize; i++) {
     DumpUtils::dumpGroupByKeyToJavaBuffer(keys, (uint8_t*)(oriBufferPtr[i]), i,
                                           typeVector[i]);
   }
-  ARROW_LOG(INFO) << "dump buffer bbbbb";
 
   for (int i = 0; i < aggExprs.size(); i++) {
     DumpUtils::dumpToJavaBuffer((uint8_t*)(oriBufferPtr[i + groupBySize]),
                                 (uint8_t*)(oriNullsPtr[i + groupBySize]), results[i]);
   }
-  ARROW_LOG(INFO) << "dump buffer ccccc";
 
   return 0;
 }

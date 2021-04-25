@@ -71,6 +71,7 @@ int AggExpression::ExecuteWithParam(int batchSize,
 
 void Count::getResultInternal(DecimalVector& result) {
   result.data.clear();
+  result.type = ResultType::LongType;
   if (typeid(*child) == typeid(LiteralExpression)) {  // for count(*) or count(1)
     result.data.push_back(arrow::BasicDecimal128(batchSize_));
     return;
@@ -84,7 +85,6 @@ void Count::getResultInternal(DecimalVector& result) {
     }
   }
   result.data.push_back(arrow::BasicDecimal128(count));
-  result.type = ResultType::LongType;
 }
 
 void Count::getResultInternalWithGroup(DecimalVector& result, const int& groupNum,
