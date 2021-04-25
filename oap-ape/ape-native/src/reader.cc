@@ -397,8 +397,8 @@ int Reader::doAggregation(int batchSize, std::vector<int64_t>& buffersPtr,
 }
 
 int Reader::allocateExtraBuffers(int batchSize, std::vector<int64_t>& buffersPtr,
-                                    std::vector<int64_t>& nullsPtr, int64_t* oriBufferPtr,
-                                    int64_t* oriNullsPtr) {
+                                 std::vector<int64_t>& nullsPtr, int64_t* oriBufferPtr,
+                                 int64_t* oriNullsPtr) {
   if (filterExpression) {
     allocateFilterBuffers(batchSize);
   }
@@ -411,8 +411,8 @@ int Reader::allocateExtraBuffers(int batchSize, std::vector<int64_t>& buffersPtr
   int aggBufferCount = aggDataBuffers.size();
 
   if (filterBufferCount > 0 || aggBufferCount > 0) {
-    ARROW_LOG(INFO) << "use extra filter buffers count: " << filterBufferCount;
-    ARROW_LOG(INFO) << "use extra agg buffers count: " << aggBufferCount;
+    ARROW_LOG(DEBUG) << "use extra filter buffers count: " << filterBufferCount
+                     << "use extra agg buffers count: " << aggBufferCount;
 
     // when enable agg pd, initRequiredColumnCount will be 0, because init column will
     // be sum(col),
