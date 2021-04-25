@@ -92,6 +92,10 @@ class Reader {
                     std::vector<int64_t>& nullsPtr, int64_t* oriBufferPtr,
                     int64_t* oriNullsPtr);
 
+  int allocateExtraBuffers(int batchSize, std::vector<int64_t>& buffersPtr,
+                              std::vector<int64_t>& nullsPtr, int64_t* oriBufferPtr,
+                              int64_t* oriNullsPtr);
+
   arrow::Result<std::shared_ptr<arrow::fs::HadoopFileSystem>> fsResult;
   arrow::fs::HdfsOptions* options;
   std::shared_ptr<arrow::fs::FileSystem> fs;

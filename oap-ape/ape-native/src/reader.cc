@@ -163,43 +163,7 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
     nullsPtr[i] = nullsPtr_[i];
   }
 
-  // allocate extra memory for filtered columns if needed
-  if (filterExpression) {
-    allocateFilterBuffers(batchSize);
-  }
-
-  if (aggExprs.size()) {
-    allocateAggBuffers(batchSize);
-  }
-
-  int filterBufferCount = filterDataBuffers.size();
-  int aggBufferCount = aggDataBuffers.size();
-  if (filterBufferCount > 0 || aggBufferCount > 0) {
-    ARROW_LOG(DEBUG) << "use extra filter buffers count: " << filterBufferCount;
-    ARROW_LOG(DEBUG) << "use extra agg buffers count: " << aggBufferCount;
-
-    // when enable agg pd, initRequiredColumnCount will be 0, because init column will
-    // be sum(col),
-    buffersPtr.resize(initRequiredColumnCount + filterBufferCount + aggBufferCount);
-    nullsPtr.resize(initRequiredColumnCount + filterBufferCount + aggBufferCount);
-
-    for (int i = 0; i < initRequiredColumnCount; i++) {
-      buffersPtr[i] = buffersPtr_[i];
-      nullsPtr[i] = nullsPtr_[i];
-    }
-
-    for (int i = 0; i < filterBufferCount; i++) {
-      buffersPtr[initRequiredColumnCount + i] = (int64_t)filterDataBuffers[i];
-      nullsPtr[initRequiredColumnCount + i] = (int64_t)filterNullBuffers[i];
-    }
-
-    for (int i = 0; i < aggBufferCount; i++) {
-      buffersPtr[initRequiredColumnCount + filterBufferCount + i] =
-          (int64_t)aggDataBuffers[i];
-      nullsPtr[initRequiredColumnCount + filterBufferCount + i] =
-          (int64_t)aggNullBuffers[i];
-    }
-  }
+  allocateExtraBuffers(batchSize, buffersPtr, nullsPtr, buffersPtr_, nullsPtr_);
 
   currentBatchSize = batchSize;
 
@@ -207,9 +171,10 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
   totalRowsRead += rowsToRead;
   ARROW_LOG(DEBUG) << "total rows read yet: " << totalRowsRead;
 
-  int rowsRet = doFilter(rowsToRead, buffersPtr, nullsPtr);
+  int rowsAfterFilter = doFilter(rowsToRead, buffersPtr, nullsPtr);
 
-  rowsRet = doAggregation(rowsRet, buffersPtr, nullsPtr, buffersPtr_, nullsPtr_);
+  int rowsRet =
+      doAggregation(rowsAfterFilter, buffersPtr, nullsPtr, buffersPtr_, nullsPtr_);
 
   ARROW_LOG(DEBUG) << "ret rows " << rowsRet;
   return rowsRet;
@@ -429,6 +394,48 @@ int Reader::doAggregation(int batchSize, std::vector<int64_t>& buffersPtr,
     aggTime += std::chrono::steady_clock::now() - start;
   }
   return rowsRet;
+}
+
+int Reader::allocateExtraBuffers(int batchSize, std::vector<int64_t>& buffersPtr,
+                                    std::vector<int64_t>& nullsPtr, int64_t* oriBufferPtr,
+                                    int64_t* oriNullsPtr) {
+  if (filterExpression) {
+    allocateFilterBuffers(batchSize);
+  }
+
+  if (aggExprs.size()) {  // todo: group by agg size
+    allocateAggBuffers(batchSize);
+  }
+
+  int filterBufferCount = filterDataBuffers.size();
+  int aggBufferCount = aggDataBuffers.size();
+
+  if (filterBufferCount > 0 || aggBufferCount > 0) {
+    ARROW_LOG(INFO) << "use extra filter buffers count: " << filterBufferCount;
+    ARROW_LOG(INFO) << "use extra agg buffers count: " << aggBufferCount;
+
+    // when enable agg pd, initRequiredColumnCount will be 0, because init column will
+    // be sum(col),
+    buffersPtr.resize(initRequiredColumnCount + filterBufferCount + aggBufferCount);
+    nullsPtr.resize(initRequiredColumnCount + filterBufferCount + aggBufferCount);
+
+    for (int i = 0; i < initRequiredColumnCount; i++) {
+      buffersPtr[i] = oriBufferPtr[i];
+      nullsPtr[i] = oriNullsPtr[i];
+    }
+    for (int i = 0; i < filterBufferCount; i++) {
+      buffersPtr[initRequiredColumnCount + i] = (int64_t)filterDataBuffers[i];
+      nullsPtr[initRequiredColumnCount + i] = (int64_t)filterNullBuffers[i];
+    }
+
+    for (int i = 0; i < aggBufferCount; i++) {
+      buffersPtr[initRequiredColumnCount + filterBufferCount + i] =
+          (int64_t)aggDataBuffers[i];
+      nullsPtr[initRequiredColumnCount + filterBufferCount + i] =
+          (int64_t)aggNullBuffers[i];
+    }
+  }
+  return initRequiredColumnCount + filterBufferCount + aggBufferCount;
 }
 
 bool Reader::hasNext() { return columnReaders[0]->HasNext(); }
