@@ -156,5 +156,8 @@ class Reader {
 
   std::vector<int> usedInitBufferIndex;
   std::vector<parquet::Type::type> typeVector = std::vector<parquet::Type::type>();
+
+  std::vector<Key> keys = std::vector<Key>();
+  ApeHashMap map;
 };
 }  // namespace ape

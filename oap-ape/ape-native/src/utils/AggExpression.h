@@ -116,7 +116,7 @@ class AggExpression : public WithResultExpression {
       }
       done = true;
     }
-    result = resultCache;
+    appendPartialResult(result, resultCache);
   }
 
   void setSchema(std::shared_ptr<std::vector<Schema>> schema_) {
@@ -137,6 +137,12 @@ class AggExpression : public WithResultExpression {
                                           const std::vector<int>& index) {
     ARROW_LOG(INFO) << "should never be called";
   }
+
+  virtual void appendPartialResult(DecimalVector& result,
+                                   const DecimalVector& partialResult) {
+    result = partialResult;
+    ARROW_LOG(INFO) << "Shoule never be called.";
+  };
 };
 
 class Sum : public AggExpression {
@@ -176,6 +182,24 @@ class Sum : public AggExpression {
     result.scale = tmp.scale;
     result.type = GetResultType(dataType);
   }
+
+  void appendPartialResult(DecimalVector& result,
+                           const DecimalVector& partialResult) override {
+    if (result.data.size() == 0) {
+      result = partialResult;
+      return;
+    }
+
+    int totalItems = result.data.size();
+    int paritalItems = partialResult.data.size();
+    // paritalItems should >= totalItems if we re-use hash map
+    for (int i = 0; i < totalItems; i++) {
+      result.data[i] += partialResult.data[i];
+    }
+    for (int i = totalItems; i < paritalItems; i++) {
+      result.data.push_back(partialResult.data[i]);
+    }
+  };
 };
 
 class Min : public AggExpression {
@@ -220,6 +244,24 @@ class Min : public AggExpression {
     result.scale = tmp.scale;
     result.type = GetResultType(dataType);
   }
+  void appendPartialResult(DecimalVector& result,
+                           const DecimalVector& partialResult) override {
+    if (result.data.size() == 0) {
+      result = partialResult;
+      return;
+    }
+
+    int totalItems = result.data.size();
+    int paritalItems = partialResult.data.size();
+    // paritalItems should >= totalItems if we re-use hash map
+    for (int i = 0; i < totalItems; i++) {
+      result.data[i] =
+          partialResult.data[i] < result.data[i] ? partialResult.data[i] : result.data[i];
+    }
+    for (int i = totalItems; i < paritalItems; i++) {
+      result.data.push_back(partialResult.data[i]);
+    }
+  };
 };
 
 class Max : public AggExpression {
@@ -264,6 +306,25 @@ class Max : public AggExpression {
     result.scale = tmp.scale;
     result.type = GetResultType(dataType);
   }
+
+  void appendPartialResult(DecimalVector& result,
+                           const DecimalVector& partialResult) override {
+    if (result.data.size() == 0) {
+      result = partialResult;
+      return;
+    }
+
+    int totalItems = result.data.size();
+    int paritalItems = partialResult.data.size();
+    // paritalItems should >= totalItems if we re-use hash map
+    for (int i = 0; i < totalItems; i++) {
+      result.data[i] =
+          partialResult.data[i] > result.data[i] ? partialResult.data[i] : result.data[i];
+    }
+    for (int i = totalItems; i < paritalItems; i++) {
+      result.data.push_back(partialResult.data[i]);
+    }
+  };
 };
 
 class Count : public AggExpression {
@@ -287,6 +348,23 @@ class Count : public AggExpression {
   void getResultInternal(DecimalVector& result) override;
   void getResultInternalWithGroup(DecimalVector& result, const int& groupNum,
                                   const std::vector<int>& index) override;
+  void appendPartialResult(DecimalVector& result,
+                           const DecimalVector& partialResult) override {
+    if (result.data.size() == 0) {
+      result = partialResult;
+      return;
+    }
+
+    int totalItems = result.data.size();
+    int paritalItems = partialResult.data.size();
+    // paritalItems should >= totalItems if we re-use hash map
+    for (int i = 0; i < totalItems; i++) {
+      result.data[i] += partialResult.data[i];
+    }
+    for (int i = totalItems; i < paritalItems; i++) {
+      result.data.push_back(partialResult.data[i]);
+    }
+  };
 };
 
 class ArithmeticExpression : public WithResultExpression {

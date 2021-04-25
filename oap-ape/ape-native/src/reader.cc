@@ -178,9 +178,7 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
 
   int rowsAfterFilter = doFilter(rowsToRead, buffersPtr, nullsPtr);
 
-  std::vector<DecimalVector> results;
-  std::vector<Key> keys;
-  ApeHashMap map;
+  std::vector<DecimalVector> results(aggExprs.size());
   int rowsRet = doAggregation(rowsAfterFilter, map, keys, results, buffersPtr, nullsPtr);
   if (rowsRet > 0 && aggExprs.size()) {
     dumpBufferAfterAgg(groupByExprs.size(), aggExprs.size(), keys, results, buffersPtr_,
@@ -342,7 +340,6 @@ int Reader::doAggregation(int batchSize, ApeHashMap& map, std::vector<Key>& keys
                             keys, typeVector);
     }
 
-    results.resize(aggExprs.size());
     for (int i = 0; i < aggExprs.size(); i++) {
       auto agg = aggExprs[i];
       if (typeid(*agg) == typeid(RootAggExpression)) {

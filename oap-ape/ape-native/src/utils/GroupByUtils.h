@@ -34,7 +34,7 @@ class GroupByUtils {
                       const std::vector<int64_t>& nullPtr, std::vector<Key>& keys,
                       const std::vector<parquet::Type::type> typeVector) {
     int groupBySize = groupByExprs.size();
-    int totalGroup = 0;
+    int totalGroup = map.size();
     std::vector<int> columnIndexes(groupBySize);
     for (int i = 0; i < groupBySize; i++) {
       std::shared_ptr<AttributeReferenceExpression> groupByExpr =
@@ -88,7 +88,7 @@ class GroupByUtils {
         index[i] = map[key];
       }
     }
-    ARROW_LOG(INFO) << "Total group num: " << totalGroup;
+    ARROW_LOG(DEBUG) << "Total group num: " << totalGroup;
   }
 };
 
