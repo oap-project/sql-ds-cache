@@ -207,13 +207,14 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
   totalRowsRead += rowsToRead;
   ARROW_LOG(DEBUG) << "total rows read yet: " << totalRowsRead;
 
-  int rowsRet = rowsToRead;
-  if (filterExpression) {
-    auto start = std::chrono::steady_clock::now();
-    std::vector<int8_t> tmp(0);
-    rowsRet = filterExpression->ExecuteWithParam(rowsToRead, buffersPtr, nullsPtr, tmp);
-    filterTime += std::chrono::steady_clock::now() - start;
-  }
+  int rowsRet = doFilter(rowsToRead,  buffersPtr, nullsPtr);
+  // rowsToRead;
+  // if (filterExpression) {
+  //   auto start = std::chrono::steady_clock::now();
+  //   std::vector<int8_t> tmp(0);
+  //   rowsRet = filterExpression->ExecuteWithParam(rowsToRead, buffersPtr, nullsPtr, tmp);
+  //   filterTime += std::chrono::steady_clock::now() - start;
+  // }
 
   if (rowsRet > 0 && aggExprs.size()) {  // if rows after filter is 0, no need to do agg.
     auto start = std::chrono::steady_clock::now();
@@ -412,6 +413,19 @@ int Reader::doReadBatch(int batchSize, std::vector<int64_t>& buffersPtr,
     ARROW_LOG(DEBUG) << "columnReader read rows: " << rows;
   }
   return rowsToRead;
+}
+
+int Reader::doFilter(int batchSize, std::vector<int64_t>& buffersPtr,
+                     std::vector<int64_t>& nullsPtr) {
+  if (filterExpression) {
+    auto start = std::chrono::steady_clock::now();
+    std::vector<int8_t> tmp(0);
+    int rowsRet =
+        filterExpression->ExecuteWithParam(batchSize, buffersPtr, nullsPtr, tmp);
+    filterTime += std::chrono::steady_clock::now() - start;
+    return rowsRet;
+  }
+  return batchSize;
 }
 
 bool Reader::hasNext() { return columnReaders[0]->HasNext(); }

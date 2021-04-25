@@ -85,6 +85,7 @@ class Reader {
   void freeAggBuffers();
 
   int doReadBatch(int batchSize, std::vector<int64_t>& buffersPtr, std::vector<int64_t>& nullsPtr);
+  int doFilter(int batchSize, std::vector<int64_t>& buffersPtr, std::vector<int64_t>& nullsPtr);
 
   arrow::Result<std::shared_ptr<arrow::fs::HadoopFileSystem>> fsResult;
   arrow::fs::HdfsOptions* options;
