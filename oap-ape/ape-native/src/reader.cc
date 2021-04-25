@@ -173,8 +173,14 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
 
   int rowsAfterFilter = doFilter(rowsToRead, buffersPtr, nullsPtr);
 
-  int rowsRet =
-      doAggregation(rowsAfterFilter, buffersPtr, nullsPtr, buffersPtr_, nullsPtr_);
+  std::vector<DecimalVector> results;
+  std::vector<Key> keys;
+  ApeHashMap map;
+  int rowsRet = doAggregation(rowsAfterFilter, map, keys, results, buffersPtr, nullsPtr);
+  if (aggExprs.size()) {
+    dumpBufferAfterAgg(groupByExprs.size(), aggExprs.size(), keys, results, buffersPtr_,
+                       nullsPtr_);
+  }
 
   ARROW_LOG(DEBUG) << "ret rows " << rowsRet;
   return rowsRet;
@@ -314,9 +320,10 @@ int Reader::doFilter(int batchSize, std::vector<int64_t>& buffersPtr,
   return batchSize;
 }
 
-int Reader::doAggregation(int batchSize, std::vector<int64_t>& buffersPtr,
-                          std::vector<int64_t>& nullsPtr, int64_t* oriBufferPtr,
-                          int64_t* oriNullsPtr) {
+int Reader::doAggregation(int batchSize, ApeHashMap& map, std::vector<Key>& keys,
+                          std::vector<DecimalVector>& results,
+                          std::vector<int64_t>& buffersPtr,
+                          std::vector<int64_t>& nullsPtr) {
   int rowsRet = batchSize;
   if (batchSize > 0 &&
       aggExprs.size()) {  // if rows after filter is 0, no need to do agg.
@@ -324,34 +331,22 @@ int Reader::doAggregation(int batchSize, std::vector<int64_t>& buffersPtr,
     int groupBySize = groupByExprs.size();
     if (groupBySize > 0) {
       // build hash map and index
-      ApeHashMap map;
       std::vector<int> indexes(batchSize);
-      std::vector<Key> keys;
-
       GroupByUtils::groupBy(map, indexes, batchSize, groupByExprs, buffersPtr, nullsPtr,
                             keys, typeVector);
 
       // do agg based on indexes
-      int index = 0;
-      for (int i = 0; i < groupBySize; i++) {
-        DumpUtils::dumpGroupByKeyToJavaBuffer(keys, (uint8_t*)(oriBufferPtr[index]),
-                                              index, typeVector[index]);
-        index++;
-      }
-
+      results.resize(aggExprs.size());
       for (int i = 0; i < aggExprs.size(); i++) {
         auto agg = aggExprs[i];
         if (typeid(*agg) == typeid(RootAggExpression)) {
           std::vector<int8_t> tmp(0);
           agg->ExecuteWithParam(batchSize, buffersPtr, nullsPtr, tmp);
-          DecimalVector result;
           std::dynamic_pointer_cast<RootAggExpression>(agg)->getResult(
-              result, keys.size(), indexes);
-          DumpUtils::dumpToJavaBuffer((uint8_t*)(oriBufferPtr[index]),
-                                      (uint8_t*)(oriNullsPtr[index]), result);
-          index++;
-        } else if (typeid(*agg) == typeid(AttributeReferenceExpression)) {
-          // TODO
+              results[i], keys.size(), indexes);
+
+        } else {
+          ARROW_LOG(WARNING) << "Oops, ";
         }
       }
 
@@ -372,8 +367,8 @@ int Reader::doAggregation(int batchSize, std::vector<int64_t>& buffersPtr,
           DecimalVector result;
           std::dynamic_pointer_cast<RootAggExpression>(agg)->getResult(result);
           if (result.data.size() == 1) {
-            DumpUtils::dumpToJavaBuffer((uint8_t*)(oriBufferPtr[index]),
-                                        (uint8_t*)(oriNullsPtr[index]), result);
+            // DumpUtils::dumpToJavaBuffer((uint8_t*)(oriBufferPtr[index]),
+            //                             (uint8_t*)(oriNullsPtr[index]), result);
             index++;
           } else {
             ARROW_LOG(DEBUG) << "Oops... why return " << result.data.size() << " results";
@@ -394,6 +389,30 @@ int Reader::doAggregation(int batchSize, std::vector<int64_t>& buffersPtr,
     aggTime += std::chrono::steady_clock::now() - start;
   }
   return rowsRet;
+}
+
+// TODO : will some case only do group by but no agg?
+int Reader::dumpBufferAfterAgg(int groupBySize, int aggExprsSize,
+                               const std::vector<Key>& keys,
+                               const std::vector<DecimalVector>& results,
+                               int64_t* oriBufferPtr, int64_t* oriNullsPtr) {
+  // dump buffers
+  ARROW_LOG(INFO) << "groupby expr " << groupBySize << " group num " << keys.size()
+                  << "agg expr " << aggExprsSize << " results size: " << results.size();
+
+  for (int i = 0; i < groupBySize; i++) {
+    DumpUtils::dumpGroupByKeyToJavaBuffer(keys, (uint8_t*)(oriBufferPtr[i]), i,
+                                          typeVector[i]);
+  }
+  ARROW_LOG(INFO) << "dump buffer bbbbb";
+
+  for (int i = 0; i < aggExprs.size(); i++) {
+    DumpUtils::dumpToJavaBuffer((uint8_t*)(oriBufferPtr[i + groupBySize]),
+                                (uint8_t*)(oriNullsPtr[i + groupBySize]), results[i]);
+  }
+  ARROW_LOG(INFO) << "dump buffer ccccc";
+
+  return 0;
 }
 
 int Reader::allocateExtraBuffers(int batchSize, std::vector<int64_t>& buffersPtr,
