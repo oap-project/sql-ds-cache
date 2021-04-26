@@ -115,6 +115,7 @@ void Reader::convertSchema(std::string requiredColumnName) {
     std::string columnName = j["fields"][i]["name"];
     int columnIndex = fileMetaData->schema()->ColumnIndex(columnName);
     if (columnIndex >= 0) {
+      usedInitBufferIndex.push_back(i);
       requiredColumnIndex.push_back(columnIndex);
       schema->push_back(
           Schema(columnName, fileMetaData->schema()->Column(columnIndex)->physical_type(),
@@ -158,9 +159,13 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
   std::vector<int64_t> buffersPtr(initRequiredColumnCount);
   std::vector<int64_t> nullsPtr(initRequiredColumnCount);
 
-  for (int i = 0; i < initRequiredColumnCount; i++) {
-    buffersPtr[i] = buffersPtr_[i];
-    nullsPtr[i] = nullsPtr_[i];
+  // Not all input buffers can be used for column data loading.
+  // espeically when agg pushing down is enabled.
+  // E.g. input buffers could be in types of "tbl_col_a, sum(tbl_col_b)",
+  // in which only the first buffer can be used for column data loading.
+  for (int i = 0; i < usedInitBufferIndex.size(); i++) {
+    buffersPtr[i] = oriBufferPtr[usedInitBufferIndex[i]];
+    nullsPtr[i] = oriNullsPtr[usedInitBufferIndex[i]];
   }
 
   allocateExtraBuffers(batchSize, buffersPtr, nullsPtr, buffersPtr_, nullsPtr_);
@@ -177,7 +182,7 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
   std::vector<Key> keys;
   ApeHashMap map;
   int rowsRet = doAggregation(rowsAfterFilter, map, keys, results, buffersPtr, nullsPtr);
-  if (aggExprs.size()) {
+  if (rowsRet > 0 && aggExprs.size()) {
     dumpBufferAfterAgg(groupByExprs.size(), aggExprs.size(), keys, results, buffersPtr_,
                        nullsPtr_);
   }
@@ -407,15 +412,9 @@ int Reader::allocateExtraBuffers(int batchSize, std::vector<int64_t>& buffersPtr
     ARROW_LOG(DEBUG) << "use extra filter buffers count: " << filterBufferCount
                      << "use extra agg buffers count: " << aggBufferCount;
 
-    // when enable agg pd, initRequiredColumnCount will be 0, because init column will
-    // be sum(col),
     buffersPtr.resize(initRequiredColumnCount + filterBufferCount + aggBufferCount);
     nullsPtr.resize(initRequiredColumnCount + filterBufferCount + aggBufferCount);
 
-    for (int i = 0; i < initRequiredColumnCount; i++) {
-      buffersPtr[i] = oriBufferPtr[i];
-      nullsPtr[i] = oriNullsPtr[i];
-    }
     for (int i = 0; i < filterBufferCount; i++) {
       buffersPtr[initRequiredColumnCount + i] = (int64_t)filterDataBuffers[i];
       nullsPtr[initRequiredColumnCount + i] = (int64_t)filterNullBuffers[i];

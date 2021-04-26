@@ -155,6 +155,7 @@ class Reader {
   bool preBufferEnabled = false;
   int currentBufferedRowGroup = -1;
 
+  std::vector<int> usedInitBufferIndex;
   std::vector<parquet::Type::type> typeVector = std::vector<parquet::Type::type>();
 };
 }  // namespace ape
