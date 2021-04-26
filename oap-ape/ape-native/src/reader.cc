@@ -350,7 +350,7 @@ int Reader::doAggregation(int batchSize, ApeHashMap& map, std::vector<Key>& keys
           std::dynamic_pointer_cast<RootAggExpression>(agg)->getResult(results[i]);
         }
       } else {
-        ARROW_LOG(WARNING) << "Oops, ";
+        ARROW_LOG(DEBUG) << "skipping groupBy column when doing aggregation";
       }
     }
 
@@ -374,13 +374,16 @@ int Reader::dumpBufferAfterAgg(int groupBySize, int aggExprsSize,
                                int64_t* oriBufferPtr, int64_t* oriNullsPtr) {
   // dump buffers
   for (int i = 0; i < groupBySize; i++) {
+    std::shared_ptr<AttributeReferenceExpression> groupByExpr =
+        std::static_pointer_cast<AttributeReferenceExpression>(groupByExprs[i]);
+    int typeIndex = groupByExpr->columnIndex;
     DumpUtils::dumpGroupByKeyToJavaBuffer(keys, (uint8_t*)(oriBufferPtr[i]), i,
-                                          typeVector[i]);
+                                          typeVector[typeIndex]);
   }
 
-  for (int i = 0; i < aggExprs.size(); i++) {
-    DumpUtils::dumpToJavaBuffer((uint8_t*)(oriBufferPtr[i + groupBySize]),
-                                (uint8_t*)(oriNullsPtr[i + groupBySize]), results[i]);
+  for (int i = groupBySize; i < aggExprs.size(); i++) {
+    DumpUtils::dumpToJavaBuffer((uint8_t*)(oriBufferPtr[i]), (uint8_t*)(oriNullsPtr[i]),
+                                results[i]);
   }
 
   return 0;
