@@ -163,45 +163,31 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
     nullsPtr[i] = nullsPtr_[i];
   }
 
-  // allocate extra memory for filtered columns if needed
-  if (filterExpression) {
-    allocateFilterBuffers(batchSize);
-  }
-
-  if (aggExprs.size()) {
-    allocateAggBuffers(batchSize);
-  }
-
-  int filterBufferCount = filterDataBuffers.size();
-  int aggBufferCount = aggDataBuffers.size();
-  if (filterBufferCount > 0 || aggBufferCount > 0) {
-    ARROW_LOG(DEBUG) << "use extra filter buffers count: " << filterBufferCount;
-    ARROW_LOG(DEBUG) << "use extra agg buffers count: " << aggBufferCount;
-
-    // when enable agg pd, initRequiredColumnCount will be 0, because init column will
-    // be sum(col),
-    buffersPtr.resize(initRequiredColumnCount + filterBufferCount + aggBufferCount);
-    nullsPtr.resize(initRequiredColumnCount + filterBufferCount + aggBufferCount);
-
-    for (int i = 0; i < initRequiredColumnCount; i++) {
-      buffersPtr[i] = buffersPtr_[i];
-      nullsPtr[i] = nullsPtr_[i];
-    }
-
-    for (int i = 0; i < filterBufferCount; i++) {
-      buffersPtr[initRequiredColumnCount + i] = (int64_t)filterDataBuffers[i];
-      nullsPtr[initRequiredColumnCount + i] = (int64_t)filterNullBuffers[i];
-    }
-
-    for (int i = 0; i < aggBufferCount; i++) {
-      buffersPtr[initRequiredColumnCount + filterBufferCount + i] =
-          (int64_t)aggDataBuffers[i];
-      nullsPtr[initRequiredColumnCount + filterBufferCount + i] =
-          (int64_t)aggNullBuffers[i];
-    }
-  }
+  allocateExtraBuffers(batchSize, buffersPtr, nullsPtr, buffersPtr_, nullsPtr_);
 
   currentBatchSize = batchSize;
+
+  int rowsToRead = doReadBatch(batchSize, buffersPtr, nullsPtr);
+  totalRowsRead += rowsToRead;
+  ARROW_LOG(DEBUG) << "total rows read yet: " << totalRowsRead;
+
+  int rowsAfterFilter = doFilter(rowsToRead, buffersPtr, nullsPtr);
+
+  std::vector<DecimalVector> results;
+  std::vector<Key> keys;
+  ApeHashMap map;
+  int rowsRet = doAggregation(rowsAfterFilter, map, keys, results, buffersPtr, nullsPtr);
+  if (aggExprs.size()) {
+    dumpBufferAfterAgg(groupByExprs.size(), aggExprs.size(), keys, results, buffersPtr_,
+                       nullsPtr_);
+  }
+
+  ARROW_LOG(DEBUG) << "ret rows " << rowsRet;
+  return rowsRet;
+}
+
+int Reader::doReadBatch(int batchSize, std::vector<int64_t>& buffersPtr,
+                        std::vector<int64_t>& nullsPtr) {
   int rowsToRead = std::min((int64_t)batchSize, totalRowsLoadedSoFar - totalRowsRead);
   std::vector<int16_t> defLevel(rowsToRead);
   std::vector<int16_t> repLevel(rowsToRead);
@@ -318,93 +304,128 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
     assert(rowsToRead == rows);
     ARROW_LOG(DEBUG) << "columnReader read rows: " << rows;
   }
-  totalRowsRead += rowsToRead;
-  ARROW_LOG(DEBUG) << "total rows read yet: " << totalRowsRead;
+  return rowsToRead;
+}
 
-  int rowsRet = rowsToRead;
+int Reader::doFilter(int batchSize, std::vector<int64_t>& buffersPtr,
+                     std::vector<int64_t>& nullsPtr) {
   if (filterExpression) {
     auto start = std::chrono::steady_clock::now();
     std::vector<int8_t> tmp(0);
-    rowsRet = filterExpression->ExecuteWithParam(rowsToRead, buffersPtr, nullsPtr, tmp);
+    int rowsRet =
+        filterExpression->ExecuteWithParam(batchSize, buffersPtr, nullsPtr, tmp);
     filterTime += std::chrono::steady_clock::now() - start;
+    return rowsRet;
   }
+  return batchSize;
+}
 
-  if (rowsRet > 0 && aggExprs.size()) {  // if rows after filter is 0, no need to do agg.
+int Reader::doAggregation(int batchSize, ApeHashMap& map, std::vector<Key>& keys,
+                          std::vector<DecimalVector>& results,
+                          std::vector<int64_t>& buffersPtr,
+                          std::vector<int64_t>& nullsPtr) {
+  int rowsRet = batchSize;
+  if (batchSize > 0 &&
+      aggExprs.size()) {  // if rows after filter is 0, no need to do agg.
     auto start = std::chrono::steady_clock::now();
     int groupBySize = groupByExprs.size();
+    std::vector<int> indexes(batchSize);
+
+    // build hash map and index
     if (groupBySize > 0) {
-      // build hash map and index
-      ApeHashMap map;
-      std::vector<int> indexes(rowsRet);
-      std::vector<Key> keys;
-
-      GroupByUtils::groupBy(map, indexes, rowsRet, groupByExprs, buffersPtr, nullsPtr,
+      GroupByUtils::groupBy(map, indexes, batchSize, groupByExprs, buffersPtr, nullsPtr,
                             keys, typeVector);
-
-      // do agg based on indexes
-      int index = 0;
-      for (int i = 0; i < groupBySize; i++) {
-        DumpUtils::dumpGroupByKeyToJavaBuffer(keys, (uint8_t*)(buffersPtr_[index]), index,
-                                              typeVector[index]);
-        index++;
-      }
-
-      for (int i = 0; i < aggExprs.size(); i++) {
-        auto agg = aggExprs[i];
-        if (typeid(*agg) == typeid(RootAggExpression)) {
-          std::vector<int8_t> tmp(0);
-          agg->ExecuteWithParam(rowsRet, buffersPtr, nullsPtr, tmp);
-          DecimalVector result;
-          std::dynamic_pointer_cast<RootAggExpression>(agg)->getResult(
-              result, keys.size(), indexes);
-          DumpUtils::dumpToJavaBuffer((uint8_t*)(buffersPtr_[index]),
-                                      (uint8_t*)(nullsPtr_[index]), result);
-          index++;
-        } else if (typeid(*agg) == typeid(AttributeReferenceExpression)) {
-          // TODO
-        }
-      }
-
-      for (int i = 0; i < aggExprs.size(); i++) {
-        auto agg = aggExprs[i];
-        if (typeid(*agg) == typeid(RootAggExpression)) {
-          std::dynamic_pointer_cast<RootAggExpression>(agg)->reset();
-        }
-      }
-      rowsRet = keys.size();
-    } else {
-      int index = 0;
-      for (int i = 0; i < aggExprs.size(); i++) {
-        auto agg = aggExprs[i];
-        if (typeid(*agg) == typeid(RootAggExpression)) {
-          std::vector<int8_t> tmp(0);
-          agg->ExecuteWithParam(rowsRet, buffersPtr, nullsPtr, tmp);
-          DecimalVector result;
-          std::dynamic_pointer_cast<RootAggExpression>(agg)->getResult(result);
-          if (result.data.size() == 1) {
-            DumpUtils::dumpToJavaBuffer((uint8_t*)(buffersPtr_[index]),
-                                        (uint8_t*)(nullsPtr_[index]), result);
-            index++;
-          } else {
-            ARROW_LOG(DEBUG) << "Oops... why return " << result.data.size() << " results";
-          }
-        } else if (typeid(*agg) == typeid(AttributeReferenceExpression)) {
-          // TODO
-        }
-      }
-
-      for (int i = 0; i < aggExprs.size(); i++) {
-        auto agg = aggExprs[i];
-        if (typeid(*agg) == typeid(RootAggExpression)) {
-          std::dynamic_pointer_cast<RootAggExpression>(agg)->reset();
-        }
-      }
-      rowsRet = 1;
     }
+
+    results.resize(aggExprs.size());
+    for (int i = 0; i < aggExprs.size(); i++) {
+      auto agg = aggExprs[i];
+      if (typeid(*agg) == typeid(RootAggExpression)) {
+        std::vector<int8_t> tmp(0);
+        agg->ExecuteWithParam(batchSize, buffersPtr, nullsPtr, tmp);
+        if (groupBySize) {  // do agg based on indexes
+          std::dynamic_pointer_cast<RootAggExpression>(agg)->getResult(
+              results[i], keys.size(), indexes);
+        } else {
+          std::dynamic_pointer_cast<RootAggExpression>(agg)->getResult(results[i]);
+        }
+      } else {
+        ARROW_LOG(WARNING) << "Oops, ";
+      }
+    }
+
+    for (int i = 0; i < aggExprs.size(); i++) {
+      auto agg = aggExprs[i];
+      if (typeid(*agg) == typeid(RootAggExpression)) {
+        std::dynamic_pointer_cast<RootAggExpression>(agg)->reset();
+      }
+    }
+    rowsRet = groupBySize > 0 ? keys.size() : 1;
+
     aggTime += std::chrono::steady_clock::now() - start;
   }
-  ARROW_LOG(DEBUG) << "ret rows " << rowsRet;
   return rowsRet;
+}
+
+// TODO : will some case only do group by but no agg?
+int Reader::dumpBufferAfterAgg(int groupBySize, int aggExprsSize,
+                               const std::vector<Key>& keys,
+                               const std::vector<DecimalVector>& results,
+                               int64_t* oriBufferPtr, int64_t* oriNullsPtr) {
+  // dump buffers
+  for (int i = 0; i < groupBySize; i++) {
+    DumpUtils::dumpGroupByKeyToJavaBuffer(keys, (uint8_t*)(oriBufferPtr[i]), i,
+                                          typeVector[i]);
+  }
+
+  for (int i = 0; i < aggExprs.size(); i++) {
+    DumpUtils::dumpToJavaBuffer((uint8_t*)(oriBufferPtr[i + groupBySize]),
+                                (uint8_t*)(oriNullsPtr[i + groupBySize]), results[i]);
+  }
+
+  return 0;
+}
+
+int Reader::allocateExtraBuffers(int batchSize, std::vector<int64_t>& buffersPtr,
+                                 std::vector<int64_t>& nullsPtr, int64_t* oriBufferPtr,
+                                 int64_t* oriNullsPtr) {
+  if (filterExpression) {
+    allocateFilterBuffers(batchSize);
+  }
+
+  if (aggExprs.size()) {  // todo: group by agg size
+    allocateAggBuffers(batchSize);
+  }
+
+  int filterBufferCount = filterDataBuffers.size();
+  int aggBufferCount = aggDataBuffers.size();
+
+  if (filterBufferCount > 0 || aggBufferCount > 0) {
+    ARROW_LOG(DEBUG) << "use extra filter buffers count: " << filterBufferCount
+                     << "use extra agg buffers count: " << aggBufferCount;
+
+    // when enable agg pd, initRequiredColumnCount will be 0, because init column will
+    // be sum(col),
+    buffersPtr.resize(initRequiredColumnCount + filterBufferCount + aggBufferCount);
+    nullsPtr.resize(initRequiredColumnCount + filterBufferCount + aggBufferCount);
+
+    for (int i = 0; i < initRequiredColumnCount; i++) {
+      buffersPtr[i] = oriBufferPtr[i];
+      nullsPtr[i] = oriNullsPtr[i];
+    }
+    for (int i = 0; i < filterBufferCount; i++) {
+      buffersPtr[initRequiredColumnCount + i] = (int64_t)filterDataBuffers[i];
+      nullsPtr[initRequiredColumnCount + i] = (int64_t)filterNullBuffers[i];
+    }
+
+    for (int i = 0; i < aggBufferCount; i++) {
+      buffersPtr[initRequiredColumnCount + filterBufferCount + i] =
+          (int64_t)aggDataBuffers[i];
+      nullsPtr[initRequiredColumnCount + filterBufferCount + i] =
+          (int64_t)aggNullBuffers[i];
+    }
+  }
+  return initRequiredColumnCount + filterBufferCount + aggBufferCount;
 }
 
 bool Reader::hasNext() { return columnReaders[0]->HasNext(); }

@@ -70,7 +70,7 @@ class DumpUtils {
   }
 
   static void dumpToJavaBuffer(uint8_t* bufferAddr, uint8_t* nullAddr,
-                               DecimalVector& result) {
+                               const DecimalVector& result) {
     for (int i = 0; i < result.data.size(); i++) {
       *(nullAddr + i) = 1;
       switch (result.type) {

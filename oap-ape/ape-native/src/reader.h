@@ -84,6 +84,22 @@ class Reader {
   int allocateAggBuffers(int batchSize);
   void freeAggBuffers();
 
+  int doReadBatch(int batchSize, std::vector<int64_t>& buffersPtr,
+                  std::vector<int64_t>& nullsPtr);
+  int doFilter(int batchSize, std::vector<int64_t>& buffersPtr,
+               std::vector<int64_t>& nullsPtr);
+  int doAggregation(int batchSize, ApeHashMap& map, std::vector<Key>& keys,
+                    std::vector<DecimalVector>& results, std::vector<int64_t>& buffersPtr,
+                    std::vector<int64_t>& nullsPtr);
+
+  int allocateExtraBuffers(int batchSize, std::vector<int64_t>& buffersPtr,
+                           std::vector<int64_t>& nullsPtr, int64_t* oriBufferPtr,
+                           int64_t* oriNullsPtr);
+
+  int dumpBufferAfterAgg(int groupBySize, int aggExprsSize, const std::vector<Key>& keys,
+                         const std::vector<DecimalVector>& results, int64_t* oriBufferPtr,
+                         int64_t* oriNullsPtr);
+
   arrow::Result<std::shared_ptr<arrow::fs::HadoopFileSystem>> fsResult;
   arrow::fs::HdfsOptions* options;
   std::shared_ptr<arrow::fs::FileSystem> fs;
