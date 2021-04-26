@@ -93,8 +93,7 @@ class Reader {
                     std::vector<int64_t>& nullsPtr);
 
   int allocateExtraBuffers(int batchSize, std::vector<int64_t>& buffersPtr,
-                           std::vector<int64_t>& nullsPtr, int64_t* oriBufferPtr,
-                           int64_t* oriNullsPtr);
+                           std::vector<int64_t>& nullsPtr);
 
   int dumpBufferAfterAgg(int groupBySize, int aggExprsSize, const std::vector<Key>& keys,
                          const std::vector<DecimalVector>& results, int64_t* oriBufferPtr,

@@ -164,11 +164,11 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
   // E.g. input buffers could be in types of "tbl_col_a, sum(tbl_col_b)",
   // in which only the first buffer can be used for column data loading.
   for (int i = 0; i < usedInitBufferIndex.size(); i++) {
-    buffersPtr[i] = oriBufferPtr[usedInitBufferIndex[i]];
-    nullsPtr[i] = oriNullsPtr[usedInitBufferIndex[i]];
+    buffersPtr[i] = buffersPtr_[usedInitBufferIndex[i]];
+    nullsPtr[i] = nullsPtr_[usedInitBufferIndex[i]];
   }
 
-  allocateExtraBuffers(batchSize, buffersPtr, nullsPtr, buffersPtr_, nullsPtr_);
+  allocateExtraBuffers(batchSize, buffersPtr, nullsPtr);
 
   currentBatchSize = batchSize;
 
@@ -395,8 +395,7 @@ int Reader::dumpBufferAfterAgg(int groupBySize, int aggExprsSize,
 }
 
 int Reader::allocateExtraBuffers(int batchSize, std::vector<int64_t>& buffersPtr,
-                                 std::vector<int64_t>& nullsPtr, int64_t* oriBufferPtr,
-                                 int64_t* oriNullsPtr) {
+                                 std::vector<int64_t>& nullsPtr) {
   if (filterExpression) {
     allocateFilterBuffers(batchSize);
   }
