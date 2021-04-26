@@ -171,18 +171,31 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
   allocateExtraBuffers(batchSize, buffersPtr, nullsPtr);
 
   currentBatchSize = batchSize;
+  int rowsRet = 0;
+  if (aggExprs.size() == 0) {  // will not do agg
+    int rowsToRead = doReadBatch(batchSize, buffersPtr, nullsPtr);
+    totalRowsRead += rowsToRead;
+    ARROW_LOG(DEBUG) << "total rows read yet: " << totalRowsRead;
+    rowsRet = doFilter(rowsToRead, buffersPtr, nullsPtr);
+  } else {
+    results.resize(aggExprs.size());
+    while (totalRowsRead < totalRows && !checkEndOfRowGroup()) {
+      int rowsToRead = doReadBatch(batchSize, buffersPtr, nullsPtr);
+      totalRowsRead += rowsToRead;
+      ARROW_LOG(INFO) << "total rows read yet: " << totalRowsRead;
 
-  int rowsToRead = doReadBatch(batchSize, buffersPtr, nullsPtr);
-  totalRowsRead += rowsToRead;
-  ARROW_LOG(DEBUG) << "total rows read yet: " << totalRowsRead;
+      int rowsAfterFilter = doFilter(rowsToRead, buffersPtr, nullsPtr);
 
-  int rowsAfterFilter = doFilter(rowsToRead, buffersPtr, nullsPtr);
+      rowsRet = doAggregation(rowsAfterFilter, map, keys, results, buffersPtr, nullsPtr);
+    }
 
-  std::vector<DecimalVector> results(aggExprs.size());
-  int rowsRet = doAggregation(rowsAfterFilter, map, keys, results, buffersPtr, nullsPtr);
-  if (rowsRet > 0 && aggExprs.size()) {
-    dumpBufferAfterAgg(groupByExprs.size(), aggExprs.size(), keys, results, buffersPtr_,
-                       nullsPtr_);
+    if (aggExprs.size()) {
+      dumpBufferAfterAgg(groupByExprs.size(), aggExprs.size(), keys, results, buffersPtr_,
+                         nullsPtr_);
+    }
+    map.clear();
+    keys.clear();
+    results.clear();
   }
 
   ARROW_LOG(DEBUG) << "ret rows " << rowsRet;
@@ -499,10 +512,11 @@ void Reader::initRowGroupReaders() {
   }
 }
 
-void Reader::checkEndOfRowGroup() {
-  if (totalRowsRead != totalRowsLoadedSoFar) return;
+bool Reader::checkEndOfRowGroup() {
+  if (totalRowsRead != totalRowsLoadedSoFar) return false;
   // if a splitFile contains rowGroup [2,5], currentRowGroup is 2
   // rowGroupReaders index starts from 0
+  ARROW_LOG(INFO) << "totalRowsLoadedSoFar: " << totalRowsLoadedSoFar;
   rowGroupReader = rowGroupReaders[currentRowGroup - firstRowGroupIndex];
   currentRowGroup++;
   totalRowGroupsRead++;
@@ -522,6 +536,7 @@ void Reader::checkEndOfRowGroup() {
   }
 
   totalRowsLoadedSoFar += rowGroupReader->metadata()->num_rows();
+  return true;
 }
 
 void Reader::setFilter(std::string filterJsonStr) {

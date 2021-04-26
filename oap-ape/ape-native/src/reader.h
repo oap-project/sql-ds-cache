@@ -74,7 +74,7 @@ class Reader {
 
   void initRowGroupReaders();
 
-  void checkEndOfRowGroup();
+  bool checkEndOfRowGroup();
 
   void setFilterColumnNames(std::shared_ptr<Expression> filter);
   int allocateFilterBuffers(int batchSize);
@@ -157,6 +157,7 @@ class Reader {
   std::vector<int> usedInitBufferIndex;
   std::vector<parquet::Type::type> typeVector = std::vector<parquet::Type::type>();
 
+  std::vector<DecimalVector> results = std::vector<DecimalVector>();
   std::vector<Key> keys = std::vector<Key>();
   ApeHashMap map;
 };
