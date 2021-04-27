@@ -47,6 +47,9 @@ public class AggregateConvertor {
 
     ArrayNode AggArrayNode = objectMapper.createArrayNode();
     ArrayList<JsonNode> aggList = new ArrayList<>();
+    for (Expression expr : groupByExprs) {
+      aggList.add(constructTree(expr, null));
+    }
     for (Expression expr : aggExprs) {
       aggList.add(constructTree(expr, null));
     }
