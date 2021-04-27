@@ -28,8 +28,10 @@ namespace ape {
 class DumpUtils {
  public:
   static void dumpGroupByKeyToJavaBuffer(const std::vector<Key>& keys,
-                                         uint8_t* bufferAddr, const int index,
+                                         uint8_t* bufferAddr, uint8_t* nullAddr,
+                                         const int index,
                                          const parquet::Type::type pType) {
+    *(nullAddr + index) = 1;
     int len = keys.size();
     switch (pType) {
       case parquet::Type::INT32: {
@@ -72,7 +74,7 @@ class DumpUtils {
   static void dumpToJavaBuffer(uint8_t* bufferAddr, uint8_t* nullAddr,
                                const DecimalVector& result) {
     for (int i = 0; i < result.data.size(); i++) {
-      *(nullAddr + i) = 1;
+      *(nullAddr + i) = result.nullVector->at(i);
       switch (result.type) {
         case ResultType::IntType: {
           *((int32_t*)bufferAddr + i) = static_cast<int32_t>(result.data[i].low_bits());

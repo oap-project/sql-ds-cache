@@ -179,12 +179,17 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
     rowsRet = doFilter(rowsToRead, buffersPtr, nullsPtr);
   } else {
     results.resize(aggExprs.size());
+    for (int i = 0; i < aggExprs.size(); i++) {
+      std::vector<uint8_t> nullVector(1);
+      results[i].nullVector = std::make_shared<std::vector<uint8_t>>(nullVector);
+    }
     while (totalRowsRead < totalRows && !checkEndOfRowGroup()) {
       int rowsToRead = doReadBatch(batchSize, buffersPtr, nullsPtr);
       totalRowsRead += rowsToRead;
-      ARROW_LOG(INFO) << "total rows read yet: " << totalRowsRead;
+      ARROW_LOG(DEBUG) << "total rows read yet: " << totalRowsRead;
 
       int rowsAfterFilter = doFilter(rowsToRead, buffersPtr, nullsPtr);
+      ARROW_LOG(DEBUG) << "after filter " << rowsAfterFilter;
 
       rowsRet = doAggregation(rowsAfterFilter, map, keys, results, buffersPtr, nullsPtr);
     }
@@ -345,6 +350,7 @@ int Reader::doAggregation(int batchSize, ApeHashMap& map, std::vector<Key>& keys
       aggExprs.size()) {  // if rows after filter is 0, no need to do agg.
     auto start = std::chrono::steady_clock::now();
     int groupBySize = groupByExprs.size();
+    ARROW_LOG(DEBUG) << "group by size " << groupBySize;
     std::vector<int> indexes(batchSize);
 
     // build hash map and index
@@ -362,6 +368,9 @@ int Reader::doAggregation(int batchSize, ApeHashMap& map, std::vector<Key>& keys
           std::dynamic_pointer_cast<RootAggExpression>(agg)->getResult(
               results[i], keys.size(), indexes);
         } else {
+          if (results[i].nullVector->size() == 0) {
+            results[i].nullVector->resize(1);
+          }
           std::dynamic_pointer_cast<RootAggExpression>(agg)->getResult(results[i]);
         }
       } else {
@@ -516,7 +525,7 @@ bool Reader::checkEndOfRowGroup() {
   if (totalRowsRead != totalRowsLoadedSoFar) return false;
   // if a splitFile contains rowGroup [2,5], currentRowGroup is 2
   // rowGroupReaders index starts from 0
-  ARROW_LOG(INFO) << "totalRowsLoadedSoFar: " << totalRowsLoadedSoFar;
+  ARROW_LOG(DEBUG) << "totalRowsLoadedSoFar: " << totalRowsLoadedSoFar;
   rowGroupReader = rowGroupReaders[currentRowGroup - firstRowGroupIndex];
   currentRowGroup++;
   totalRowGroupsRead++;

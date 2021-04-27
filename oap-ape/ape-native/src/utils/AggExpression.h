@@ -110,13 +110,13 @@ class AggExpression : public WithResultExpression {
                  const std::vector<int>& index = std::vector<int>()) override {
     if (!done) {
       if (groupNum == 1) {
-        getResultInternal(resultCache);
+        getResultInternal(result);
       } else {
-        getResultInternalWithGroup(resultCache, groupNum, index);
+        getResultInternalWithGroup(result, groupNum, index);
       }
+      resultCache = result;
       done = true;
     }
-    appendPartialResult(result, resultCache);
   }
 
   void setSchema(std::shared_ptr<std::vector<Schema>> schema_) {
@@ -138,11 +138,13 @@ class AggExpression : public WithResultExpression {
     ARROW_LOG(INFO) << "should never be called";
   }
 
-  virtual void appendPartialResult(DecimalVector& result,
-                                   const DecimalVector& partialResult) {
-    result = partialResult;
-    ARROW_LOG(INFO) << "Shoule never be called.";
-  };
+  // return -1 if all null.
+  int findFisrtNonNull(const std::shared_ptr<std::vector<uint8_t>>& nullVector) {
+    for (int i = 0; i < nullVector->size(); i++) {
+      if (nullVector->at(i) == 1) return i;
+    }
+    return -1;
+  }
 };
 
 class Sum : public AggExpression {
@@ -151,55 +153,55 @@ class Sum : public AggExpression {
 
  private:
   void getResultInternal(DecimalVector& result) override {
+    if (result.nullVector->size() == 0) {  // result should have only one row
+      result.nullVector->resize(1);
+    }
     auto tmp = DecimalVector();
     child->getResult(tmp);
-    arrow::BasicDecimal128 out;
+
+    int first = findFisrtNonNull(tmp.nullVector);
+    if (first != -1) {                      // if we found valid value in this batch
+      if (result.nullVector->at(0) == 0) {  // if result never been initilized.
+        assert(result.data.size() == 0);
+        result.data.push_back(arrow::BasicDecimal128(0));
+        result.nullVector->at(0) = 1;
+        result.precision = tmp.precision;
+        result.scale = tmp.scale;
+        result.type = GetResultType(dataType);
+      }
+    } else {  // this batch is all null so we can return directly.
+      return;
+    }
+
     for (int i = 0; i < tmp.data.size(); i++) {
       if (tmp.nullVector->at(i)) {
-        out += tmp.data[i];
+        result.data[0] += tmp.data[i];
       }
     }
-    result.data.clear();
-    result.data.push_back(out);
-    result.precision = 38;  // tmp.precision;
-    result.scale = tmp.scale;
-    result.type = GetResultType(dataType);
   }
 
   void getResultInternalWithGroup(DecimalVector& result, const int& groupNum,
                                   const std::vector<int>& index) override {
+    if (result.data.size() != groupNum || result.nullVector->size() != groupNum) {
+      result.data.resize(groupNum);
+      result.nullVector->resize(groupNum);
+    }
     auto tmp = DecimalVector();
     child->getResult(tmp);
-    std::vector<arrow::BasicDecimal128> outs(groupNum);
+
     for (int i = 0; i < tmp.data.size(); i++) {
       if (tmp.nullVector->at(i)) {
-        outs[index[i]] += tmp.data[i];
+        if (!result.nullVector->at(index[i])) {  // first time, do init
+          result.nullVector->at(index[i]) = 1;
+          result.data[index[i]] = arrow::BasicDecimal128(0);
+        }
+        result.data[index[i]] += tmp.data[i];
       }
     }
-    result.data.clear();
-    result.data = outs;
     result.precision = 38;  // tmp.precision;
     result.scale = tmp.scale;
     result.type = GetResultType(dataType);
   }
-
-  void appendPartialResult(DecimalVector& result,
-                           const DecimalVector& partialResult) override {
-    if (result.data.size() == 0) {
-      result = partialResult;
-      return;
-    }
-
-    int totalItems = result.data.size();
-    int paritalItems = partialResult.data.size();
-    // paritalItems should >= totalItems if we re-use hash map
-    for (int i = 0; i < totalItems; i++) {
-      result.data[i] += partialResult.data[i];
-    }
-    for (int i = totalItems; i < paritalItems; i++) {
-      result.data.push_back(partialResult.data[i]);
-    }
-  };
 };
 
 class Min : public AggExpression {
@@ -208,60 +210,52 @@ class Min : public AggExpression {
 
  private:
   void getResultInternal(DecimalVector& result) override {
+    if (result.nullVector->size() == 0) {  // result should have only one row
+      result.nullVector->resize(1);
+    }
     auto tmp = DecimalVector();
     child->getResult(tmp);
-    arrow::BasicDecimal128 out(tmp.data[0]);
+
+    int first = findFisrtNonNull(tmp.nullVector);
+    if (first != -1) {                      // if we found valid value in this batch
+      if (result.nullVector->at(0) == 0) {  // if result never been initilized.
+        assert(result.data.size() == 0);
+        result.data.push_back(arrow::BasicDecimal128(tmp.data[first]));
+        result.nullVector->at(0) = 1;
+        result.precision = tmp.precision;
+        result.scale = tmp.scale;
+        result.type = GetResultType(dataType);
+      }
+    } else {  // this batch is all null so we can return directly.
+      return;
+    }
+
     for (int i = 0; i < tmp.data.size(); i++) {
       if (tmp.nullVector->at(i)) {
-        out = out < tmp.data[i] ? out : tmp.data[i];
+        result.data[0] = result.data[0] < tmp.data[i] ? result.data[0] : tmp.data[i];
       }
     }
-    result.data.clear();
-    result.data.push_back(out);
-    result.precision = tmp.precision;
-    result.scale = tmp.scale;
-    result.type = GetResultType(dataType);
   }
 
   void getResultInternalWithGroup(DecimalVector& result, const int& groupNum,
                                   const std::vector<int>& index) override {
     auto tmp = DecimalVector();
     child->getResult(tmp);
-    std::vector<arrow::BasicDecimal128> outs(groupNum);
-    std::vector<bool> init(groupNum, false);
     for (int i = 0; i < tmp.data.size(); i++) {
       if (tmp.nullVector->at(i)) {
-        if (!init[index[i]]) {
-          init[index[i]] = true;
-          outs[index[i]] = tmp.data[i];
+        if (!result.nullVector->at(index[i])) {
+          result.nullVector->at(index[i]) = 1;
+          result.data[index[i]] = tmp.data[i];
         } else
-          outs[index[i]] = outs[index[i]] < tmp.data[i] ? outs[index[i]] : tmp.data[i];
+          result.data[index[i]] =
+              result.data[index[i]] < tmp.data[i] ? result.data[index[i]] : tmp.data[i];
       }
     }
-    result.data.clear();
-    result.data = outs;
+
     result.precision = 38;  // tmp.precision;
     result.scale = tmp.scale;
     result.type = GetResultType(dataType);
   }
-  void appendPartialResult(DecimalVector& result,
-                           const DecimalVector& partialResult) override {
-    if (result.data.size() == 0) {
-      result = partialResult;
-      return;
-    }
-
-    int totalItems = result.data.size();
-    int paritalItems = partialResult.data.size();
-    // paritalItems should >= totalItems if we re-use hash map
-    for (int i = 0; i < totalItems; i++) {
-      result.data[i] =
-          partialResult.data[i] < result.data[i] ? partialResult.data[i] : result.data[i];
-    }
-    for (int i = totalItems; i < paritalItems; i++) {
-      result.data.push_back(partialResult.data[i]);
-    }
-  };
 };
 
 class Max : public AggExpression {
@@ -270,61 +264,51 @@ class Max : public AggExpression {
 
  private:
   void getResultInternal(DecimalVector& result) override {
+    if (result.nullVector->size() == 0) {  // result should have only one row
+      result.nullVector->resize(1);
+    }
     auto tmp = DecimalVector();
     child->getResult(tmp);
-    arrow::BasicDecimal128 out(tmp.data[0]);
+
+    int first = findFisrtNonNull(tmp.nullVector);
+    if (first != -1) {                      // if we found valid value in this batch
+      if (result.nullVector->at(0) == 0) {  // if result never been initilized.
+        assert(result.data.size() == 0);
+        result.data.push_back(arrow::BasicDecimal128(tmp.data[first]));
+        result.nullVector->at(0) = 1;
+        result.precision = tmp.precision;
+        result.scale = tmp.scale;
+        result.type = GetResultType(dataType);
+      }
+    } else {  // this batch is all null so we can return directly.
+      return;
+    }
+
     for (int i = 0; i < tmp.data.size(); i++) {
       if (tmp.nullVector->at(i)) {
-        out = out > tmp.data[i] ? out : tmp.data[i];
+        result.data[0] = result.data[0] > tmp.data[i] ? result.data[0] : tmp.data[i];
       }
     }
-    result.data.clear();
-    result.data.push_back(out);
-    result.precision = tmp.precision;
-    result.scale = tmp.scale;
-    result.type = GetResultType(dataType);
   }
 
   void getResultInternalWithGroup(DecimalVector& result, const int& groupNum,
                                   const std::vector<int>& index) override {
     auto tmp = DecimalVector();
     child->getResult(tmp);
-    std::vector<arrow::BasicDecimal128> outs(groupNum);
-    std::vector<bool> init(groupNum, false);
     for (int i = 0; i < tmp.data.size(); i++) {
       if (tmp.nullVector->at(i)) {
-        if (!init[index[i]]) {
-          init[index[i]] = true;
-          outs[index[i]] = tmp.data[i];
+        if (!result.nullVector->at(index[i])) {
+          result.nullVector->at(index[i]) = 1;
+          result.data[index[i]] = tmp.data[i];
         } else
-          outs[index[i]] = outs[index[i]] > tmp.data[i] ? outs[index[i]] : tmp.data[i];
+          result.data[index[i]] =
+              result.data[index[i]] > tmp.data[i] ? result.data[index[i]] : tmp.data[i];
       }
     }
-    result.data.clear();
-    result.data = outs;
     result.precision = 38;  // tmp.precision;
     result.scale = tmp.scale;
     result.type = GetResultType(dataType);
   }
-
-  void appendPartialResult(DecimalVector& result,
-                           const DecimalVector& partialResult) override {
-    if (result.data.size() == 0) {
-      result = partialResult;
-      return;
-    }
-
-    int totalItems = result.data.size();
-    int paritalItems = partialResult.data.size();
-    // paritalItems should >= totalItems if we re-use hash map
-    for (int i = 0; i < totalItems; i++) {
-      result.data[i] =
-          partialResult.data[i] > result.data[i] ? partialResult.data[i] : result.data[i];
-    }
-    for (int i = totalItems; i < paritalItems; i++) {
-      result.data.push_back(partialResult.data[i]);
-    }
-  };
 };
 
 class Count : public AggExpression {
@@ -348,23 +332,6 @@ class Count : public AggExpression {
   void getResultInternal(DecimalVector& result) override;
   void getResultInternalWithGroup(DecimalVector& result, const int& groupNum,
                                   const std::vector<int>& index) override;
-  void appendPartialResult(DecimalVector& result,
-                           const DecimalVector& partialResult) override {
-    if (result.data.size() == 0) {
-      result = partialResult;
-      return;
-    }
-
-    int totalItems = result.data.size();
-    int paritalItems = partialResult.data.size();
-    // paritalItems should >= totalItems if we re-use hash map
-    for (int i = 0; i < totalItems; i++) {
-      result.data[i] += partialResult.data[i];
-    }
-    for (int i = totalItems; i < paritalItems; i++) {
-      result.data.push_back(partialResult.data[i]);
-    }
-  };
 };
 
 class ArithmeticExpression : public WithResultExpression {
