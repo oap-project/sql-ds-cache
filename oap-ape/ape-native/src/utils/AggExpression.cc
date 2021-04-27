@@ -70,10 +70,13 @@ int AggExpression::ExecuteWithParam(int batchSize,
 }
 
 void Count::getResultInternal(DecimalVector& result) {
-  result.data.clear();
   result.type = ResultType::LongType;
+  if (result.nullVector->size() == 0) {
+    result.nullVector->resize(1);
+    result.nullVector->at(0) = 1;
+  }
   if (typeid(*child) == typeid(LiteralExpression)) {  // for count(*) or count(1)
-    result.data.push_back(arrow::BasicDecimal128(batchSize_));
+    result.data[0] += arrow::BasicDecimal128(batchSize_);
     return;
   }
   if (!done) {
@@ -81,36 +84,39 @@ void Count::getResultInternal(DecimalVector& result) {
     auto tmp = DecimalVector();
     child->getResult(tmp);
     for (int i = 0; i < tmp.data.size(); i++) {
-      if (tmp.nullVector->at(i)) count++;
+      if (tmp.nullVector->at(i)) result.data[0] += 1;
     }
   }
-  result.data.push_back(arrow::BasicDecimal128(count));
 }
 
 void Count::getResultInternalWithGroup(DecimalVector& result, const int& groupNum,
                                        const std::vector<int>& index) {
-  result.data.clear();
-  group.clear();
-  group.resize(groupNum);
+  if (result.data.size() != groupNum || result.nullVector->size() != groupNum) {
+    result.data.resize(groupNum);
+    result.nullVector->resize(groupNum);
+  }
+  for (int i = 0; i < groupNum; i++) {  // todo: should not do init here
+    if (!result.nullVector->at(i)) {
+      result.data[i] = arrow::BasicDecimal128(0);
+      result.nullVector->at(i) = 1;
+    }
+  }
+
   if (!done) {
     done = true;
     if (typeid(*child) == typeid(LiteralExpression)) {  // for count(*) or count(1)
       for (int i = 0; i < index.size(); i++) {
-        group[index[i]]++;
+        result.data[index[i]] += 1;
       }
     } else {
       auto tmp = DecimalVector();
       child->getResult(tmp);
       for (int i = 0; i < index.size(); i++) {
         if (tmp.nullVector->at(i)) {
-          group[index[i]]++;
+          result.data[index[i]] += 1;
         }
       }
     }
-  }
-  result.data.reserve(groupNum);
-  for (int i = 0; i < groupNum; i++) {
-    result.data.push_back(arrow::BasicDecimal128(group[i]));
   }
   result.type = ResultType::LongType;
   return;

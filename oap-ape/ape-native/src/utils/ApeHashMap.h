@@ -30,7 +30,9 @@ namespace std {
 template <>
 struct hash<parquet::ByteArray> {
   std::size_t operator()(parquet::ByteArray const& s) const noexcept {
-    return (std::size_t)(s.ptr);
+    std::string str((const char*)(s.ptr), s.len);
+    std::hash<string> hasher;
+    return hasher(str);
   }
 };
 
@@ -46,7 +48,7 @@ struct container_hash {
   std::size_t operator()(Key const& key) const {
     size_t ret = 0;
     for (int i = 0; i < key.size(); i++) {
-      ret += std::hash<PartialKey>{}(key[i]);
+      ret = (ret << 1) + std::hash<PartialKey>{}(key[i]);
     }
     return ret;
   }

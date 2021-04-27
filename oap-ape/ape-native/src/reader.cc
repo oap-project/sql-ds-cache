@@ -171,20 +171,36 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
   allocateExtraBuffers(batchSize, buffersPtr, nullsPtr);
 
   currentBatchSize = batchSize;
+  int rowsRet = 0;
+  if (aggExprs.size() == 0) {  // will not do agg
+    int rowsToRead = doReadBatch(batchSize, buffersPtr, nullsPtr);
+    totalRowsRead += rowsToRead;
+    ARROW_LOG(DEBUG) << "total rows read yet: " << totalRowsRead;
+    rowsRet = doFilter(rowsToRead, buffersPtr, nullsPtr);
+  } else {
+    results.resize(aggExprs.size());
+    for (int i = 0; i < aggExprs.size(); i++) {
+      std::vector<uint8_t> nullVector(1);
+      results[i].nullVector = std::make_shared<std::vector<uint8_t>>(nullVector);
+    }
+    while (totalRowsRead < totalRows && !checkEndOfRowGroup()) {
+      int rowsToRead = doReadBatch(batchSize, buffersPtr, nullsPtr);
+      totalRowsRead += rowsToRead;
+      ARROW_LOG(DEBUG) << "total rows read yet: " << totalRowsRead;
 
-  int rowsToRead = doReadBatch(batchSize, buffersPtr, nullsPtr);
-  totalRowsRead += rowsToRead;
-  ARROW_LOG(DEBUG) << "total rows read yet: " << totalRowsRead;
+      int rowsAfterFilter = doFilter(rowsToRead, buffersPtr, nullsPtr);
+      ARROW_LOG(DEBUG) << "after filter " << rowsAfterFilter;
 
-  int rowsAfterFilter = doFilter(rowsToRead, buffersPtr, nullsPtr);
+      rowsRet = doAggregation(rowsAfterFilter, map, keys, results, buffersPtr, nullsPtr);
+    }
 
-  std::vector<DecimalVector> results;
-  std::vector<Key> keys;
-  ApeHashMap map;
-  int rowsRet = doAggregation(rowsAfterFilter, map, keys, results, buffersPtr, nullsPtr);
-  if (rowsRet > 0 && aggExprs.size()) {
-    dumpBufferAfterAgg(groupByExprs.size(), aggExprs.size(), keys, results, buffersPtr_,
-                       nullsPtr_);
+    if (aggExprs.size()) {
+      dumpBufferAfterAgg(groupByExprs.size(), aggExprs.size(), keys, results, buffersPtr_,
+                         nullsPtr_);
+    }
+    map.clear();
+    keys.clear();
+    results.clear();
   }
 
   ARROW_LOG(DEBUG) << "ret rows " << rowsRet;
@@ -334,6 +350,7 @@ int Reader::doAggregation(int batchSize, ApeHashMap& map, std::vector<Key>& keys
       aggExprs.size()) {  // if rows after filter is 0, no need to do agg.
     auto start = std::chrono::steady_clock::now();
     int groupBySize = groupByExprs.size();
+    ARROW_LOG(DEBUG) << "group by size " << groupBySize;
     std::vector<int> indexes(batchSize);
 
     // build hash map and index
@@ -342,7 +359,6 @@ int Reader::doAggregation(int batchSize, ApeHashMap& map, std::vector<Key>& keys
                             keys, typeVector);
     }
 
-    results.resize(aggExprs.size());
     for (int i = 0; i < aggExprs.size(); i++) {
       auto agg = aggExprs[i];
       if (typeid(*agg) == typeid(RootAggExpression)) {
@@ -352,6 +368,9 @@ int Reader::doAggregation(int batchSize, ApeHashMap& map, std::vector<Key>& keys
           std::dynamic_pointer_cast<RootAggExpression>(agg)->getResult(
               results[i], keys.size(), indexes);
         } else {
+          if (results[i].nullVector->size() == 0) {
+            results[i].nullVector->resize(1);
+          }
           std::dynamic_pointer_cast<RootAggExpression>(agg)->getResult(results[i]);
         }
       } else {
@@ -382,7 +401,8 @@ int Reader::dumpBufferAfterAgg(int groupBySize, int aggExprsSize,
     std::shared_ptr<AttributeReferenceExpression> groupByExpr =
         std::static_pointer_cast<AttributeReferenceExpression>(groupByExprs[i]);
     int typeIndex = groupByExpr->columnIndex;
-    DumpUtils::dumpGroupByKeyToJavaBuffer(keys, (uint8_t*)(oriBufferPtr[i]), i,
+    DumpUtils::dumpGroupByKeyToJavaBuffer(keys, (uint8_t*)(oriBufferPtr[i]),
+                                          (uint8_t*)(oriNullsPtr[i]), i,
                                           typeVector[typeIndex]);
   }
 
@@ -502,10 +522,11 @@ void Reader::initRowGroupReaders() {
   }
 }
 
-void Reader::checkEndOfRowGroup() {
-  if (totalRowsRead != totalRowsLoadedSoFar) return;
+bool Reader::checkEndOfRowGroup() {
+  if (totalRowsRead != totalRowsLoadedSoFar) return false;
   // if a splitFile contains rowGroup [2,5], currentRowGroup is 2
   // rowGroupReaders index starts from 0
+  ARROW_LOG(DEBUG) << "totalRowsLoadedSoFar: " << totalRowsLoadedSoFar;
   rowGroupReader = rowGroupReaders[currentRowGroup - firstRowGroupIndex];
   currentRowGroup++;
   totalRowGroupsRead++;
@@ -525,6 +546,7 @@ void Reader::checkEndOfRowGroup() {
   }
 
   totalRowsLoadedSoFar += rowGroupReader->metadata()->num_rows();
+  return true;
 }
 
 void Reader::setFilter(std::string filterJsonStr) {
