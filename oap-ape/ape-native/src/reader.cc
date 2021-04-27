@@ -401,7 +401,8 @@ int Reader::dumpBufferAfterAgg(int groupBySize, int aggExprsSize,
     std::shared_ptr<AttributeReferenceExpression> groupByExpr =
         std::static_pointer_cast<AttributeReferenceExpression>(groupByExprs[i]);
     int typeIndex = groupByExpr->columnIndex;
-    DumpUtils::dumpGroupByKeyToJavaBuffer(keys, (uint8_t*)(oriBufferPtr[i]), i,
+    DumpUtils::dumpGroupByKeyToJavaBuffer(keys, (uint8_t*)(oriBufferPtr[i]),
+                                          (uint8_t*)(oriNullsPtr[i]), i,
                                           typeVector[typeIndex]);
   }
 
