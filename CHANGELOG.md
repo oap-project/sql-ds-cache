@@ -1,5 +1,5 @@
 # Change log
-Generated on 2021-04-27
+Generated on 2021-04-29
 
 ## Release 1.1.0
 * [Native SQL Engine](#native-sql-engine)
