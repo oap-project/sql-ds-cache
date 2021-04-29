@@ -81,15 +81,15 @@ To use optimized Plasma cache with OAP, you need following components:
 
    (1) `libarrow.so`, `libplasma.so`, `libplasma_java.so`: dynamic libraries, will be used in Plasma client.   
    (2) `plasma-store-server`: executable file, Plasma cache service.  
-   (3) `arrow-plasma-0.17.0.jar`: will be used when compile oap and spark runtime also need it. 
+   (3) `arrow-plasma-3.0.0.jar`: will be used when compile oap and spark runtime also need it. 
 
 - `.so` file and binary file  
-  Clone code from Intel-arrow repo and run following commands, this will install `libplasma.so`, `libarrow.so`, `libplasma_java.so` and `plasma-store-server` to your system path(`/usr/lib64` by default). And if you are using Spark in a cluster environment, you can copy these files to all nodes in your cluster if the OS or distribution are same, otherwise, you need compile it on each node.
+  Clone code from Arrow repo and run following commands, this will install `libplasma.so`, `libarrow.so`, `libplasma_java.so` and `plasma-store-server` to your system path(`/usr/lib64` by default). And if you are using Spark in a cluster environment, you can copy these files to all nodes in your cluster if the OS or distribution are same, otherwise, you need compile it on each node.
   
 ```
 cd /tmp
-git clone https://github.com/Intel-bigdata/arrow.git
-cd arrow && git checkout branch-0.17.0-oap-1.0
+git clone https://github.com/oap-project/arrow.git
+cd arrow && git checkout arrow-3.0.0-oap
 cd cpp
 mkdir release
 cd release
@@ -99,14 +99,12 @@ make -j$(nproc)
 sudo make install -j$(nproc)
 ```
 
-- arrow-plasma-0.17.0.jar  
-   `arrow-plasma-0.17.0.jar` is provided in Maven central repo, you can download [it](https://repo1.maven.org/maven2/com/intel/arrow/arrow-plasma/0.17.0/arrow-plasma-0.17.0.jar) and copy to `$SPARK_HOME/jars` dir.
-   
-   Or you can manually install it, run following command, this will install arrow jars to your local maven repo. Besides, you need copy arrow-plasma-0.17.0.jar to `$SPARK_HOME/jars/` dir, cause this jar is needed when using external cache.
+- arrow-plasma-3.0.0.jar  
+  Run following command, this will install arrow jars to your local maven repo. Besides, you need copy arrow-plasma-3.0.0.jar to `$SPARK_HOME/jars/` dir, cause this jar is needed when using external cache.
    
 ```
 cd /tmp/arrow/java
-mvn clean -q  plasma -DskipTests install
+mvn clean -q -pl plasma -am -DskipTests install
 ```
 
 

@@ -12,9 +12,9 @@ Generated on 2021-04-27
 ### Native SQL Engine
 
 #### Features
-
 |||
 |:---|:---|
+|[#261](https://github.com/oap-project/native-sql-engine/issues/261)|ArrowDataSource: Add S3 Support|
 |[#239](https://github.com/oap-project/native-sql-engine/issues/239)|Adopt ARROW-7011|
 |[#62](https://github.com/oap-project/native-sql-engine/issues/62)|Support Arrow's Build from Source and Package dependency library in the jar|
 |[#145](https://github.com/oap-project/native-sql-engine/issues/145)|Support decimal in columnar window|
@@ -53,7 +53,9 @@ Generated on 2021-04-27
 |[#196](https://github.com/oap-project/native-sql-engine/issues/196)|clean up options for native sql engine|
 |[#224](https://github.com/oap-project/native-sql-engine/issues/224)|update 3rd party libs|
 |[#227](https://github.com/oap-project/native-sql-engine/issues/227)|fix vulnerabilities from klockwork|
+|[#237](https://github.com/oap-project/native-sql-engine/issues/237)|Add ARROW_CSV=ON to default C++ build commands|
 |[#229](https://github.com/oap-project/native-sql-engine/issues/229)|Fix the deprecated code warning in shuffle_split_test|
+|[#119](https://github.com/oap-project/native-sql-engine/issues/119)|consolidate batch size|
 |[#217](https://github.com/oap-project/native-sql-engine/issues/217)|TPC-H query20 result not correct when use decimal dataset|
 |[#211](https://github.com/oap-project/native-sql-engine/issues/211)|IndexOutOfBoundsException during running TPC-DS Q2|
 |[#167](https://github.com/oap-project/native-sql-engine/issues/167)|Cannot successfully run q.14a.sql and q14b.sql when using double format for TPC-DS workload.|
@@ -82,16 +84,19 @@ Generated on 2021-04-27
 #### PRs
 |||
 |:---|:---|
+|[#288](https://github.com/oap-project/native-sql-engine/pull/288)|[NSE-119] clean up on comments|
 |[#282](https://github.com/oap-project/native-sql-engine/pull/282)|[NSE-280]fix cmake version check|
 |[#281](https://github.com/oap-project/native-sql-engine/pull/281)|[NSE-280] bump cmake to 3.16|
 |[#279](https://github.com/oap-project/native-sql-engine/pull/279)|[NSE-278]fix arrow dep in 1.1 branch|
 |[#268](https://github.com/oap-project/native-sql-engine/pull/268)|[NSE-186] backport to 1.1 branch|
 |[#266](https://github.com/oap-project/native-sql-engine/pull/266)|[NSE-265] Reserve enough memory before UnsafeAppend in builder|
+|[#270](https://github.com/oap-project/native-sql-engine/pull/270)|[NSE-261] ArrowDataSource: Add S3 Support|
 |[#263](https://github.com/oap-project/native-sql-engine/pull/263)|[NSE-262] fix remainer loss in decimal divide|
 |[#215](https://github.com/oap-project/native-sql-engine/pull/215)|[NSE-196] clean up native sql options|
 |[#231](https://github.com/oap-project/native-sql-engine/pull/231)|[NSE-176]Arrow install order issue|
 |[#242](https://github.com/oap-project/native-sql-engine/pull/242)|[NSE-224] update third party code|
 |[#240](https://github.com/oap-project/native-sql-engine/pull/240)|[NSE-239] Adopt ARROW-7011|
+|[#238](https://github.com/oap-project/native-sql-engine/pull/238)|[NSE-237] Add ARROW_CSV=ON to default C++ build commands|
 |[#230](https://github.com/oap-project/native-sql-engine/pull/230)|[NSE-229] Fix the deprecated code warning in shuffle_split_test|
 |[#225](https://github.com/oap-project/native-sql-engine/pull/225)|[NSE-227]fix issues from codescan|
 |[#219](https://github.com/oap-project/native-sql-engine/pull/219)|[NSE-217] fix missing decimal check|
