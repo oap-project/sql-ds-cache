@@ -319,7 +319,7 @@ Plasma config parameters:
 
 Start Plasma service on each node with following command, then run your workload. If you install OAP by Conda, you can find `plasma-store-server` in the path **$HOME/miniconda2/envs/oapenv/bin/**.
 
-Change the permission of `/tmp/plasmaStore` to 777 if you are `root` user.
+Change the permission of `/tmp/plasmaStore` to 777 if you are not `root` user to run following command.
 
 ```
 ./plasma-store-server -m 15000000000 -s /tmp/plasmaStore -d /mnt/pmem  

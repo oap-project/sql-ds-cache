@@ -18,11 +18,11 @@ You can get more detailed information from OAP each module below.
 We provide scripts to help automatically install dependencies required, please change to **root** user and run:
 
 ```
-# git clone -b branch-1.1-spark-3.x https://github.com/oap-project/oap-tools.git
+# git clone -b <tag-version> https://github.com/oap-project/oap-tools.git
 # cd oap-tools
 # sh dev/install-compile-time-dependencies.sh
 ```
-*Note*: `branch-1.1-spark-3.x` is for OAP modules version `v1.1.0-spark-3.0.0`
+*Note*: oap-tools tag version `v1.1.0-spark-3.0.0` corresponds to  all OAP modules' tag version `v1.1.0-spark-3.0.0`.
 
 Then the dependencies below will be installed:
 
