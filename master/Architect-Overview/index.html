@@ -123,6 +123,7 @@
     where (date='20200801' and ss_customer='xxx' and ss_item_sk='806486’)
     limit 10
 </code></pre>
+
 <p>Interactive queries usually process a large data set but return a small portion of data filtering for a specific condition. By creating and storing a full B+ Tree index for key columns and using a smart fine-grained in-memory data caching strategy, we can boost Spark SQL interactive queries to seconds and even sub-seconds.</p>
 <p>By properly using index and cache, the performance of some interactive queries can possibly be improved by order of magnitude.</p>
 <h3 id="usage-scenario-2-batch-processing-jobs">Usage Scenario 2 -- Batch processing jobs</h3>

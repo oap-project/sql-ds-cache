@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  
+  
+  <link rel="shortcut icon" href="../img/favicon.ico">
+  <title>HCFS User Guide - SQL DS Cache - 1.1.0</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700" />
+
+  <link rel="stylesheet" href="../css/theme.css" />
+  <link rel="stylesheet" href="../css/theme_extra.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" />
+  
+  <script>
+    // Current page data
+    var mkdocs_page_name = "HCFS User Guide";
+    var mkdocs_page_input_path = "HCFS-User-Guide.md";
+    var mkdocs_page_url = null;
+  </script>
+  
+  <script src="../js/jquery-2.1.1.min.js" defer></script>
+  <script src="../js/modernizr-2.8.3.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script> 
+  
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+        <a href=".." class="icon icon-home"> SQL DS Cache - 1.1.0</a>
+        <div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../User-Guide/">User Guide</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../Advanced-Configuration/">Advanced Configuration</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../OAP-Installation-Guide/">OAP Installation Guide</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../OAP-Developer-Guide/">OAP Developer Guide</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="../Developer-Guide/">Developer Guide</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="toctree-l1"><a class="" href="../../">Version Selector</a>
+                    </li>
+                </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="..">SQL DS Cache - 1.1.0</a>
+      </nav>
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="..">Docs</a> &raquo;</li>
+    
+      
+    
+    <li>HCFS User Guide</li>
+    <li class="wy-breadcrumbs-aside">
+      
+    </li>
+  </ul>
+  
+  <hr/>
+</div>
+          <div role="main">
+            <div class="section">
+              
+                <h1 id="hcfs-user-guide">HCFS User Guide</h1>
+<ul>
+<li><a href="#prerequisites">Prerequisites</a></li>
+<li><a href="#configuration">Configurations</a></li>
+</ul>
+<h2 id="prerequisites">Prerequisites</h2>
+<p>HCFS based Data Source Cache on Spark 3.0.0 requires a working Hadoop cluster with YARN and Spark. Running Spark on YARN requires a binary distribution of Spark, which is built with YARN support. The HCFS based Data Source Cache also need to install plasma and redis, please follow <a href="../OAP-Installation-Guide/">OAP-Installation-Guide</a> for how to install plasma and redis.</p>
+<h2 id="configurations">Configurations</h2>
+<h3 id="spark-configurations">Spark Configurations</h3>
+<p>Before you run <code>$SPARK_HOME/bin/spark-shell</code>, you need to configure Spark for integration. You need to add or update the following configurations in the Spark configuration file <code>$SPARK_HOME/conf/spark-defaults.conf</code> on your working node.</p>
+<pre><code class="bash">spark.hadoop.fs.cachedFs.impl com.intel.oap.fs.hadoop.cachedfs.CachedFileSystem
+# absolute path of the jar on your working node
+spark.files                       /path/to/hcfs-sql-ds-cache-&lt;version&gt;.jar
+# relative path to spark.files, just specify jar name in current dir
+spark.executor.extraClassPath     ./hcfs-sql-cache-&lt;version&gt;.jar
+# absolute path of the jar on your working node
+spark.driver.extraClassPath       /path/to/hcfs-sql-ds-cache-&lt;version&gt;.jar
+</code></pre>
+
+<h3 id="redis-configuration">Redis Configuration</h3>
+<p>Add the following configuration to <code>$SPARK_HOME/conf/spark-defaults.conf</code>.</p>
+<pre><code>spark.hadoop.fs.cachedFs.redis.host $HOST
+spark.hadoop.fs.cachedFs.redis.port $PORT
+</code></pre>
+
+<h3 id="configuration-for-hcfs-cache-location-policy">Configuration for HCFS cache location policy</h3>
+<p>We provide three HCFS cache location policies, you can choose the best one for you workload
+* defalut policy
+This policy the file block locations consist of cached blocks and hdfs blocks (if cached blocks are incomplete)
+* cache_over_hdfs
+This policy use cached block location only if all requested content is cached, otherwise use HDFS block locations
+* hdfs_only
+This policy will ignoring cached blocks when finding file block locations</p>
+<p>Add the following configuration to <code>$SPARK_HOME/conf/spark-defaults.conf</code>.</p>
+<pre><code>spark.hadoop.fs.cachedFs.blockLocation.policy  default or cache_over_hdfs or hdfs_only
+</code></pre>
+
+<h2 id="configuration-for-hcfs-cache-path-pattern">Configuration for HCFS cache path pattern</h2>
+<p>We provide HCFS cache patterns for paths to determine wherthe path will be cached
+* allowlist
+The path match the pattens will be cached. An empty regexp results in matching everything.
+eg. cachedFs://localhost:9000/dir/
+* denylist
+The path match the pattens will not be cached. An empty regexp results in no matching of deny list.
+eg. io_data|io_control</p>
+<p>Add the following configuration to <code>$SPARK_HOME/conf/spark-defaults.conf</code>.</p>
+<pre><code>spark.hadoop.fs.cachedFs.allowList.regexp  $PATTEN
+spark.hadoop.fs.cachedFs.denylist.regexp  $PATTERN
+</code></pre>
+              
+            </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+    
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+      
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="versions">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      
+      
+      
+    </span>
+</div>
+    <script>var base_url = '..';</script>
+    <script src="../js/theme.js" defer></script>
+      <script src="../search/main.js" defer></script>
+    <script defer>
+        window.onload = function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        };
+    </script>
+
+</body>
+</html>
