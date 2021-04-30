@@ -68,7 +68,7 @@
     <ul class="current">
     <li class="toctree-l2"><a class="reference internal" href="#building">Building</a>
         <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#building-sql-index-and-data-source-cache">Building SQL Index and  Data Source Cache</a>
+    <li class="toctree-l3"><a class="reference internal" href="#building-sql-ds-cache">Building SQL DS Cache</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#running-tests">Running Tests</a>
     </li>
@@ -145,22 +145,29 @@ After following that document, you can continue more details for SQL Index and D
 <li><a href="#enabling-numa-binding-for-pmem-in-spark">Enabling NUMA binding for Intel® Optane™ DC Persistent Memory in Spark</a></li>
 </ul>
 <h2 id="building">Building</h2>
-<h3 id="building-sql-index-and-data-source-cache">Building SQL Index and  Data Source Cache</h3>
+<h3 id="building-sql-ds-cache">Building SQL DS Cache</h3>
 <p>Building with <a href="http://maven.apache.org/">Apache Maven*</a>.</p>
-<p>Clone the OAP project:</p>
-<pre><code>git clone -b &lt;tag-version&gt;  https://github.com/Intel-bigdata/OAP.git
-cd OAP
+<p>Before building, install PMem-Common locally:</p>
+<pre><code>git clone -b &lt;tag-version&gt; https://github.com/oap-project/pmem-common.git
+cd pmem-common
+mvn clean install -DskipTests
 </code></pre>
-<p>Build the <code>oap-cache</code> package:</p>
-<pre><code>mvn clean -pl com.intel.oap:oap-cache -am package
+
+<p>Build the SQL DS Cache package:</p>
+<pre><code>git clone -b &lt;tag-version&gt; https://github.com/oap-project/sql-ds-cache.git
+cd sql-ds-cache
+mvn clean -DskipTests package
 </code></pre>
+
 <h3 id="running-tests">Running Tests</h3>
 <p>Run all the tests:</p>
-<pre><code>mvn clean -pl com.intel.oap:oap-cache -am test
+<pre><code>mvn clean test
 </code></pre>
+
 <p>Run a specific test suite, for example <code>OapDDLSuite</code>:</p>
-<pre><code>mvn -pl com.intel.oap:oap-cache -am -DwildcardSuites=org.apache.spark.sql.execution.datasources.oap.OapDDLSuite test
+<pre><code>mvn -DwildcardSuites=org.apache.spark.sql.execution.datasources.oap.OapDDLSuite test
 </code></pre>
+
 <p><strong>NOTE</strong>: Log level of unit tests currently default to ERROR, please override oap-cache/oap/src/test/resources/log4j.properties if needed.</p>
 <h3 id="building-with-intel-optanetm-dc-persistent-memory-module">Building with Intel® Optane™ DC Persistent Memory Module</h3>
 <h4 id="prerequisites-for-building-with-pmem-support">Prerequisites for building with PMem support</h4>
@@ -180,6 +187,7 @@ cd memkind
 make
 make install
 </code></pre>
+
 <h4 id="vmemcache-installation">vmemcache installation</h4>
 <p>To build vmemcache library from source, you can (for RPM-based linux as example):</p>
 <pre><code>git clone https://github.com/pmem/vmemcache
@@ -190,18 +198,19 @@ cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DCPACK_GENERATOR=rpm
 make package
 sudo rpm -i libvmemcache*.rpm
 </code></pre>
+
 <h4 id="plasma-installation">Plasma installation</h4>
 <p>To use optimized Plasma cache with OAP, you need following components:  </p>
 <p>(1) <code>libarrow.so</code>, <code>libplasma.so</code>, <code>libplasma_java.so</code>: dynamic libraries, will be used in Plasma client. <br />
    (2) <code>plasma-store-server</code>: executable file, Plasma cache service.<br />
-   (3) <code>arrow-plasma-0.17.0.jar</code>: will be used when compile oap and spark runtime also need it. </p>
+   (3) <code>arrow-plasma-3.0.0.jar</code>: will be used when compile oap and spark runtime also need it. </p>
 <ul>
 <li><code>.so</code> file and binary file<br />
-  Clone code from Intel-arrow repo and run following commands, this will install <code>libplasma.so</code>, <code>libarrow.so</code>, <code>libplasma_java.so</code> and <code>plasma-store-server</code> to your system path(<code>/usr/lib64</code> by default). And if you are using Spark in a cluster environment, you can copy these files to all nodes in your cluster if the OS or distribution are same, otherwise, you need compile it on each node.</li>
+  Clone code from Arrow repo and run following commands, this will install <code>libplasma.so</code>, <code>libarrow.so</code>, <code>libplasma_java.so</code> and <code>plasma-store-server</code> to your system path(<code>/usr/lib64</code> by default). And if you are using Spark in a cluster environment, you can copy these files to all nodes in your cluster if the OS or distribution are same, otherwise, you need compile it on each node.</li>
 </ul>
 <pre><code>cd /tmp
-git clone https://github.com/Intel-bigdata/arrow.git
-cd arrow &amp;&amp; git checkout branch-0.17.0-oap-1.0
+git clone https://github.com/oap-project/arrow.git
+cd arrow &amp;&amp; git checkout arrow-3.0.0-oap
 cd cpp
 mkdir release
 cd release
@@ -210,24 +219,37 @@ cmake -DCMAKE_INSTALL_PREFIX=/usr/ -DCMAKE_BUILD_TYPE=Release -DARROW_BUILD_TEST
 make -j$(nproc)
 sudo make install -j$(nproc)
 </code></pre>
+
 <ul>
-<li>arrow-plasma-0.17.0.jar<br />
-<code>arrow-plasma-0.17.0.jar</code> is provided in Maven central repo, you can download <a href="https://repo1.maven.org/maven2/com/intel/arrow/arrow-plasma/0.17.0/arrow-plasma-0.17.0.jar">it</a> and copy to <code>$SPARK_HOME/jars</code> dir.</li>
+<li>arrow-plasma-3.0.0.jar<br />
+  Run following command, this will install arrow jars to your local maven repo. Besides, you need copy arrow-plasma-3.0.0.jar to <code>$SPARK_HOME/jars/</code> dir, cause this jar is needed when using external cache.</li>
 </ul>
-<p>Or you can manually install it, run following command, this will install arrow jars to your local maven repo. Besides, you need copy arrow-plasma-0.17.0.jar to <code>$SPARK_HOME/jars/</code> dir, cause this jar is needed when using external cache.</p>
 <pre><code>cd /tmp/arrow/java
-mvn clean -q -pl plasma -DskipTests install
+mvn clean -q -pl plasma -am -DskipTests install
 </code></pre>
+
 <h4 id="building-the-package">Building the package</h4>
 <p>You need to add <code>-Ppersistent-memory</code> to build with PMem support. For <code>noevict</code> cache strategy, you also need to build with <code>-Ppersistent-memory</code> parameter.</p>
-<pre><code>mvn clean -q -pl com.intel.oap:oap-cache -am  -Ppersistent-memory -DskipTests package
+<pre><code>cd &lt;path&gt;/pmem-common
+mvn clean install -Ppersistent-memory -DskipTests 
+cd &lt;path&gt;/sql-ds-cache
+mvn clean -DskipTests package
 </code></pre>
+
 <p>For vmemcache cache strategy, please build with command:</p>
-<pre><code>mvn clean -q -pl com.intel.oap:oap-cache -am -Pvmemcache -DskipTests package
+<pre><code>cd &lt;path&gt;/pmem-common
+mvn clean install -Pvmemcache -DskipTests
+cd &lt;path&gt;/sql-ds-cache
+mvn clean -DskipTests package
 </code></pre>
+
 <p>Build with this command to use all of them:</p>
-<pre><code>mvn clean -q -pl com.intel.oap:oap-cache -am  -Ppersistent-memory -Pvmemcache -DskipTests package
+<pre><code>cd &lt;path&gt;/pmem-common
+mvn clean install -Ppersistent-memory -Pvmemcache -DskipTests
+cd &lt;path&gt;/sql-ds-cache
+mvn clean -DskipTests package
 </code></pre>
+
 <h2 id="enabling-numa-binding-for-pmem-in-spark">Enabling NUMA binding for PMem in Spark</h2>
 <h3 id="rebuilding-spark-packages-with-numa-binding-patch">Rebuilding Spark packages with NUMA binding patch</h3>
 <p>When using PMem as a cache medium apply the <a href="https://www.kernel.org/doc/html/v4.18/vm/numa.html">NUMA</a> binding patch <a href="../numa-binding-spark-3.0.0.patch">numa-binding-spark-3.0.0.patch</a> to Spark source code for best performance.</p>
@@ -241,11 +263,13 @@ mvn clean -q -pl plasma -DskipTests install
 </ol>
 <pre><code>git apply  numa-binding-spark-3.0.0.patch
 </code></pre>
+
 <ol>
 <li>Add these configuration items to the Spark configuration file $SPARK_HOME/conf/spark-defaults.conf to enable NUMA binding.</li>
 </ol>
 <pre><code>spark.yarn.numa.enabled true 
 </code></pre>
+
 <p><strong>NOTE</strong>: If you are using a customized Spark, you will need to manually resolve the conflicts.</p>
 <h6 id="other-names-and-brands-may-be-claimed-as-the-property-of-others">*Other names and brands may be claimed as the property of others.</h6>
               

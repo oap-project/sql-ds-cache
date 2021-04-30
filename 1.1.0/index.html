@@ -106,9 +106,9 @@
                 <h1 id="architecture-overview">Architecture Overview</h1>
 <ul>
 <li><a href="#introduction">Introduction</a></li>
-<li><a href="#Usage-Scenarios">Usage Scenarios</a></li>
+<li><a href="#usage-scenarios">Usage Scenarios</a></li>
 <li><a href="#architecture">Architecture</a></li>
-<li><a href="#Features">Features</a></li>
+<li><a href="#features">Features</a></li>
 </ul>
 <h2 id="introduction">Introduction</h2>
 <p>Apache Spark<em> is a unified analytics engine for large-scale data processing, and Spark SQL</em> is a Spark module widely used to process structured data in data center. However, Spark SQL still faces the challenge of stability and performance in a highly dynamic environment with ultra-large-scale data.</p>
@@ -123,6 +123,7 @@
     where (date='20200801' and ss_customer='xxx' and ss_item_sk='806486’)
     limit 10
 </code></pre>
+
 <p>Interactive queries usually process a large data set but return a small portion of data filtering for a specific condition. By creating and storing a full B+ Tree index for key columns and using a smart fine-grained in-memory data caching strategy, we can boost Spark SQL interactive queries to seconds and even sub-seconds.</p>
 <p>By properly using index and cache, the performance of some interactive queries can possibly be improved by order of magnitude.</p>
 <h3 id="usage-scenario-2-batch-processing-jobs">Usage Scenario 2 -- Batch processing jobs</h3>
@@ -154,7 +155,7 @@
 <p>Data Source Cache can cache both decompressed and decoded vectorized data and binary raw data. Generally, the server's DRAM is used as the cache medium. <a href="https://www.intel.com/content/www/us/en/architecture-and-technology/optane-dc-persistent-memory.html">PMem</a> can also be used as the cache medium as it will provide a more cost effective solution for the requirements of a high performance environment.</p>
 </li>
 <li>
-<p>Both indexing and caching as <strong><em>Optimizer &amp; Execution</em></strong> are transparent for users. See the <a href="#Features">Features</a> section for details.</p>
+<p>Both indexing and caching as <strong><em>Optimizer &amp; Execution</em></strong> are transparent for users. See the <a href="#features">Features</a> section for details.</p>
 </li>
 <li>
 <p>Spark <strong><em>ThriftServer</em></strong>* is a good use case for OAP, because ThriftServer launches Spark Applications which can cache hot data for a long time in the background, and it also accepts query requests from different clients at the same time. <code>bin/spark-sql</code>, <code>bin/spark-shell</code> or <code>bin/pyspark</code> can certainly be used by SQL Index and Data Source Cache, but usually only for interactive test situations.</p>
@@ -226,5 +227,5 @@
 
 <!--
 MkDocs version : 1.1.2
-Build Date UTC : 2021-01-11 09:37:08.653766+00:00
+Build Date UTC : 2021-04-30 00:49:01.260770+00:00
 -->
