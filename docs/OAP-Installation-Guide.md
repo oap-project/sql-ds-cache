@@ -1,4 +1,5 @@
 # OAP Installation Guide
+
 This document introduces how to install OAP and its dependencies on your cluster nodes by ***Conda***. 
 Follow steps below on ***every node*** of your cluster to set right environment for each machine.
 
@@ -19,7 +20,7 @@ $ wget -c https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh
 $ chmod +x Miniconda2-latest-Linux-x86_64.sh 
 $ bash Miniconda2-latest-Linux-x86_64.sh 
 ```
-For changes to take effect, ***close and re-open***your current shell. 
+For changes to take effect, ***close and re-open*** your current shell. 
 To test your installation,  run the command `conda list` in your terminal window. A list of installed packages appears if it has been installed correctly.
 
 ### Installing OAP
@@ -46,7 +47,7 @@ Dependencies below are required by OAP and all of them are included in OAP Conda
 
 #### Extra Steps for Shuffle Remote PMem Extension
 
-If you use one of OAP features -- [PMmem Shuffle](https://github.com/oap-project/pmem-shuffle) with **RDMA**, you need to configure and validate RDMA, please refer to [PMem Shuffle](https://github.com/oap-project/pmem-shuffle#4-configure-and-validate-rdma) for the details.
+If you use one of OAP features -- [PMem Shuffle](https://github.com/oap-project/pmem-shuffle) with **RDMA**, you need to configure and validate RDMA, please refer to [PMem Shuffle](https://github.com/oap-project/pmem-shuffle#4-configure-and-validate-rdma) for the details.
 
 
 ###  Configuration
