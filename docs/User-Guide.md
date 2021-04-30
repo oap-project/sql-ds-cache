@@ -125,12 +125,28 @@ Use SHOW OINDEX command to show all the created indexes on a specified table.
 ```
 > spark.sql("show oindex from oap_test").show()
 ```
+
+**NOTE:**
+ 
+Currently SQL Index supports to create index on the following data types of columns:
+
+`ByteType`,`ShortType`,`IntegerType`,`LongType`,`FloatType`,`DoubleType`,`StringType`,`BinaryType`,`BooleanType`
+
+Run DESC <tablename> to make sure the data type of columns, e.g. `DecimalType`, `DateType` are not supported.
+
+```
+> spark.sql("desc oap_test").show()
+```
+
 ### Use Index
 
 Using index in a query is transparent. When SQL queries have filter conditions on the column(s) which can take advantage of the index to filter the data scan, the index will automatically be applied to the execution of Spark SQL. The following example will automatically use the underlayer index created on column "a".
 ```
 > spark.sql("SELECT * FROM oap_test WHERE a = 1").show()
 ```
+**NOTE:**
+
+If you choose to use SQL Index to get performance gain in queries, we recommend you do not create index on small tables, like dimension tables.
 
 ### Drop index
 
@@ -138,6 +154,7 @@ Use DROP OINDEX command to drop a named index.
 ```
 > spark.sql("drop oindex index1 on oap_test")
 ```
+
 ## Working with SQL Data Source Cache
 
 Data Source Cache can provide input data cache functionality to the executor. When using the cache data among different SQL queries, configure cache to allow different SQL queries to use the same executor process. Do this by running your queries through the Spark ThriftServer as shown below. For cache media, we support both DRAM and Intel PMem which means you can choose to cache data in DRAM or Intel PMem if you have PMem configured in hardware.
@@ -246,7 +263,7 @@ Socket Configuration -> Intel UPI General Configuration -> Stale AtoS :  Disable
    
    For more information you can refer to [Quick Start Guide: Provision Intel® Optane™ DC Persistent Memory](https://software.intel.com/content/www/us/en/develop/articles/quick-start-guide-configure-intel-optane-dc-persistent-memory-on-linux.html)
 
-- SQL Data Source Cache uses Plasma as a node-level external cache service, the benefit of using external cache is data could be shared across process boundaries.  [Plasma](http://arrow.apache.org/blog/2017/08/08/plasma-in-memory-object-store/) is a high-performance shared-memory object store and a component of [Apache Arrow](https://github.com/apache/arrow). We have modified Plasma to support PMem, and make it open source on [Intel-bigdata Arrow](https://github.com/Intel-bigdata/arrow/tree/branch-0.17.0-oap-1.0) repo. If you have finished [OAP Installation Guide](OAP-Installation-Guide.md), Plasma will be automatically installed and then you just need copy `arrow-plasma-0.17.0.jar` to `$SPARK_HOME/jars`. For manual building and installation steps you can refer to [Plasma installation](./Developer-Guide.md#Plasma-installation).
+- SQL Data Source Cache uses Plasma as a node-level external cache service, the benefit of using external cache is data could be shared across process boundaries.  [Plasma](http://arrow.apache.org/blog/2017/08/08/plasma-in-memory-object-store/) is a high-performance shared-memory object store and a component of [Apache Arrow](https://github.com/apache/arrow). We have modified Plasma to support PMem, and make it open source on [oap-project-Arrow](https://github.com/oap-project/arrow/tree/arrow-3.0.0-oap) repo. If you have finished [OAP Installation Guide](OAP-Installation-Guide.md), Plasma will be automatically installed and then you just need copy `arrow-plasma-3.0.0.jar` to `$SPARK_HOME/jars`. For manual building and installation steps you can refer to [Plasma installation](./Developer-Guide.md#Plasma-installation).
 
 
 - Refer to configuration below to apply external cache strategy and start Plasma service on each node and start your workload.
@@ -302,13 +319,15 @@ Plasma config parameters:
 
 Start Plasma service on each node with following command, then run your workload. If you install OAP by Conda, you can find `plasma-store-server` in the path **$HOME/miniconda2/envs/oapenv/bin/**.
 
+Change the permission of `/tmp/plasmaStore` to 777 if you are not `root` user to run following command.
+
 ```
 ./plasma-store-server -m 15000000000 -s /tmp/plasmaStore -d /mnt/pmem  
 ```
 
 Remember to kill `plasma-store-server` process if you no longer need cache, and you should delete `/tmp/plasmaStore` which is a Unix domain socket.  
   
-- Use Yarn to start Plamsa service  
+- Use Yarn to start Plasma service  
 When using Yarn(Hadoop version >= 3.1) to start Plasma service, you should provide a json file as below.
 ```
 {
@@ -345,7 +364,7 @@ Run ```yarn app -destroy plasma-store-service```to destroy it.
 
 This section provides instructions and tools for running TPC-DS queries to evaluate the cache performance of various configurations. The TPC-DS suite has many queries and we select 9 I/O intensive queries to simplify performance evaluation.
 
-We created some tool scripts [oap-benchmark-tool.zip](https://github.com/Intel-bigdata/OAP/releases/download/v1.0.0-spark-3.0.0/oap-benchmark-tool.zip) to simplify running the workload. If you are already familiar with TPC-DS data generation and running a TPC-DS tool suite, skip our tool and use the TPC-DS tool suite directly.
+We created some tool scripts [oap-benchmark-tool.zip](https://github.com/oap-project/oap-tools/releases/download/v1.1.0-spark-3.0.0/oap-benchmark-tool.zip) to simplify running the workload. If you are already familiar with TPC-DS data generation and running a TPC-DS tool suite, skip our tool and use the TPC-DS tool suite directly.
 
 ### Prerequisites
 
@@ -353,7 +372,7 @@ We created some tool scripts [oap-benchmark-tool.zip](https://github.com/Intel-b
 
 ### Prepare the Tool
 
-1. Download [oap-benchmark-tool.zip](https://github.com/Intel-bigdata/OAP/releases/download/v1.0.0-spark-3.0.0/oap-benchmark-tool.zip) and unzip to a folder (for example, `oap-benchmark-tool` folder) on your working node. 
+1. Download [oap-benchmark-tool.zip](https://github.com/oap-project/oap-tools/releases/download/v1.1.0-spark-3.0.0/oap-benchmark-tool.zip) and unzip to a folder (for example, `oap-benchmark-tool` folder) on your working node. 
 2. Copy `oap-benchmark-tool/tools/tpcds-kits` to ***ALL*** worker nodes under the same folder (for example, `/home/oap/tpcds-kits`).
 
 ### Generate TPC-DS Data
