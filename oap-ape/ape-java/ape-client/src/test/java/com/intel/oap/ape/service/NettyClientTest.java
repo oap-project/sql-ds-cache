@@ -234,6 +234,47 @@ public class NettyClientTest {
     }
 
     @Test
+    public void testReadBatchWithPreloading() throws IOException, InterruptedException {
+        ParquetDataRequestClient requestClient = createRequestClient();
+
+        // send for initialization of remote parquet reader
+        ParquetReaderInitParams params = initParamsForFixedColumns();
+        requestClient.initRemoteParquetReader(params);
+
+        try {
+            // send for preloading batches
+            requestClient.sendReadBatchRequest(10);
+            Thread.sleep(3000);
+
+            // the first batch
+            NettyMessage.ReadBatchResponse response = requestClient.nextBatch();
+            Assert.assertEquals(0, response.getSequenceId());
+            Assert.assertEquals(2, response.getColumnCount());
+            Assert.assertEquals(2048, response.getRowCount());
+            Assert.assertTrue(response.hasNextBatch());
+
+            response.releaseBuffers();
+
+            // send for preloading batches again
+            requestClient.sendReadBatchRequest(5);
+
+            // the second batch
+            response = requestClient.nextBatch();
+            Assert.assertEquals(1, response.getSequenceId());
+
+            Thread.sleep(100);
+
+            // the third batch
+            response = requestClient.nextBatch();
+            Assert.assertEquals(2, response.getSequenceId());
+
+            response.releaseBuffers();
+        } finally {
+            requestClient.close();
+        }
+    }
+
+    @Test
     public void testReadBatchOnVariableColumns() throws IOException, InterruptedException {
         ParquetDataRequestClient requestClient = createRequestClient();
 
