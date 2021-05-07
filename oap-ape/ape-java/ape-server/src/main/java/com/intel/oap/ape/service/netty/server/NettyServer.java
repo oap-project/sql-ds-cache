@@ -25,6 +25,9 @@ import java.net.InetSocketAddress;
 import com.intel.ape.service.netty.NettyMessage;
 
 import io.netty.bootstrap.ServerBootstrap;
+import io.netty.buffer.CompositeByteBuf;
+import io.netty.buffer.Unpooled;
+import io.netty.buffer.UnpooledUnsafeDirectByteBuf;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelInitializer;
@@ -33,6 +36,7 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.util.internal.PlatformDependent;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,6 +69,12 @@ public class NettyServer {
 
     public void run() throws Exception {
         final long start = System.nanoTime();
+
+        // preload some classes
+        Class.forName(Unpooled.class.getCanonicalName());
+        Class.forName(CompositeByteBuf.class.getCanonicalName());
+        Class.forName(UnpooledUnsafeDirectByteBuf.class.getCanonicalName());
+        Class.forName(PlatformDependent.class.getCanonicalName());
 
         EventLoopGroup bossGroup = new NioEventLoopGroup();
         EventLoopGroup workerGroup = new NioEventLoopGroup();

@@ -21,23 +21,22 @@ package com.intel.ape.service.params;
 import java.io.Serializable;
 import java.util.List;
 
-import org.apache.parquet.schema.PrimitiveType;
-
 /**
  * This class holds params needed to initialize a native parquet reader on remote server.
  * Params will be set in {@link com.intel.ape.service.netty.NettyMessage.ParquetReaderInitRequest}
  */
 public class ParquetReaderInitParams implements Serializable {
-    private String fileName;
+    private String fileName; // hdfs file path. e.g. /path/to/file.parquet
     private String hdfsHost;
     private int hdfsPort;
 
     private String jsonSchema;
     private int firstRowGroupIndex;
-    private int totalGroupToRead;
+    private int totalGroupsToRead;
 
-    /* For buffer allocations */
-    private List<PrimitiveType.PrimitiveTypeName> typeNames;
+    /* For batch buffer allocations */
+    private List<Integer> typeSizes;
+    private List<Boolean> variableLengthFlags;  // to indicate types having variable data lengths.
     private int batchSize;
 
     private boolean plasmaCacheEnabled;
@@ -57,8 +56,9 @@ public class ParquetReaderInitParams implements Serializable {
                 ", hdfsPort=" + hdfsPort +
                 ", jsonSchema='" + jsonSchema + '\'' +
                 ", firstRowGroupIndex=" + firstRowGroupIndex +
-                ", totalGroupToRead=" + totalGroupToRead +
-                ", typeNames=" + typeNames +
+                ", totalGroupsToRead=" + totalGroupsToRead +
+                ", typeSizes=" + typeSizes +
+                ", variableLengthFlags=" + variableLengthFlags +
                 ", batchSize=" + batchSize +
                 ", plasmaCacheEnabled=" + plasmaCacheEnabled +
                 ", preBufferEnabled=" + preBufferEnabled +
@@ -70,17 +70,18 @@ public class ParquetReaderInitParams implements Serializable {
     }
 
     public ParquetReaderInitParams(String fileName, String hdfsHost, int hdfsPort,
-                                   String jsonSchema, int firstRowGroupIndex, int totalGroupToRead,
-                                   List<PrimitiveType.PrimitiveTypeName> typeNames, int batchSize,
-                                   boolean plasmaCacheEnabled, boolean preBufferEnabled,
-                                   boolean plasmaCacheAsync) {
+                                   String jsonSchema, int firstRowGroupIndex, int totalGroupsToRead,
+                                   List<Integer> typeSizes, List<Boolean> variableTypeFlags,
+                                   int batchSize, boolean plasmaCacheEnabled,
+                                   boolean preBufferEnabled, boolean plasmaCacheAsync) {
         this.fileName = fileName;
         this.hdfsHost = hdfsHost;
         this.hdfsPort = hdfsPort;
         this.jsonSchema = jsonSchema;
         this.firstRowGroupIndex = firstRowGroupIndex;
-        this.totalGroupToRead = totalGroupToRead;
-        this.typeNames = typeNames;
+        this.totalGroupsToRead = totalGroupsToRead;
+        this.typeSizes = typeSizes;
+        this.variableLengthFlags = variableTypeFlags;
         this.batchSize = batchSize;
         this.plasmaCacheEnabled = plasmaCacheEnabled;
         this.preBufferEnabled = preBufferEnabled;
@@ -127,20 +128,28 @@ public class ParquetReaderInitParams implements Serializable {
         this.firstRowGroupIndex = firstRowGroupIndex;
     }
 
-    public int getTotalGroupToRead() {
-        return totalGroupToRead;
+    public int getTotalGroupsToRead() {
+        return totalGroupsToRead;
     }
 
-    public void setTotalGroupToRead(int totalGroupToRead) {
-        this.totalGroupToRead = totalGroupToRead;
+    public void setTotalGroupsToRead(int totalGroupsToRead) {
+        this.totalGroupsToRead = totalGroupsToRead;
     }
 
-    public List<PrimitiveType.PrimitiveTypeName> getTypeNames() {
-        return typeNames;
+    public List<Integer> getTypeSizes() {
+        return typeSizes;
     }
 
-    public void setTypeNames(List<PrimitiveType.PrimitiveTypeName> typeNames) {
-        this.typeNames = typeNames;
+    public void setTypeSizes(List<Integer> typeSizes) {
+        this.typeSizes = typeSizes;
+    }
+
+    public List<Boolean> getVariableLengthFlags() {
+        return variableLengthFlags;
+    }
+
+    public void setVariableLengthFlags(List<Boolean> variableLengthFlags) {
+        this.variableLengthFlags = variableLengthFlags;
     }
 
     public int getBatchSize() {
@@ -199,7 +208,7 @@ public class ParquetReaderInitParams implements Serializable {
         this.aggregateExpression = aggregateExpression;
     }
 
-    static class CacheLocalityStorage implements Serializable {
+    public static class CacheLocalityStorage implements Serializable {
         private String redisHost;
         private int redisPort;
         private String redisPassword;

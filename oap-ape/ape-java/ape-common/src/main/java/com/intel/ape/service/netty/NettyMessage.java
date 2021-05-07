@@ -21,6 +21,8 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.ProtocolException;
+import java.security.InvalidParameterException;
+import java.util.Arrays;
 import java.util.function.Consumer;
 
 import com.intel.ape.service.params.ParquetReaderInitParams;
@@ -34,6 +36,8 @@ import io.netty.channel.ChannelOutboundHandlerAdapter;
 import io.netty.channel.ChannelOutboundInvoker;
 import io.netty.channel.ChannelPromise;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
@@ -41,10 +45,27 @@ import static com.google.common.base.Preconditions.checkArgument;
  * A simple and generic interface to serialize messages to Netty's buffer space.
  */
 public abstract class NettyMessage {
+    private static final Logger LOG = LoggerFactory.getLogger(NettyMessage.class);
+
+    static final int FRAME_LENGTH = 4;
+
+    static final int MAGIC_NUM_LENGTH = 4;
+
+    static final int MSG_ID_LENGTH = 1;
+
     // frame length (4), magic number (4), msg ID (1)
-    static final int FRAME_HEADER_LENGTH = 4 + 4 + 1;
+    static final int FRAME_HEADER_LENGTH = FRAME_LENGTH + MAGIC_NUM_LENGTH + MSG_ID_LENGTH;
 
     static final int MAGIC_NUMBER = 0x3DEBF19F;
+
+    static final int MESSAGE_ID_PARQUET_READER_INIT_REQUEST = 0;
+    static final int MESSAGE_ID_READ_BATCH_REQUEST = 1;
+    static final int MESSAGE_ID_HAS_NEXT_REQUEST = 2;
+    static final int MESSAGE_ID_SKIP_NEXT_ROW_GROUP_REQUEST = 3;
+    static final int MESSAGE_ID_CLOSE_READER_REQUEST = 4;
+    static final int MESSAGE_ID_ERROR_RESPONSE = 5;
+    static final int MESSAGE_ID_BOOLEAN_RESPONSE = 6;
+    static final int MESSAGE_ID_READ_BATCH_RESPONSE = 7;
 
     abstract void write(ChannelOutboundInvoker out, ChannelPromise promise,
                         ByteBufAllocator allocator) throws IOException;
@@ -200,20 +221,23 @@ public abstract class NettyMessage {
 
                 final NettyMessage decodedMsg;
                 switch (msgId) {
-                    case ParquetReaderInitRequest.ID:
-                        decodedMsg = ParquetReaderInitRequest.readFrom(msg);
-                        break;
                     case ReadBatchRequest.ID:
                         decodedMsg = ReadBatchRequest.readFrom(msg);
                         break;
-                    case HasNextRequest.ID:
-                        decodedMsg = new HasNextRequest();
+                    case ReadBatchResponse.ID:
+                        decodedMsg = ReadBatchResponse.readFrom(msg);
+                        break;
+                    case ParquetReaderInitRequest.ID:
+                        decodedMsg = ParquetReaderInitRequest.readFrom(msg);
+                        break;
+                    case CloseReaderRequest.ID:
+                        decodedMsg = new CloseReaderRequest();
                         break;
                     case SkipNextRowGroupRequest.ID:
                         decodedMsg = new SkipNextRowGroupRequest();
                         break;
-                    case CloseReaderRequest.ID:
-                        decodedMsg = new CloseReaderRequest();
+                    case HasNextRequest.ID:
+                        decodedMsg = new HasNextRequest();
                         break;
                     case ErrorResponse.ID:
                         decodedMsg = ErrorResponse.readFrom(msg);
@@ -266,7 +290,7 @@ public abstract class NettyMessage {
     // Client requests
     // ------------------------------------------------------------------------
     public static class ParquetReaderInitRequest extends NettyMessage {
-        public static final byte ID = 0;
+        public static final byte ID = MESSAGE_ID_PARQUET_READER_INIT_REQUEST;
 
         private ParquetReaderInitParams params;
 
@@ -311,15 +335,26 @@ public abstract class NettyMessage {
                     "params=" + params +
                     '}';
         }
+
+        public ParquetReaderInitParams getParams() {
+            return params;
+        }
     }
 
     public static class ReadBatchRequest extends NettyMessage {
-        public static final byte ID = 1;
+        public static final byte ID = MESSAGE_ID_READ_BATCH_REQUEST;
 
         private final int batchCount;
 
         public ReadBatchRequest(int batchCount) {
             this.batchCount = batchCount;
+        }
+
+        @Override
+        public String toString() {
+            return "ReadBatchRequest{" +
+                    "batchCount=" + batchCount +
+                    '}';
         }
 
         @Override
@@ -342,7 +377,7 @@ public abstract class NettyMessage {
     }
 
     public static class HasNextRequest extends NettyMessage {
-        public static final byte ID = 2;
+        public static final byte ID = MESSAGE_ID_HAS_NEXT_REQUEST;
 
         @Override
         void write(ChannelOutboundInvoker out, ChannelPromise promise, ByteBufAllocator allocator)
@@ -353,7 +388,7 @@ public abstract class NettyMessage {
     }
 
     public static class SkipNextRowGroupRequest extends NettyMessage {
-        public static final byte ID = 3;
+        public static final byte ID = MESSAGE_ID_SKIP_NEXT_ROW_GROUP_REQUEST;
 
         @Override
         void write(ChannelOutboundInvoker out, ChannelPromise promise, ByteBufAllocator allocator)
@@ -364,7 +399,7 @@ public abstract class NettyMessage {
     }
 
     public static class CloseReaderRequest extends NettyMessage {
-        public static final byte ID = 4;
+        public static final byte ID = MESSAGE_ID_CLOSE_READER_REQUEST;
 
         @Override
         void write(ChannelOutboundInvoker out, ChannelPromise promise, ByteBufAllocator allocator)
@@ -378,7 +413,7 @@ public abstract class NettyMessage {
     // ------------------------------------------------------------------------
 
     public static class ErrorResponse extends NettyMessage {
-        public static final byte ID = 5;
+        public static final byte ID = MESSAGE_ID_ERROR_RESPONSE;
 
         final Throwable cause;
 
@@ -433,14 +468,14 @@ public abstract class NettyMessage {
     }
 
     public static class BooleanResponse extends NettyMessage {
-        public static final byte ID = 6;
+        public static final byte ID = MESSAGE_ID_BOOLEAN_RESPONSE;
 
         private final boolean result;
 
         // Indicator of type of request that the result responding to.
         private final byte respondingTo;
 
-        BooleanResponse(boolean result, byte respondingTo) {
+        public BooleanResponse(boolean result, byte respondingTo) {
             this.result = result;
             this.respondingTo = respondingTo;
         }
@@ -454,7 +489,7 @@ public abstract class NettyMessage {
                 bb.writeByte(respondingTo);
             };
 
-            writeToChannel(out, promise, allocator, consumer, ID, 1);
+            writeToChannel(out, promise, allocator, consumer, ID, 2);
         }
 
         static BooleanResponse readFrom(ByteBuf buffer) throws IOException {
@@ -479,13 +514,188 @@ public abstract class NettyMessage {
     }
 
     public static class ReadBatchResponse extends NettyMessage {
-        public static final byte ID = 7;
+        public static final byte ID = MESSAGE_ID_READ_BATCH_RESPONSE;
+
+        private final int sequenceId;
+        private final boolean hasNextBatch;
+        private final int columnCount;
+        private final int rowCount;
+        private final int[] dataBufferLengths;
+        private final boolean[] compositeFlags;
+        private final int compositedElementCount;
+        private final ByteBuf compositedElementLengths;
+        private final ByteBuf[] dataBuffers;
+        private final ByteBuf[] nullBuffers;
+
+        public ReadBatchResponse(int sequenceId, boolean hasNextBatch, int columnCount,
+                                 int rowCount, int[] dataBufferLengths, boolean[] compositeFlags,
+                                 int compositedElementCount, ByteBuf compositedElementLengths,
+                                 ByteBuf[] dataBuffers, ByteBuf[] nullBuffers) {
+            this.sequenceId = sequenceId;
+            this.hasNextBatch = hasNextBatch;
+            this.columnCount = columnCount;
+            this.rowCount = rowCount;
+            this.dataBufferLengths = dataBufferLengths;
+            this.compositeFlags = compositeFlags;
+            this.compositedElementCount = compositedElementCount;
+            this.compositedElementLengths = compositedElementLengths;
+            this.dataBuffers = dataBuffers;
+            this.nullBuffers = nullBuffers;
+
+            if (dataBuffers == null || dataBuffers.length != columnCount || columnCount <= 0) {
+                throw new InvalidParameterException("Mismatch of column count and buffer count");
+            }
+        }
 
         @Override
-        void write(ChannelOutboundInvoker out, ChannelPromise promise, ByteBufAllocator allocator)
-                throws IOException {
-
+        public String toString() {
+            return "ReadBatchResponse{" +
+                    "sequenceId=" + sequenceId +
+                    ", hasNextBatch=" + hasNextBatch +
+                    ", columnCount=" + columnCount +
+                    ", rowCount=" + rowCount +
+                    ", dataBufferLengths=" + Arrays.toString(dataBufferLengths) +
+                    ", compositeFlags=" + Arrays.toString(compositeFlags) +
+                    ", compositedElementCount=" + compositedElementCount +
+                    '}';
         }
+
+        public int getSequenceId() {
+            return sequenceId;
+        }
+
+        public boolean hasNextBatch() {
+            return hasNextBatch;
+        }
+
+        public int getColumnCount() {
+            return columnCount;
+        }
+
+        public int getRowCount() {
+            return rowCount;
+        }
+
+        public int[] getDataBufferLengths() {
+            return dataBufferLengths;
+        }
+
+        public boolean[] getCompositeFlags() {
+            return compositeFlags;
+        }
+
+        public int getCompositedElementCount() {
+            return compositedElementCount;
+        }
+
+        public ByteBuf getCompositedElementLengths() {
+            return compositedElementLengths;
+        }
+
+        public ByteBuf[] getDataBuffers() {
+            return dataBuffers;
+        }
+
+        public ByteBuf[] getNullBuffers() {
+            return nullBuffers;
+        }
+
+        @Override
+        void write(ChannelOutboundInvoker out, ChannelPromise promise, ByteBufAllocator allocator) {
+
+            // compute lengths of header and content: sequenceId(4), hasNextBatch(1),
+            // columnCount(4), rowCount(4), dataBufferLengths(columnCount * 4),
+            // compositeFlags(columnCount), compositedElementCount(4)
+            int headerLength = 4 + 1 + 4 + 4 + columnCount * 4 + columnCount + 4;
+            int contentLength = 0;
+            contentLength += compositedElementLengths.readableBytes();
+
+            for (int buffLength : dataBufferLengths) {
+                contentLength += buffLength;
+            }
+            contentLength += (columnCount * rowCount); // for null buffers
+
+            // set header
+            ByteBuf headerBuf = allocateBuffer(allocator, ID, headerLength, contentLength, false);
+            headerBuf.writeInt(sequenceId);
+            headerBuf.writeBoolean(hasNextBatch);
+            headerBuf.writeInt(columnCount);
+            headerBuf.writeInt(rowCount);
+            for (int dataBufferLength : dataBufferLengths) {
+                headerBuf.writeInt(dataBufferLength);
+            }
+            for (boolean isComposited : compositeFlags) {
+                headerBuf.writeBoolean(isComposited);
+            }
+            headerBuf.writeInt(compositedElementCount);
+
+            // write to channel
+            out.write(headerBuf);
+            out.write(compositedElementLengths);
+            for (int i = 0; i < columnCount; i++) {
+                out.write(dataBuffers[i]);
+            }
+            int columnIndex = 0;
+            for (; columnIndex < columnCount - 1; columnIndex++) {
+                out.write(nullBuffers[columnIndex]);
+            }
+            out.write(nullBuffers[columnIndex], promise);
+        }
+
+        static ReadBatchResponse readFrom(ByteBuf buffer) {
+            int sequenceId = buffer.readInt();
+            boolean hasNextBatch = buffer.readBoolean();
+            int columnCount = buffer.readInt();
+            int rowCount = buffer.readInt();
+
+            int[] dataBufferLengths = new int[columnCount];
+            for (int i = 0; i < columnCount; i++) {
+                dataBufferLengths[i] = buffer.readInt();
+            }
+
+            boolean[] compositeFlags = new boolean[columnCount];
+            for (int i = 0; i < columnCount; i++) {
+                compositeFlags[i] = buffer.readBoolean();
+            }
+
+            int compositedElementCount = buffer.readInt();
+            ByteBuf compositedElementLengths = buffer.readRetainedSlice(4 * compositedElementCount);
+
+            ByteBuf[] dataBuffers = new ByteBuf[columnCount];
+            for (int i = 0; i < columnCount; i++) {
+                dataBuffers[i] = buffer.readRetainedSlice(dataBufferLengths[i]);
+            }
+
+            ByteBuf[] nullBuffers = new ByteBuf[columnCount];
+            for (int i = 0; i < columnCount; i++) {
+                nullBuffers[i] = buffer.readRetainedSlice(rowCount);
+            }
+
+            return new ReadBatchResponse(
+                    sequenceId,
+                    hasNextBatch,
+                    columnCount,
+                    rowCount,
+                    dataBufferLengths,
+                    compositeFlags,
+                    compositedElementCount,
+                    compositedElementLengths,
+                    dataBuffers,
+                    nullBuffers);
+        }
+
+        /**
+         * This releasing function should be called on client side when the response object is
+         * no longer needed.
+         */
+        public void releaseBuffers() {
+            compositedElementLengths.release();
+            for (int i = 0; i < columnCount; i++) {
+                dataBuffers[i].release();
+                nullBuffers[i].release();
+            }
+        }
+
     }
 
 }
