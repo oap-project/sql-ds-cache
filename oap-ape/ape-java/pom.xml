@@ -23,6 +23,8 @@
     <java.version>1.8</java.version>
     <slf4j.version>1.7.16</slf4j.version>
     <hadoop.version>3.3.0</hadoop.version>
+    <netty.version>4.1.63.Final</netty.version>
+    <junit.version>4.12</junit.version>
     <ape.version>1.1.0-SNAPSHOT</ape.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
@@ -53,5 +55,7 @@
     <module>ape-flink</module>
     <module>ape-common</module>
     <module>ape-hcfs</module>
+    <module>ape-server</module>
+    <module>ape-client</module>
   </modules>
 </project>
