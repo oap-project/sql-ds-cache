@@ -44,7 +44,7 @@ public class NettyParquetRequestHelper {
     private static final Logger LOG = LoggerFactory.getLogger(NettyParquetRequestHelper.class);
 
     public static final String CONF_KEY_CLIENT_TIMEOUT = "fs.ape.client.timeout.seconds";
-    public static final String CONF_KEY_CLIENT_THREADS = "fs.ape.client.timeout.threads";
+    public static final String CONF_KEY_CLIENT_THREADS = "fs.ape.client.threads";
     public static final String CONF_KEY_SERVER_LIST = "fs.ape.client.remote.servers";
 
     private final Configuration hadoopConfig;
