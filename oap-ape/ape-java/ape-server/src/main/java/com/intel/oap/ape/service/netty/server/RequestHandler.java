@@ -267,14 +267,21 @@ public class RequestHandler extends SimpleChannelInboundHandler<NettyMessage> {
         // close native reader
         if (reader != 0) {
             ParquetReaderJNI.close(reader);
+            reader = 0;
         }
 
         // release memory
-        for (Long addr : nativeDataBuffers) {
-            Platform.freeMemory(addr);
+        if (nativeDataBuffers != null) {
+            for (long addr : nativeDataBuffers) {
+                Platform.freeMemory(addr);
+            }
+            nativeDataBuffers = null;
         }
-        for (Long addr : nativeNullBuffers) {
-            Platform.freeMemory(addr);
+        if (nativeNullBuffers != null) {
+            for (long addr : nativeNullBuffers) {
+                Platform.freeMemory(addr);
+            }
+            nativeNullBuffers = null;
         }
     }
 

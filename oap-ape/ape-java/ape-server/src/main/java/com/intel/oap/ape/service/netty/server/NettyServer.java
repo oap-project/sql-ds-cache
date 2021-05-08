@@ -76,8 +76,9 @@ public class NettyServer {
         Class.forName(UnpooledUnsafeDirectByteBuf.class.getCanonicalName());
         Class.forName(PlatformDependent.class.getCanonicalName());
 
-        EventLoopGroup bossGroup = new NioEventLoopGroup();
-        EventLoopGroup workerGroup = new NioEventLoopGroup();
+        int availableProcessors = Runtime.getRuntime().availableProcessors();
+        EventLoopGroup bossGroup = new NioEventLoopGroup(availableProcessors);
+        EventLoopGroup workerGroup = new NioEventLoopGroup(availableProcessors);
         ChannelHandler encoder = new NettyMessage.NettyMessageEncoder();
 
         bootstrap = new ServerBootstrap();

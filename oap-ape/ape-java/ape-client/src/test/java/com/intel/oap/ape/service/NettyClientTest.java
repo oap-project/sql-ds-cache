@@ -20,88 +20,19 @@ package com.intel.oap.ape.service;
 
 import java.io.IOException;
 import java.net.InetAddress;
-import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.List;
 
 import com.intel.ape.service.netty.NettyMessage;
 import com.intel.ape.service.params.ParquetReaderInitParams;
-import com.intel.oap.ape.service.netty.client.NettyClient;
 import com.intel.oap.ape.service.netty.client.ParquetDataRequestClient;
 import com.intel.oap.ape.service.netty.client.ParquetDataRequestClientFactory;
-import com.intel.oap.ape.service.netty.server.NettyServer;
 
-import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 
-public class NettyClientTest {
-    private final String defaultAddress;
-    private int port = 0;
-
-    private NettyServerRunner serverRunner;
-
-    public NettyClientTest() {
-        defaultAddress = new InetSocketAddress(0).getAddress().getHostAddress();
-    }
-
-    static class NettyServerRunner implements Runnable {
-        private NettyServer nettyServer;
-
-        private final String address;
-
-        private final Object lock = new Object();
-        private boolean needWakeUp = false;
-
-        NettyServerRunner(String address) {
-            this.address = address;
-        }
-
-        @Override
-        public void run() {
-            nettyServer = new NettyServer(0, address);
-            try {
-                nettyServer.run();
-            } catch (Exception exception) {
-                exception.printStackTrace();
-                nettyServer.shutdown();
-                nettyServer = null;
-            } finally {
-                synchronized (lock) {
-                    needWakeUp = true;
-                    lock.notify();
-                }
-            }
-        }
-    }
-
-    @Before
-    public void setUp() throws Exception {
-        // start server
-        serverRunner = new NettyServerRunner(defaultAddress);
-        Thread serverThread = new Thread(serverRunner);
-        serverThread.start();
-
-        // wait server ready
-        synchronized (serverRunner.lock) {
-            while (!serverRunner.needWakeUp) {
-                serverRunner.lock.wait();
-            }
-        }
-        Assert.assertNotNull(serverRunner.nettyServer);
-
-        port = serverRunner.nettyServer.getPort();
-    }
-
-    @After
-    public void tearDown() throws Exception {
-        Thread.sleep(1000);
-
-        // shutdown server
-        serverRunner.nettyServer.shutdown();
-    }
+public class NettyClientTest extends NettyClientTestBase {
 
     private ParquetDataRequestClient createRequestClient()
             throws IOException, InterruptedException {
@@ -109,7 +40,7 @@ public class NettyClientTest {
 
         // start client connection
         ParquetDataRequestClientFactory factory =
-                new ParquetDataRequestClientFactory(new NettyClient(120));
+                new ParquetDataRequestClientFactory(nettyClient);
         ParquetDataRequestClient requestClient =
                 factory.createParquetDataRequestClient(defaultAddress, port);
         Assert.assertTrue(requestClient.isWritable());
@@ -189,7 +120,6 @@ public class NettyClientTest {
         requestClient.close();
     }
 
-    @Test
     public void testParquetReaderInit() throws IOException, InterruptedException {
         ParquetDataRequestClient requestClient = createRequestClient();
 
@@ -205,7 +135,6 @@ public class NettyClientTest {
         }
     }
 
-    @Test
     public void testReadBatch() throws IOException, InterruptedException {
         ParquetDataRequestClient requestClient = createRequestClient();
 
@@ -233,7 +162,6 @@ public class NettyClientTest {
         }
     }
 
-    @Test
     public void testReadBatchWithPreloading() throws IOException, InterruptedException {
         ParquetDataRequestClient requestClient = createRequestClient();
 
@@ -274,7 +202,6 @@ public class NettyClientTest {
         }
     }
 
-    @Test
     public void testReadBatchOnVariableColumns() throws IOException, InterruptedException {
         ParquetDataRequestClient requestClient = createRequestClient();
 

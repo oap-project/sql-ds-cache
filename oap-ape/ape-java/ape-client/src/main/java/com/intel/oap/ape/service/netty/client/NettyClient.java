@@ -45,11 +45,11 @@ public class NettyClient {
 
     private Bootstrap bootstrap;
 
-    public NettyClient(int timeoutSeconds) {
+    public NettyClient(int timeoutSeconds, int nThreads) {
 
         final long start = System.nanoTime();
 
-        EventLoopGroup workerGroup = new NioEventLoopGroup();
+        EventLoopGroup workerGroup = new NioEventLoopGroup(nThreads);
         ChannelHandler encoder = new NettyMessage.NettyMessageEncoder();
 
         bootstrap = new Bootstrap();
