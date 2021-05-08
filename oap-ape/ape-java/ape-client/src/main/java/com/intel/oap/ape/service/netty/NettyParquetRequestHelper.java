@@ -47,7 +47,10 @@ public class NettyParquetRequestHelper {
     public static final String CONF_KEY_CLIENT_THREADS = "fs.ape.client.timeout.threads";
     public static final String CONF_KEY_SERVER_LIST = "fs.ape.client.remote.servers";
 
+    private final Configuration hadoopConfig;
     private NettyClient nettyClient;
+    private Map<String, List<RemoteServer>> remoteServerGroups;
+    private ConsistentHash<String> remoteServerHosts;
 
     static class RemoteServer {
         private final String host;
@@ -92,36 +95,24 @@ public class NettyParquetRequestHelper {
         }
     }
 
+    public NettyParquetRequestHelper(Configuration hadoopConfig) {
+        this.hadoopConfig = hadoopConfig;
+        initializeNettyClient();
+        initializeServersHash();
+    }
+
     /**
      * Create a request client to remote server considering load balance.
-     * @param hadoopConfig Configuration
      * @return ParquetDataRequestClient
      */
-    public ParquetDataRequestClient createFileSplitRequestClient(
-            Configuration hadoopConfig, Path filePath, long splitOffset, long splitLength)
+    public ParquetDataRequestClient createRequestClient(
+            Path filePath, long splitOffset, long splitLength)
             throws IOException, InterruptedException {
 
-        // get configurations
-        int timeoutSeconds = hadoopConfig.getInt(CONF_KEY_CLIENT_TIMEOUT, 120);
-        // in APE, a netty client is not shared across tasks. So it does not need a large
-        // thread pool to handle server responses.
-        int clientThreads = hadoopConfig.getInt(CONF_KEY_CLIENT_THREADS, 2);
-        createNettyClientIfNeeded(timeoutSeconds, clientThreads);
-
-        // available servers
-        String serversConf = hadoopConfig.get(CONF_KEY_SERVER_LIST, "");
-        if (serversConf.isEmpty()) {
-            throw new RuntimeException("No available servers for parquet data loading.");
+        // create a new netty client if the before one has been shut down.
+        if (nettyClient == null) {
+            initializeNettyClient();
         }
-
-        // parse remote servers
-        Map<String, List<RemoteServer>> remoteServerGroups =
-                Arrays.stream(serversConf.split(","))
-                        .distinct()
-                        .map(s -> s.split(":"))
-                        .filter(s -> s.length == 2)
-                        .map(s -> new RemoteServer(s[0], Integer.parseInt(s[1])) )
-                        .collect(Collectors.groupingBy(s -> s.host));
 
         // construct data request object
         final String fileName = filePath.toUri().getRawPath();
@@ -139,18 +130,7 @@ public class NettyParquetRequestHelper {
                 splitLength
         );
 
-        // select a host with consistent hash
-        ConsistentHash<String> consistentHash = new ConsistentHash<>(
-                Hashing.sha256(),
-                remoteServerGroups.keySet()
-        );
-        String selectedHost = consistentHash.get(request);
-
-        // select a server on chosen host randomly
-        List<RemoteServer> serversOnSelectedHost = remoteServerGroups.get(selectedHost);
-        RemoteServer remoteServer = serversOnSelectedHost.get(
-                new Random().nextInt(serversOnSelectedHost.size()));
-
+        RemoteServer remoteServer = selectRemoteServer(request);
         LOG.info("Creating request client to server: {}", remoteServer.toString());
 
         // start and return a new request client
@@ -159,20 +139,55 @@ public class NettyParquetRequestHelper {
         return factory.createParquetDataRequestClient(remoteServer.host, remoteServer.port);
     }
 
-    private void createNettyClientIfNeeded(int timeout, int threads) {
-        if (nettyClient != null) {
-            return;
-        }
+    private void initializeNettyClient() {
+        // get configurations
+        int timeoutSeconds = hadoopConfig.getInt(CONF_KEY_CLIENT_TIMEOUT, 120);
+        // in APE, a netty client is not shared across tasks. So it does not need a large
+        // thread pool to handle server responses.
+        int clientThreads = hadoopConfig.getInt(CONF_KEY_CLIENT_THREADS, 1);
 
-        if (timeout < 0) {
+
+        if (timeoutSeconds < 0) {
             throw new InvalidParameterException("Negative client timeout is not allowed.");
         }
 
-        if (threads <= 0) {
+        if (clientThreads <= 0) {
             throw new InvalidParameterException("Client threads should be greater than 0.");
         }
 
-        nettyClient = new NettyClient(timeout, threads);
+        nettyClient = new NettyClient(timeoutSeconds, clientThreads);
+    }
+
+    private void initializeServersHash() {
+        // available servers
+        String serversConf = hadoopConfig.get(CONF_KEY_SERVER_LIST, "");
+        if (serversConf.isEmpty()) {
+            throw new RuntimeException("No available servers for parquet data loading.");
+        }
+
+        // parse remote servers
+        remoteServerGroups =
+                Arrays.stream(serversConf.split(","))
+                        .distinct()
+                        .map(s -> s.split(":"))
+                        .filter(s -> s.length == 2)
+                        .map(s -> new RemoteServer(s[0], Integer.parseInt(s[1])) )
+                        .collect(Collectors.groupingBy(s -> s.host));
+
+        remoteServerHosts = new ConsistentHash<>(
+                Hashing.sha256(),
+                remoteServerGroups.keySet()
+        );
+    }
+
+    private RemoteServer selectRemoteServer(ParquetSplitRequest request) {
+        // select a host with consistent hash
+        String selectedHost = remoteServerHosts.get(request);
+
+        // select a server on chosen host randomly
+        List<RemoteServer> serversOnSelectedHost = remoteServerGroups.get(selectedHost);
+        return serversOnSelectedHost.get(
+                new Random().nextInt(serversOnSelectedHost.size()));
     }
 
     public void shutdownNettyClient() {

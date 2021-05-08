@@ -36,7 +36,7 @@ public class NettyClientTestBase {
 
     public NettyClientTestBase() {
         defaultAddress = new InetSocketAddress(0).getAddress().getHostAddress();
-        nettyClient = new NettyClient(120, 8);
+        nettyClient = new NettyClient(120, 1);
     }
 
     static class NettyServerRunner implements Runnable {
@@ -71,8 +71,6 @@ public class NettyClientTestBase {
 
     @Before
     public void setUp() throws Exception {
-        System.out.println("xx availableProcessors: " + Runtime.getRuntime().availableProcessors());
-
         // start server
         serverRunner = new NettyServerRunner(defaultAddress);
         Thread serverThread = new Thread(serverRunner);

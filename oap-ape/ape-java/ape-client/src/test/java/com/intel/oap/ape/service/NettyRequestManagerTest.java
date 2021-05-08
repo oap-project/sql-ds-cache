@@ -52,14 +52,9 @@ public class NettyRequestManagerTest extends NettyClientTestBase {
                 );
 
         try {
-            NettyParquetRequestHelper helper = new NettyParquetRequestHelper();
+            NettyParquetRequestHelper helper = new NettyParquetRequestHelper(conf);
             ParquetDataRequestClient requestClient =
-                    helper.createFileSplitRequestClient(
-                            conf,
-                            path,
-                            0,
-                            100
-                    );
+                    helper.createRequestClient(path,0,100);
 
             Assert.assertNotNull(requestClient);
 
