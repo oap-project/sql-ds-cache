@@ -20,6 +20,9 @@ package com.intel.oap.ape.service.netty.client;
 
 import java.io.IOException;
 import java.net.SocketAddress;
+import java.util.Comparator;
+import java.util.PriorityQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import com.intel.ape.service.netty.NettyMessage;
 
@@ -41,19 +44,29 @@ public class ResponseHandler extends SimpleChannelInboundHandler<NettyMessage> {
     private final Object boolResponseLock = new Object();
     private NettyMessage.BooleanResponse recentBoolResponse;
 
+    private boolean hasNextBatch = true;
+    private int sequenceId = 0;
+    private final PriorityQueue<NettyMessage.ReadBatchResponse> receivedBatches;
+    private final LinkedBlockingQueue<NettyMessage.ReadBatchResponse> availableBatches;
+
+    private boolean closed = false;
+
+    public ResponseHandler() {
+        receivedBatches = new PriorityQueue<>(
+                Comparator.comparingInt(NettyMessage.ReadBatchResponse::getSequenceId));
+        availableBatches = new LinkedBlockingQueue<>();
+    }
+
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, NettyMessage msg) throws Exception {
         try {
             Class<?> msgClazz = msg.getClass();
-            LOG.info("Received response, message type: {}", msgClazz.getName());
+            LOG.info("Received response: {}", msg.toString());
 
-            if (msgClazz == NettyMessage.ErrorResponse.class) {
-                NettyMessage.ErrorResponse response = (NettyMessage.ErrorResponse)msg;
-                LOG.info("Response: {}", response.toString());
+            if (msgClazz == NettyMessage.ReadBatchResponse.class) {
+                NettyMessage.ReadBatchResponse response = (NettyMessage.ReadBatchResponse)msg;
 
-                SocketAddress remoteAddr = ctx.channel().remoteAddress();
-                throw new IOException("Error on remote server: " + remoteAddr, response.getCause());
-
+                handleReadBatchResponse(response);
             } else if (msgClazz == NettyMessage.BooleanResponse.class) {
                 synchronized (boolResponseLock) {
                     needListenersWakeup = true;
@@ -61,6 +74,12 @@ public class ResponseHandler extends SimpleChannelInboundHandler<NettyMessage> {
 
                     boolResponseLock.notifyAll();
                 }
+            } else if (msgClazz == NettyMessage.ErrorResponse.class) {
+                NettyMessage.ErrorResponse response = (NettyMessage.ErrorResponse)msg;
+
+                SocketAddress remoteAddr = ctx.channel().remoteAddress();
+                throw new IOException("Error on remote server: " + remoteAddr, response.getCause());
+
             } else {
                 throw new IllegalStateException("Received unknown message from server: "
                         + ctx.channel().remoteAddress());
@@ -86,4 +105,57 @@ public class ResponseHandler extends SimpleChannelInboundHandler<NettyMessage> {
         needListenersWakeup = false;
         recentBoolResponse = null;
     }
+
+    private void handleReadBatchResponse(NettyMessage.ReadBatchResponse response) {
+        if (closed) {
+            return;
+        }
+
+        synchronized (this) {
+            if (closed) {
+                return;
+            }
+
+            receivedBatches.add(response);
+
+            while (receivedBatches.peek() != null
+                    && receivedBatches.peek().getSequenceId() == sequenceId) {
+                availableBatches.add(receivedBatches.poll());
+                sequenceId++;
+            }
+        }
+
+    }
+
+    public boolean hasNextBatch() {
+        return hasNextBatch;
+    }
+
+    /**
+     * Wait for and return the next batch response from remote server.
+     * @return NettyMessage.ReadBatchResponse
+     */
+    public NettyMessage.ReadBatchResponse nextBatch() throws InterruptedException {
+        NettyMessage.ReadBatchResponse response = availableBatches.take();
+        hasNextBatch = response.hasNextBatch();
+
+        return response;
+    }
+
+    public void close() {
+        synchronized (this) {
+            closed = true;
+
+            for (NettyMessage.ReadBatchResponse response : availableBatches) {
+                response.releaseBuffers();
+            }
+            availableBatches.clear();
+
+            for (NettyMessage.ReadBatchResponse response : receivedBatches) {
+                response.releaseBuffers();
+            }
+            receivedBatches.clear();
+        }
+    }
+
 }

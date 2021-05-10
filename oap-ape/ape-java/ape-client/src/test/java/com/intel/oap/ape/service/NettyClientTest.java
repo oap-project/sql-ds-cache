@@ -18,79 +18,214 @@
 
 package com.intel.oap.ape.service;
 
-import java.net.InetSocketAddress;
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.Arrays;
+import java.util.List;
 
-import com.intel.oap.ape.service.netty.client.NettyClient;
+import com.intel.ape.service.netty.NettyMessage;
+import com.intel.ape.service.params.ParquetReaderInitParams;
 import com.intel.oap.ape.service.netty.client.ParquetDataRequestClient;
 import com.intel.oap.ape.service.netty.client.ParquetDataRequestClientFactory;
-import com.intel.oap.ape.service.netty.server.NettyServer;
 
 import org.junit.Assert;
 import org.junit.Test;
 
-public class NettyClientTest {
+public class NettyClientTest extends NettyClientTestBase {
 
-    static class NettyServerRunner implements Runnable {
-        private NettyServer nettyServer;
-
-        private final String address;
-
-        private final Object lock = new Object();
-        private boolean needWakeUp = false;
-
-        NettyServerRunner(String address) {
-            this.address = address;
-        }
-
-        @Override
-        public void run() {
-            nettyServer = new NettyServer(0, address);
-            try {
-                nettyServer.run();
-            } catch (Exception exception) {
-                exception.printStackTrace();
-                nettyServer.shutdown();
-                nettyServer = null;
-            } finally {
-                synchronized (lock) {
-                    needWakeUp = true;
-                    lock.notify();
-                }
-            }
-        }
-    }
-
-    @Test
-    public void testConnection() throws Exception {
-        // start server
-        String defaultAddress = new InetSocketAddress(0).getAddress().getHostAddress();
-        NettyServerRunner serverRunner = new NettyServerRunner(defaultAddress);
-        Thread serverThread = new Thread(serverRunner);
-        serverThread.start();
-
-        // wait server ready
-        synchronized (serverRunner.lock) {
-            while (!serverRunner.needWakeUp) {
-                serverRunner.lock.wait();
-            }
-        }
-        Assert.assertNotNull(serverRunner.nettyServer);
-
-        int port = serverRunner.nettyServer.getPort();
+    private ParquetDataRequestClient createRequestClient()
+            throws IOException, InterruptedException {
         Assert.assertTrue(port > 0);
 
         // start client connection
         ParquetDataRequestClientFactory factory =
-                new ParquetDataRequestClientFactory(new NettyClient(120));
+                new ParquetDataRequestClientFactory(nettyClient);
         ParquetDataRequestClient requestClient =
                 factory.createParquetDataRequestClient(defaultAddress, port);
         Assert.assertTrue(requestClient.isWritable());
 
+        return requestClient;
+    }
+
+    private ParquetReaderInitParams initParamsForFixedColumns() throws UnknownHostException {
+        String localhost = InetAddress.getLocalHost().getHostAddress();
+        int port = 9001;
+        String path =
+                "/tpch_1g_snappy/lineitem" +
+                "/part-00051-42846104-06f4-4eeb-b92d-1e947eead2d3-c000.snappy.parquet";
+        String jsonSchema =
+                "{\"type\":\"struct\",\"fields\":[{\"name\":\"l_orderkey\"}," +
+                "{\"name\":\"l_linenumber\"}]}";
+        int firstRowGroupIndex = 0;
+        int totalGroupsToRead = 1;
+
+        List<Integer> typeSizes = Arrays.asList(8, 4);
+        List<Boolean> variableLengthFlags = Arrays.asList(false, false);
+        int batchSize = 2048;
+
+        return new ParquetReaderInitParams(
+                path,
+                localhost,
+                port,
+                jsonSchema,
+                firstRowGroupIndex,
+                totalGroupsToRead,
+                typeSizes,
+                variableLengthFlags,
+                batchSize,
+                false,
+                false,
+                false
+        );
+    }
+
+    private ParquetReaderInitParams initParamsForVariableColumns() throws UnknownHostException {
+        String localhost = InetAddress.getLocalHost().getHostAddress();
+        int port = 9001;
+        String path =
+                "/tpch_1g_snappy/lineitem" +
+                        "/part-00051-42846104-06f4-4eeb-b92d-1e947eead2d3-c000.snappy.parquet";
+        String jsonSchema =
+                "{\"type\":\"struct\",\"fields\":[{\"name\":\"l_shipmode\"}," +
+                        "{\"name\":\"l_comment\"}]}";
+        int firstRowGroupIndex = 0;
+        int totalGroupsToRead = 1;
+
+        List<Integer> typeSizes = Arrays.asList(16, 16);
+        List<Boolean> variableLengthFlags = Arrays.asList(true, true);
+        int batchSize = 2048;
+
+        return new ParquetReaderInitParams(
+                path,
+                localhost,
+                port,
+                jsonSchema,
+                firstRowGroupIndex,
+                totalGroupsToRead,
+                typeSizes,
+                variableLengthFlags,
+                batchSize,
+                false,
+                false,
+                false
+        );
+    }
+
+    @Test
+    public void testConnection() throws Exception {
+        ParquetDataRequestClient requestClient = createRequestClient();
+
         // request close
         requestClient.close();
-        Thread.sleep(1000);
+    }
 
-        // shutdown server
-        serverRunner.nettyServer.shutdown();
+    public void testParquetReaderInit() throws IOException, InterruptedException {
+        ParquetDataRequestClient requestClient = createRequestClient();
+
+        // send for initialization of remote parquet reader
+        ParquetReaderInitParams params = initParamsForFixedColumns();
+        requestClient.initRemoteParquetReader(params);
+
+        try {
+            requestClient.waitForReaderInitResult();
+            Assert.assertTrue(requestClient.isReaderInitialized());
+        } finally {
+            requestClient.close();
+        }
+    }
+
+    public void testReadBatch() throws IOException, InterruptedException {
+        ParquetDataRequestClient requestClient = createRequestClient();
+
+        // send for initialization of remote parquet reader
+        ParquetReaderInitParams params = initParamsForFixedColumns();
+        requestClient.initRemoteParquetReader(params);
+
+        try {
+            // the first batch
+            NettyMessage.ReadBatchResponse response = requestClient.nextBatch();
+            Assert.assertEquals(0, response.getSequenceId());
+            Assert.assertEquals(2, response.getColumnCount());
+            Assert.assertEquals(2048, response.getRowCount());
+            Assert.assertTrue(response.hasNextBatch());
+
+            response.releaseBuffers();
+
+            // the second batch
+            response = requestClient.nextBatch();
+            Assert.assertEquals(1, response.getSequenceId());
+
+            response.releaseBuffers();
+        } finally {
+            requestClient.close();
+        }
+    }
+
+    public void testReadBatchWithPreloading() throws IOException, InterruptedException {
+        ParquetDataRequestClient requestClient = createRequestClient();
+
+        // send for initialization of remote parquet reader
+        ParquetReaderInitParams params = initParamsForFixedColumns();
+        requestClient.initRemoteParquetReader(params);
+
+        try {
+            // send for preloading batches
+            requestClient.sendReadBatchRequest(10);
+            Thread.sleep(3000);
+
+            // the first batch
+            NettyMessage.ReadBatchResponse response = requestClient.nextBatch();
+            Assert.assertEquals(0, response.getSequenceId());
+            Assert.assertEquals(2, response.getColumnCount());
+            Assert.assertEquals(2048, response.getRowCount());
+            Assert.assertTrue(response.hasNextBatch());
+
+            response.releaseBuffers();
+
+            // send for preloading batches again
+            requestClient.sendReadBatchRequest(5);
+
+            // the second batch
+            response = requestClient.nextBatch();
+            Assert.assertEquals(1, response.getSequenceId());
+
+            Thread.sleep(100);
+
+            // the third batch
+            response = requestClient.nextBatch();
+            Assert.assertEquals(2, response.getSequenceId());
+
+            response.releaseBuffers();
+        } finally {
+            requestClient.close();
+        }
+    }
+
+    public void testReadBatchOnVariableColumns() throws IOException, InterruptedException {
+        ParquetDataRequestClient requestClient = createRequestClient();
+
+        // send for initialization of remote parquet reader
+        ParquetReaderInitParams params = initParamsForVariableColumns();
+        requestClient.initRemoteParquetReader(params);
+
+        try {
+            // the first batch
+            NettyMessage.ReadBatchResponse response = requestClient.nextBatch();
+            Assert.assertEquals(0, response.getSequenceId());
+            Assert.assertEquals(2, response.getColumnCount());
+            Assert.assertEquals(2048, response.getRowCount());
+            Assert.assertTrue(response.hasNextBatch());
+
+            response.releaseBuffers();
+
+            // the second batch
+            response = requestClient.nextBatch();
+            Assert.assertEquals(1, response.getSequenceId());
+
+            response.releaseBuffers();
+        } finally {
+            requestClient.close();
+        }
     }
 }

@@ -33,6 +33,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * A class to send parquet data request with netty channel.
+ * Data responses are saved in {@link ResponseHandler}.
  *
  */
 public class ParquetDataRequestClient {
@@ -45,6 +47,8 @@ public class ParquetDataRequestClient {
 
     private boolean readerInitRequested = false;
     private boolean readerInitialized = false;
+
+    private int requestedBatchCount = 0;
 
     public boolean isWritable() {
         return tcpChannel != null && tcpChannel.isWritable();
@@ -66,17 +70,26 @@ public class ParquetDataRequestClient {
                 tcpChannel.remoteAddress(), tcpChannel.localAddress());
     }
 
-    public void sendParquetReaderInitRequest(ParquetReaderInitParams params) {
+    public void initRemoteParquetReader(ParquetReaderInitParams params) {
         tcpChannel.writeAndFlush(new NettyMessage.ParquetReaderInitRequest(params))
                 .addListener(throwErrorListener);
 
         readerInitRequested = true;
     }
 
+    /**
+     * Optional request to notify remote server to preload 1 batch of data.
+     * This will wait for finish of reader initialization before sending out request.
+     */
     public void sendReadBatchRequest() throws IOException, InterruptedException {
         sendReadBatchRequest(1);
     }
 
+    /**
+     * Optional request to notify remote server to preload specified batches of data.
+     * This will wait for finish of reader initialization before sending out request.
+     * @param batchCount number of batches that need to be retrieved from remote server.
+     */
     public void sendReadBatchRequest(int batchCount) throws IOException, InterruptedException {
         if (batchCount <= 0) {
             throw new InvalidParameterException("batchCount should be greater than 0.");
@@ -90,8 +103,29 @@ public class ParquetDataRequestClient {
             waitForReaderInitResult();
         }
 
+        requestedBatchCount += batchCount;
+
         tcpChannel.writeAndFlush(new NettyMessage.ReadBatchRequest(batchCount))
                 .addListener(throwErrorListener);
+    }
+
+    /**
+     * Wait and return next batch response from remote server.
+     * This will send `readBatch` request to remote server if needed.
+     * @return NettyMessage.ReadBatchResponse
+     * Note: {@link NettyMessage.ReadBatchResponse#releaseBuffers()} should be called after
+     * it's no longer used.
+     */
+    public NettyMessage.ReadBatchResponse nextBatch() throws InterruptedException, IOException {
+        if (requestedBatchCount == 0) {
+            sendReadBatchRequest();
+        }
+
+        NettyMessage.ReadBatchResponse response = responseHandler.nextBatch();
+
+        requestedBatchCount--;
+
+        return response;
     }
 
     public void skipNextRowGroup() throws IOException, InterruptedException {
@@ -115,7 +149,11 @@ public class ParquetDataRequestClient {
         }
     }
 
-    private void waitForReaderInitResult() throws IOException, InterruptedException {
+    public boolean hasNextBatch() {
+        return responseHandler.hasNextBatch();
+    }
+
+    public void waitForReaderInitResult() throws IOException, InterruptedException {
         boolean initResult = waitForBoolResponse(NettyMessage.ParquetReaderInitRequest.ID);
         if (initResult) {
             readerInitialized = true;
@@ -123,6 +161,10 @@ public class ParquetDataRequestClient {
             throw new IOException(
                     "Failed to initialize parquet reader on server: " + tcpChannel.remoteAddress());
         }
+    }
+
+    public boolean isReaderInitialized() {
+        return readerInitialized;
     }
 
     private boolean waitForBoolResponse(byte messageID) throws IOException, InterruptedException {
@@ -140,6 +182,8 @@ public class ParquetDataRequestClient {
     }
 
     public void close() throws IOException, InterruptedException {
+        responseHandler.close();
+
         tcpChannel.writeAndFlush(new NettyMessage.CloseReaderRequest())
                 .addListener(new ChannelFutureListener() {
                     @Override
