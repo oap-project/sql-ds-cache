@@ -37,6 +37,6 @@ public class RemoteShortVector extends AbstractRemoteVector implements WritableS
 
     @Override
     public short getShort(int i) {
-        return dataBuf.getShort(i * typeSize);
+        return dataBuf.getShortLE(i * typeSize);
     }
 }

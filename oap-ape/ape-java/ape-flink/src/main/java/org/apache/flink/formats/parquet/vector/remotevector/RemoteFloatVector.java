@@ -42,6 +42,6 @@ public class RemoteFloatVector extends AbstractRemoteVector implements WritableF
 
     @Override
     public float getFloat(int i) {
-        return dataBuf.getFloat(i * typeSize);
+        return dataBuf.getFloatLE(i * typeSize);
     }
 }

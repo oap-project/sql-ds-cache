@@ -38,7 +38,7 @@ public class RemoteBytesVector extends AbstractRemoteVector implements WritableB
         int i = 0;
         int cur = 0;
         while (elementLengthBuf.isReadable()) {
-            int size = elementLengthBuf.readInt();
+            int size = elementLengthBuf.readIntLE();
 
             sizes[i] = size;
             offsets[i] = cur;

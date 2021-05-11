@@ -42,6 +42,6 @@ public class RemoteLongVector extends AbstractRemoteVector implements WritableLo
 
     @Override
     public long getLong(int i) {
-        return dataBuf.getLong(i * typeSize);
+        return dataBuf.getLongLE(i * typeSize);
     }
 }

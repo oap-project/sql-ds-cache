@@ -42,6 +42,6 @@ public class RemoteDoubleVector extends AbstractRemoteVector implements Writable
 
     @Override
     public double getDouble(int i) {
-        return dataBuf.getDouble(i * typeSize);
+        return dataBuf.getDoubleLE(i * typeSize);
     }
 }

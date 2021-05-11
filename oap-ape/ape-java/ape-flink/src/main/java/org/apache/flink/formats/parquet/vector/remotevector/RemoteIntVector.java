@@ -52,6 +52,6 @@ public class RemoteIntVector extends AbstractRemoteVector implements WritableInt
 
     @Override
     public int getInt(int i) {
-        return dataBuf.getInt(i * typeSize);
+        return dataBuf.getIntLE(i * typeSize);
     }
 }

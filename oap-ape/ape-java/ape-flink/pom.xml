@@ -219,9 +219,11 @@
                       <include>com.intel.oap:pmem-common</include>
                       <include>com.intel.oap:ape-common</include>
                       <include>com.intel.oap:ape-hcfs</include>
+                      <include>com.intel.oap:ape-client</include>
                       <include>com.fasterxml.jackson.core:jackson-core</include>
                       <include>com.fasterxml.jackson.core:jackson-annotations</include>
                       <include>com.fasterxml.jackson.core:jackson-databind</include>
+                      <include>io.netty:netty-all</include>
                     </includes>
                   </artifactSet>
                   <relocations>
