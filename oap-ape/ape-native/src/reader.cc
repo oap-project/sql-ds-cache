@@ -183,7 +183,9 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
       std::vector<uint8_t> nullVector(1);
       results[i].nullVector = std::make_shared<std::vector<uint8_t>>(nullVector);
     }
-    while (totalRowsRead < totalRows && !checkEndOfRowGroup()) {
+    while (totalRowsRead < totalRows && !checkEndOfRowGroup() &&
+           // TODO: refactor. A quick work around to avoid group num exceed batch size.
+           map.size() < (batchSize / 4)) {
       int rowsToRead = doReadBatch(batchSize, buffersPtr, nullsPtr);
       totalRowsRead += rowsToRead;
       ARROW_LOG(DEBUG) << "total rows read yet: " << totalRowsRead;
