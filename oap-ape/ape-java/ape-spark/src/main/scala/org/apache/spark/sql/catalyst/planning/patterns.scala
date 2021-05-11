@@ -167,6 +167,88 @@ object ScanOperation extends OperationHelper with PredicateHelper {
   }
 }
 
+object AggScanOperation extends OperationHelper with PredicateHelper {
+  // agg group by, agg , filter, project, scan
+  type AggScanReturnType = (Seq[NamedExpression], Seq[AggregateExpression], ReturnType)
+
+  type ScanReturnType = Option[(Option[Seq[NamedExpression]],
+    Seq[Expression], LogicalPlan, AttributeMap[Expression])]
+
+  def unapply(plan: LogicalPlan) : Option[AggScanReturnType] = {
+    plan match {
+      case Aggregate(groupingExpressions, aggregateExpressions, child) =>
+        val (groupExpr: Seq[NamedExpression], resultExpr: Seq[AggregateExpression]) = plan match {
+          case PhysicalAggregation(aggGroupingExpressions, aggExpressions, aggResultExpressions, child) =>
+            (aggGroupingExpressions,
+            aggExpressions.map(expr => expr.asInstanceOf[AggregateExpression]))
+          case _ => None
+        }
+        val tmp = collectProjectsAndFilters(child) match {
+          case Some((fields, filters, child, _)) =>
+            Some((fields.getOrElse(child.output), filters, child))
+          case None => None
+        }
+        Some(groupExpr, resultExpr, tmp.get)
+
+      case _ => None
+    }
+
+  }
+
+  private def hasCommonNonDeterministic(
+      expr: Seq[Expression],
+      aliases: AttributeMap[Expression]): Boolean = {
+    expr.exists(_.collect {
+      case a: AttributeReference if aliases.contains(a) => aliases(a)
+    }.exists(!_.deterministic))
+  }
+
+  private def collectProjectsAndFilters(plan: LogicalPlan): ScanReturnType = {
+    plan match {
+      case Project(fields, child) =>
+        collectProjectsAndFilters(child) match {
+          case Some((_, filters, other, aliases)) =>
+            // Follow CollapseProject and only keep going if the collected Projects
+            // do not have common non-deterministic expressions.
+            if (!hasCommonNonDeterministic(fields, aliases)) {
+              val substitutedFields =
+                fields.map(substitute(aliases)).asInstanceOf[Seq[NamedExpression]]
+              Some((Some(substitutedFields), filters, other, collectAliases(substitutedFields)))
+            } else {
+              None
+            }
+          case None => None
+        }
+
+      case Filter(condition, child) =>
+        collectProjectsAndFilters(child) match {
+          case Some((fields, filters, other, aliases)) =>
+            // Follow CombineFilters and only keep going if 1) the collected Filters
+            // and this filter are all deterministic or 2) if this filter is the first
+            // collected filter and doesn't have common non-deterministic expressions
+            // with lower Project.
+            val substitutedCondition = substitute(aliases)(condition)
+            val canCombineFilters = (filters.nonEmpty && filters.forall(_.deterministic) &&
+              substitutedCondition.deterministic) || filters.isEmpty
+            if (canCombineFilters && !hasCommonNonDeterministic(Seq(condition), aliases)) {
+              Some((fields, filters ++ splitConjunctivePredicates(substitutedCondition),
+                other, aliases))
+            } else {
+              None
+            }
+          case None => None
+        }
+
+      case h: ResolvedHint =>
+        collectProjectsAndFilters(h.child)
+
+      case other =>
+        Some((None, Nil, other, AttributeMap(Seq())))
+    }
+  }
+
+}
+
 /**
  * A pattern that finds joins with equality conditions that can be evaluated using equi-join.
  *
