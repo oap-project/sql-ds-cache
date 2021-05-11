@@ -18,14 +18,14 @@
 
 package org.apache.flink.formats.parquet.utils;
 
+import java.io.IOException;
+
 import org.apache.flink.connector.file.src.FileSourceSplit;
 import org.apache.flink.table.data.vector.writable.WritableColumnVector;
 import org.apache.flink.table.types.logical.RowType;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.schema.MessageType;
-
-import java.io.IOException;
 
 /**
  * Common API of APE reader wrappers.
