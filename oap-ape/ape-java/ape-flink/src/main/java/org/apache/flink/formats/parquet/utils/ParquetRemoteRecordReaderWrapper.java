@@ -32,6 +32,7 @@ import com.intel.oap.ape.service.netty.client.ParquetDataRequestClient;
 import com.intel.oap.fs.hadoop.ape.hcfs.Constants;
 
 import io.netty.buffer.ByteBuf;
+
 import org.apache.flink.connector.file.src.FileSourceSplit;
 import org.apache.flink.core.fs.Path;
 import org.apache.flink.formats.parquet.vector.remotevector.AbstractRemoteVector;
@@ -60,7 +61,7 @@ import static org.apache.parquet.Preconditions.checkArgument;
 /**
  * Wrapper class for parquet data loading from remote servers.
  */
-public class ParquetRemoteRecordReaderWrapper {
+public class ParquetRemoteRecordReaderWrapper implements ParquetRecordReaderWrapper {
 
     private static final Logger LOG =
             LoggerFactory.getLogger(ParquetRemoteRecordReaderWrapper.class);
@@ -84,7 +85,7 @@ public class ParquetRemoteRecordReaderWrapper {
             RowType projectedType,
             FileSourceSplit split,
             FilterPredicate filterPredicate,
-            String aggStr) throws IOException, InterruptedException {
+            String aggStr) throws IOException {
 
         // get required row groups
         ParquetUtils.RequiredRowGroups requiredRowGroups =
@@ -170,11 +171,15 @@ public class ParquetRemoteRecordReaderWrapper {
         }
 
         // create request client
-        parquetRequestHelper = new NettyParquetRequestHelper(hadoopConfig);
-        org.apache.hadoop.fs.Path file = new org.apache.hadoop.fs.Path(split.path().toUri());
-        requestClient = parquetRequestHelper.createRequestClient(
-                file, split.offset(), split.length());
-        requestClient.initRemoteParquetReader(params);
+        try {
+            parquetRequestHelper = new NettyParquetRequestHelper(hadoopConfig);
+            org.apache.hadoop.fs.Path file = new org.apache.hadoop.fs.Path(split.path().toUri());
+            requestClient = parquetRequestHelper.createRequestClient(
+                    file, split.offset(), split.length());
+            requestClient.initRemoteParquetReader(params);
+        } catch (InterruptedException e) {
+            throw new IOException(e);
+        }
 
         LOG.info("remote parquet reader initialized, plasma cache: {},  "
                         + "cache locality: {}, pre buffer: {}",
