@@ -88,9 +88,7 @@ private[sql] object PruneFileSourcePartitions extends Rule[LogicalPlan] {
               case PhysicalAggregation(aggGroupingExpressions, aggExpressions, aggResultExpressions, child) =>
                 val canPD = DataSourceStrategy.canAggExprPushDown(groupingExpressions, resultExpressions)
                 if (PDEnable && canPD) {
-                  fsRelation.groupExpr = Some(aggGroupingExpressions)
-                  fsRelation.resultExpr = Some(aggExpressions
-                    .map(expr => expr.asInstanceOf[AggregateExpression]))
+                  // TODO: could remove.
                 }
               case _ => throw new UnsupportedOperationException("not supported agg type!")
             }

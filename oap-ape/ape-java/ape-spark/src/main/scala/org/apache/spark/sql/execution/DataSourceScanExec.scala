@@ -166,7 +166,8 @@ case class FileSourceScanExec(
     optionalBucketSet: Option[BitSet],
     dataFilters: Seq[Expression],
     override val tableIdentifier: Option[TableIdentifier],
-    outputSchema: StructType)
+    outputSchema: StructType,
+    aggExprs: String = "")
   extends DataSourceScanExec {
 
   // Note that some vals referring the file-based relation are lazy intentionally
@@ -391,13 +392,6 @@ case class FileSourceScanExec(
   lazy val inputRDD: RDD[InternalRow] = {
     val readFile: (PartitionedFile) => Iterator[InternalRow] =
       if (relation.fileFormat.isInstanceOf[ParquetSource]) {
-        val aggExpr = DataSourceStrategy.translateAggregate(
-          relation.groupExpr.getOrElse(Seq[Expression]()),
-          relation.resultExpr.getOrElse(Seq[AggregateExpression]()))
-        // relation will reuse, it will influence result if don't set to None.
-        relation.groupExpr = None
-        relation.resultExpr = None
-
         relation.fileFormat.asInstanceOf[ParquetSource].buildParquetReader(
           sparkSession = relation.sparkSession,
           dataSchema = relation.dataSchema,
@@ -406,7 +400,7 @@ case class FileSourceScanExec(
           filters = pushedDownFilters,
           options = relation.options,
           hadoopConf = relation.sparkSession.sessionState.newHadoopConfWithOptions(relation.options),
-          aggExpr = aggExpr,
+          aggExpr = aggExprs,
           outputSchema = outputSchema)
       } else {
         relation.fileFormat.buildReaderWithPartitionValues(
