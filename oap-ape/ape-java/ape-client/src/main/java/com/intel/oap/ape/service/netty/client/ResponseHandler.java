@@ -61,7 +61,7 @@ public class ResponseHandler extends SimpleChannelInboundHandler<NettyMessage> {
     protected void channelRead0(ChannelHandlerContext ctx, NettyMessage msg) throws Exception {
         try {
             Class<?> msgClazz = msg.getClass();
-            LOG.info("Received response: {}", msg.toString());
+            LOG.debug("Received response: {}", msg.toString());
 
             if (msgClazz == NettyMessage.ReadBatchResponse.class) {
                 NettyMessage.ReadBatchResponse response = (NettyMessage.ReadBatchResponse)msg;
