@@ -61,7 +61,7 @@ public class RequestHandler extends SimpleChannelInboundHandler<NettyMessage> {
     protected void channelRead0(ChannelHandlerContext ctx, NettyMessage msg) throws Exception {
         try {
             Class<?> msgClazz = msg.getClass();
-            LOG.info("Received request: {}", msg.toString());
+            LOG.debug("Received request: {}", msg.toString());
 
             if (msgClazz == NettyMessage.ReadBatchRequest.class) {
                 NettyMessage.ReadBatchRequest request =
@@ -75,7 +75,7 @@ public class RequestHandler extends SimpleChannelInboundHandler<NettyMessage> {
                     ctx.writeAndFlush(response);
                     final long duration = (System.nanoTime() - start) / 1_000;
 
-                    LOG.info("Sending batch response takes: {} us, response: {}",
+                    LOG.debug("Sending batch response takes: {} us, response: {}",
                             duration, response);
 
                     batchCount--;
@@ -90,7 +90,7 @@ public class RequestHandler extends SimpleChannelInboundHandler<NettyMessage> {
                         new NettyMessage.BooleanResponse(
                                 true, NettyMessage.ParquetReaderInitRequest.ID);
                 ctx.writeAndFlush(response);
-                LOG.info("Sent reader init response: {}", response.toString());
+                LOG.debug("Sent reader init response: {}", response.toString());
             } else if (msgClazz == NettyMessage.CloseReaderRequest.class) {
                 handleCloseReader();
 
@@ -246,7 +246,7 @@ public class RequestHandler extends SimpleChannelInboundHandler<NettyMessage> {
         }
 
         final long duration = (System.nanoTime() - start) / 1_000;
-        LOG.info("Composing batch response takes: {} us.", duration);
+        LOG.debug("Composing batch response takes: {} us.", duration);
 
         return new NettyMessage.ReadBatchResponse(
                 sequenceId++,

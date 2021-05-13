@@ -18,15 +18,13 @@
 package org.apache.flink.formats.parquet.utils;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import com.intel.ape.ParquetReaderJNI;
 import com.intel.ape.util.ParquetFilterPredicateConvertor;
 import com.intel.oap.fs.hadoop.ape.hcfs.Constants;
+
 import org.apache.flink.connector.file.src.FileSourceSplit;
 import org.apache.flink.core.fs.Path;
 import org.apache.flink.formats.parquet.vector.nativevector.NativeBooleanVector;
@@ -43,14 +41,7 @@ import org.apache.flink.table.types.logical.DecimalType;
 import org.apache.flink.table.types.logical.LogicalType;
 import org.apache.flink.table.types.logical.RowType;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
-import org.apache.parquet.format.ColumnChunk;
-import org.apache.parquet.format.ColumnMetaData;
-import org.apache.parquet.format.FileMetaData;
-import org.apache.parquet.format.RowGroup;
-import org.apache.parquet.hadoop.util.HadoopInputFile;
-import org.apache.parquet.io.SeekableInputStream;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.PrimitiveType;
@@ -58,21 +49,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static org.apache.parquet.Preconditions.checkArgument;
-import static org.apache.parquet.bytes.BytesUtils.readIntLittleEndian;
-import static org.apache.parquet.format.Util.readFileMetaData;
-import static org.apache.parquet.hadoop.ParquetFileWriter.MAGIC;
 
-public class ParquetNativeRecordReaderWrapper {
+public class ParquetNativeRecordReaderWrapper implements ParquetRecordReaderWrapper {
 
     private static final Logger LOG =
             LoggerFactory.getLogger(ParquetNativeRecordReaderWrapper.class);
 
-    long reader = 0;
+    long reader = 0; // pointer of native reader
+
     int batchSize;
     int rowsRead;
-
-    private int inputSplitRowGroupStartIndex = 0;
-    private int inputSplitRowGroupNum = 0;
 
     private final List<Long> allocatedMemory = new ArrayList<>();
 
@@ -82,12 +68,29 @@ public class ParquetNativeRecordReaderWrapper {
         this.batchSize = capacity;
     }
 
-    public long initialize(Configuration hadoopConfig, RowType projectedType,
-                           FileSourceSplit split)
-            throws IOException {
+    @Override
+    public void initialize(
+            Configuration hadoopConfig,
+            RowType projectedType,
+            FileSourceSplit split,
+            FilterPredicate filterPredicate,
+            String aggStr) throws IOException {
+        initialize(hadoopConfig, projectedType, split);
+        setFilterPredicate(filterPredicate);
+        setAggStr(aggStr);
+    }
 
+    protected void initialize(
+            Configuration hadoopConfig,
+            RowType projectedType,
+            FileSourceSplit split) throws IOException {
+
+        // get required row groups
+        ParquetUtils.RequiredRowGroups requiredRowGroups =
+                ParquetUtils.getRequiredSplitRowGroups(split, hadoopConfig);
+
+        // get file info
         final Path filePath = split.path();
-        getRequiredSplitRowGroup(split, hadoopConfig);
         final String fileName = filePath.toUri().getRawPath();
         // this string is like hdfs://host:port
         final String hdfs = hadoopConfig.get("fs.defaultFS");
@@ -100,21 +103,28 @@ public class ParquetNativeRecordReaderWrapper {
         List<String> fieldTypeList = new ArrayList<String>();
         List<String> projectedFields = projectedType.getFieldNames();
         LogicalType[] projectedTypes = projectedType.getChildren().toArray(new LogicalType[0]);
-        for (int i = 0; i < projectedTypes.length; i++) {
-            fieldTypeList.add(projectedType.getTypeRoot().name());
+        for (LogicalType type : projectedTypes) {
+            fieldTypeList.add(type.getTypeRoot().name());
         }
 
+        // schema
         ConvertToJson message = new ConvertToJson(fieldTypeList, projectedFields);
+
+        // cache configuration
         boolean plasmaCacheEnabled =
                 hadoopConfig.getBoolean("fs.ape.reader.plasmaCacheEnabled", false);
         boolean plasmaCacheAsync =
                 hadoopConfig.getBoolean("fs.ape.reader.plasmaCacheAsync", false);
         boolean preBufferEnabled =
                 hadoopConfig.getBoolean("fs.ape.reader.preBufferEnabled", false);
-        reader = ParquetReaderJNI.init(fileName, hdfsHost, hdfsPort, message.toJson(),
-                inputSplitRowGroupStartIndex, inputSplitRowGroupNum, plasmaCacheEnabled,
-                preBufferEnabled, plasmaCacheAsync);
 
+        // init native reader
+        reader = ParquetReaderJNI.init(
+                fileName, hdfsHost, hdfsPort, message.toJson(),
+                requiredRowGroups.getStartIndex(), requiredRowGroups.getNumber(),
+                plasmaCacheEnabled, preBufferEnabled, plasmaCacheAsync);
+
+        // cache locality
         boolean cacheLocalityEnabled =
                 hadoopConfig.getBoolean("fs.ape.reader.cacheLocalityEnabled", false);
         if (cacheLocalityEnabled) {
@@ -132,103 +142,14 @@ public class ParquetNativeRecordReaderWrapper {
                         + "cache locality: {}, pre buffer: {}",
                 plasmaCacheEnabled, cacheLocalityEnabled, preBufferEnabled);
 
-        return reader;
-
-    }
-
-    public void getRequiredSplitRowGroup(FileSourceSplit split,
-                                         Configuration configuration) throws IOException {
-        long splitStart = split.offset();
-        long splitSize = split.length();
-        InputStream footerBytesStream = getFooterBytesStream(split, configuration);
-        filterFileMetaDataByMidpoint(readFileMetaData(footerBytesStream),
-                splitStart, splitStart + splitSize);
-        footerBytesStream.close();
-    }
-
-    private InputStream getFooterBytesStream(FileSourceSplit split,
-                                             Configuration configuration) throws IOException {
-
-        org.apache.hadoop.fs.Path file = new org.apache.hadoop.fs.Path(split.path().toUri());
-        HadoopInputFile inputFile = HadoopInputFile.fromPath(file, configuration);
-
-        SeekableInputStream f = inputFile.newStream();
-        long fileLen = inputFile.getLength();
-
-        int FOOTER_LENGTH_SIZE = 4;
-        if (fileLen < MAGIC.length + FOOTER_LENGTH_SIZE + MAGIC.length) {
-            // MAGIC + data + footer + footerIndex + MAGIC
-            throw new RuntimeException(file.toString() +
-                    " is not a Parquet file (too small length: " + fileLen + ")");
-        }
-
-        long footerLengthIndex = fileLen - FOOTER_LENGTH_SIZE - MAGIC.length;
-
-        f.seek(footerLengthIndex);
-        int footerLength = readIntLittleEndian(f);
-        byte[] magic = new byte[MAGIC.length];
-        f.readFully(magic);
-        if (!Arrays.equals(MAGIC, magic)) {
-            throw new RuntimeException(file.toString() +
-                    " is not a Parquet file. expected magic number at tail "
-                    + Arrays.toString(MAGIC) + " but found " + Arrays.toString(magic));
-        }
-        long footerIndex = footerLengthIndex - footerLength;
-        LOG.debug("read footer length: {}, footer index: {}", footerLength, footerIndex);
-        if (footerIndex < MAGIC.length || footerIndex >= footerLengthIndex) {
-            throw new RuntimeException("corrupted file: the footer index is not within the file: "
-                    + footerIndex);
-        }
-        f.seek(footerIndex);
-        ByteBuffer footerBytesBuffer = ByteBuffer.allocate(footerLength);
-        f.readFully(footerBytesBuffer);
-        f.close();
-        LOG.debug("Finished to read all footer bytes.");
-        footerBytesBuffer.flip();
-        InputStream footerBytesStream = ByteBufferInputStream.wrap(footerBytesBuffer);
-        return footerBytesStream;
-    }
-
-    private void filterFileMetaDataByMidpoint(FileMetaData metaData,
-                                              long startOffset, long endOffset) {
-        List<RowGroup> rowGroups = metaData.getRow_groups();
-        int inputIndex = 0;
-        Boolean flag = false;
-        for (RowGroup rowGroup : rowGroups) {
-            long totalSize = 0;
-            long startIndex = getOffset(rowGroup.getColumns().get(0));
-            for (ColumnChunk col : rowGroup.getColumns()) {
-                totalSize += col.getMeta_data().getTotal_compressed_size();
-            }
-            long midPoint = startIndex + totalSize / 2;
-
-            if (midPoint >= startOffset && midPoint < endOffset) {
-                if (!flag) {
-                    inputSplitRowGroupStartIndex = inputIndex;
-                    flag = true;
-                }
-                inputSplitRowGroupNum += 1;
-            }
-            inputIndex++;
-        }
-        LOG.info("inputIndex: {}, finputSplitRowGroupNum: {}", inputIndex, inputSplitRowGroupNum);
-    }
-
-    protected long getOffset(ColumnChunk columnChunk) {
-        ColumnMetaData md = columnChunk.getMeta_data();
-        long offset = md.getData_page_offset();
-        if (md.isSetDictionary_page_offset() && offset > md.getDictionary_page_offset()) {
-            offset = md.getDictionary_page_offset();
-        }
-        return offset;
     }
 
     public long getReader() {
         return this.reader;
     }
 
-    public WritableColumnVector[] initBatch(MessageType requestSchema,
-                                            int batchSize, RowType projectedType) {
+    public WritableColumnVector[] initBatch(
+            MessageType requestSchema, int batchSize, RowType projectedType) {
         WritableColumnVector[] columns = new WritableColumnVector[projectedType.getFieldCount()];
 
         for (int i = 0; i < projectedType.getFieldCount(); i++) {
@@ -414,14 +335,14 @@ public class ParquetNativeRecordReaderWrapper {
         return ParquetReaderJNI.skipNextRowGroup(reader);
     }
 
-    public void setFilterPredicate(FilterPredicate filterPredicate) {
+    protected void setFilterPredicate(FilterPredicate filterPredicate) {
         if (filterPredicate != null) {
             String predicateStr = ParquetFilterPredicateConvertor.toJsonString(filterPredicate);
             ParquetReaderJNI.setFilterStr(reader, predicateStr);
         }
     }
 
-    public void setAggStr(String aggStr) {
+    protected void setAggStr(String aggStr) {
         if (aggStr != null && !aggStr.isEmpty()) {
             ParquetReaderJNI.setAggStr(reader, aggStr);
             isAggregatePushedDown = true;

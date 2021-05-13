@@ -213,7 +213,7 @@ public class ParquetReaderInitParams implements Serializable {
         private int redisPort;
         private String redisPassword;
 
-        CacheLocalityStorage(String redisHost, int redisPort, String redisPassword) {
+        public CacheLocalityStorage(String redisHost, int redisPort, String redisPassword) {
             this.redisHost = redisHost;
             this.redisPort = redisPort;
             this.redisPassword = redisPassword;
