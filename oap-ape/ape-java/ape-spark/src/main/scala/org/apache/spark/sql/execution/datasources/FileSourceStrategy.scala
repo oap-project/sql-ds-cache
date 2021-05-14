@@ -239,13 +239,15 @@ object FileSourceStrategy extends Strategy with Logging {
       val partialResultExpressions =
         groupingAttributes ++
           partialAggregateExpressions.flatMap(_.aggregateFunction.inputAggBufferAttributes)
-      val aggregateExpression = DataSourceStrategy.translateAggregate(gExpression, aggExpressions)
+      val aggregateExpression =
+        if (afterScanFilters.isEmpty) DataSourceStrategy.translateAggregate(gExpression, aggExpressions)
+        else ""
       // set null to avoid influence later node/plan.
       fsRelation.groupExpr = None
       fsRelation.resultExpr = None
 
       val outAttributes: Seq[Attribute] =
-        if (!partialResultExpressions.isEmpty) partialResultExpressions
+        if (!partialResultExpressions.isEmpty && afterScanFilters.isEmpty) partialResultExpressions
         else outputAttributes
 
       val schema = outAttributes.toStructType
