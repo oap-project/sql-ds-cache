@@ -28,7 +28,7 @@ import org.apache.spark.sql.catalyst.expressions.aggregate.{AggregateExpression,
 import org.apache.spark.sql.catalyst.planning.{AggScanOperation, ScanOperation}
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import org.apache.spark.sql.execution.{FileSourceScanExec, SparkPlan}
-import org.apache.spark.sql.internal.SQLConf.PARQUET_FILTER_PUSHDOWN_ENABLED
+import org.apache.spark.sql.internal.SQLConf.{APE_AGGREGATION_PUSHDOWN_ENABLED, PARQUET_FILTER_PUSHDOWN_ENABLED}
 import org.apache.spark.util.collection.BitSet
 
 /**
@@ -146,9 +146,11 @@ object FileSourceStrategy extends Strategy with Logging {
       // match Aggregate node when apply FileSourceStrategy, will return a null node,
       // but will keep agg info in fsRelation. Ideally, following filter/ projection
       // will apply FileSourceStrategy very soon.
-      fsRelation.groupExpr = Some(groupingExpr)
-      fsRelation.resultExpr = Some(aggExpr
-        .map(expr => expr.asInstanceOf[AggregateExpression]))
+      if (SparkSession.getActiveSession.get.conf.get(APE_AGGREGATION_PUSHDOWN_ENABLED, false)) {
+        fsRelation.groupExpr = Some(groupingExpr)
+        fsRelation.resultExpr = Some(aggExpr
+          .map(expr => expr.asInstanceOf[AggregateExpression]))
+      }
       Seq()
 
     case ScanOperation(projects, filters,
