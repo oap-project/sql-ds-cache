@@ -1,7 +1,7 @@
-From e7a90eeb44f50fefab1ccc063fd76293ea77c0d4 Mon Sep 17 00:00:00 2001
+From 153ca298832c879faca0734b5b5a39633afa5419 Mon Sep 17 00:00:00 2001
 From: iyupeng <peng.yu@intel.com>
-Date: Wed, 12 May 2021 16:53:25 +0800
-Subject: [PATCH] merge flink changes (#4)
+Date: Fri, 14 May 2021 14:52:53 +0800
+Subject: [PATCH] merge flink changes (#6)
 
 * squashed internal dev changes
 ---
@@ -2020,7 +2020,7 @@ index 0000000000..fe71b120a6
 +}
 diff --git a/flink-formats/flink-parquet/src/main/java/org/apache/flink/formats/parquet/ape/CustomizedParquetVectorizedInputFormat.java b/flink-formats/flink-parquet/src/main/java/org/apache/flink/formats/parquet/ape/CustomizedParquetVectorizedInputFormat.java
 new file mode 100644
-index 0000000000..e601b2a6b5
+index 0000000000..78c739a463
 --- /dev/null
 +++ b/flink-formats/flink-parquet/src/main/java/org/apache/flink/formats/parquet/ape/CustomizedParquetVectorizedInputFormat.java
 @@ -0,0 +1,602 @@
@@ -2211,7 +2211,7 @@ index 0000000000..e601b2a6b5
 +		// native parquet reader is optional
 +		if (useNativeParquetReader) {
 +			String readerMode = hadoopConfig.conf().get(ConfKeys.NATIVE_PARQUET_READER_MODE, "");
-+			if (readerMode.equals(APE_READER_REMOTE_MODE)) {
++			if (!readerMode.equals(APE_READER_REMOTE_MODE)) {
 +				nativeReaderWrapper = new ParquetNativeRecordReaderWrapper(batchSize);
 +			} else {
 +				nativeReaderWrapper = new ParquetRemoteRecordReaderWrapper(batchSize);
