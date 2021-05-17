@@ -73,7 +73,7 @@ public class ParquetRemoteRecordReaderWrapper implements ParquetRecordReaderWrap
 
     private NettyParquetRequestHelper parquetRequestHelper;
     private ParquetDataRequestClient requestClient;
-    private Map<Integer, NettyMessage.ReadBatchResponse> responses;
+    private final Map<Integer, NettyMessage.ReadBatchResponse> responses;
 
     public ParquetRemoteRecordReaderWrapper(int batchSize) {
         this.batchSize = batchSize;
@@ -104,7 +104,7 @@ public class ParquetRemoteRecordReaderWrapper implements ParquetRecordReaderWrap
 
         // get required columns
         List<String> projectedFields = projectedType.getFieldNames();
-        List<String> fieldTypeList = new ArrayList<String>();
+        List<String> fieldTypeList = new ArrayList<>();
         LogicalType[] projectedTypes = projectedType.getChildren().toArray(new LogicalType[0]);
         for (LogicalType type : projectedTypes) {
             fieldTypeList.add(type.getTypeRoot().name());

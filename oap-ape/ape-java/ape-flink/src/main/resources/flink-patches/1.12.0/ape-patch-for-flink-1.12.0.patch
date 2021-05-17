@@ -1,13 +1,13 @@
-From f41cfd67acf947eb3db3a5158f9bd3701706504b Mon Sep 17 00:00:00 2001
+From 153ca298832c879faca0734b5b5a39633afa5419 Mon Sep 17 00:00:00 2001
 From: iyupeng <peng.yu@intel.com>
-Date: Wed, 14 Apr 2021 11:13:03 +0800
-Subject: [PATCH] merge flink changes (#1)
+Date: Fri, 14 May 2021 14:52:53 +0800
+Subject: [PATCH] merge flink changes (#6)
 
 * squashed internal dev changes
 ---
  .../hive/ExpressionToPredicateConverter.java  | 733 ++++++++++++++++++
- .../flink/connectors/hive/HiveOptions.java    |  23 +
- .../connectors/hive/HiveTableSource.java      | 243 +++++-
+ .../flink/connectors/hive/HiveOptions.java    |  38 +
+ .../connectors/hive/HiveTableSource.java      | 267 ++++++-
  .../connectors/hive/PredicateOptimizers.java  | 213 +++++
  .../org/apache/flink/core/fs/FileSystem.java  |   1 +
  .../flink-cached-fs-hadoop/pom.xml            | 188 +++++
@@ -20,22 +20,22 @@ Subject: [PATCH] merge flink changes (#1)
  flink-filesystems/pom.xml                     |   1 +
  flink-formats/flink-parquet/pom.xml           |  16 +
  .../ParquetColumnarRowInputFormat.java        |   3 +-
- .../flink/formats/parquet/ape/ConfKeys.java   |  27 +
- ...ustomizedParquetVectorizedInputFormat.java | 601 ++++++++++++++
- .../SupportsAggregationPushDown.java          |  65 ++
- .../flink/table/utils/ape/AggregateExpr.java  | 133 ++++
- .../utils/ape/AggregateExprBinaryOper.java    |  92 +++
- .../table/utils/ape/AggregateExprColumn.java  |  41 +
- .../table/utils/ape/AggregateExprLiteral.java |  41 +
- .../table/utils/ape/AggregateExprRoot.java    |  60 ++
- .../utils/ape/AggregateExprRootChild.java     |  74 ++
- .../flink/table/utils/ape/AggregateExprs.java |  52 ++
+ .../flink/formats/parquet/ape/ConfKeys.java   |  30 +
+ ...ustomizedParquetVectorizedInputFormat.java | 602 ++++++++++++++
+ .../SupportsAggregationPushDown.java          |  66 ++
+ .../flink/table/utils/ape/AggregateExpr.java  | 140 ++++
+ .../utils/ape/AggregateExprBinaryOper.java    |  96 +++
+ .../table/utils/ape/AggregateExprColumn.java  |  42 +
+ .../table/utils/ape/AggregateExprLiteral.java |  42 +
+ .../table/utils/ape/AggregateExprRoot.java    |  61 ++
+ .../utils/ape/AggregateExprRootChild.java     |  78 ++
+ .../flink/table/utils/ape/AggregateExprs.java |  55 ++
  .../plan/rules/FlinkBatchRuleSets.scala       |   4 +-
  .../physical/batch/BatchExecAggRuleBase.scala |  67 +-
- ...alHashAggCalcIntoTableSourceScanRule.scala | 234 ++++++
- ...hLocalHashAggIntoTableSourceScanRule.scala | 159 ++++
+ ...alHashAggCalcIntoTableSourceScanRule.scala | 233 ++++++
+ ...hLocalHashAggIntoTableSourceScanRule.scala | 160 ++++
  .../table/filesystem/LimitableBulkFormat.java |  10 +-
- 30 files changed, 3331 insertions(+), 13 deletions(-)
+ 30 files changed, 3396 insertions(+), 13 deletions(-)
  create mode 100644 flink-connectors/flink-connector-hive/src/main/java/org/apache/flink/connectors/hive/ExpressionToPredicateConverter.java
  create mode 100644 flink-connectors/flink-connector-hive/src/main/java/org/apache/flink/connectors/hive/PredicateOptimizers.java
  create mode 100644 flink-filesystems/flink-cached-fs-hadoop/pom.xml
@@ -798,10 +798,10 @@ index 0000000000..fab460ad71
 +	}
 +}
 diff --git a/flink-connectors/flink-connector-hive/src/main/java/org/apache/flink/connectors/hive/HiveOptions.java b/flink-connectors/flink-connector-hive/src/main/java/org/apache/flink/connectors/hive/HiveOptions.java
-index 161bdaa494..4145eb9d9f 100644
+index 161bdaa494..86b7a4e5df 100644
 --- a/flink-connectors/flink-connector-hive/src/main/java/org/apache/flink/connectors/hive/HiveOptions.java
 +++ b/flink-connectors/flink-connector-hive/src/main/java/org/apache/flink/connectors/hive/HiveOptions.java
-@@ -52,4 +52,27 @@ public class HiveOptions {
+@@ -52,4 +52,42 @@ public class HiveOptions {
  					.defaultValue(true)
  					.withDescription("If it is false, using flink native writer to write parquet and orc files; " +
  							"If it is true, using hadoop mapred record writer to write parquet and orc files.");
@@ -813,12 +813,27 @@ index 161bdaa494..4145eb9d9f 100644
 +			.withDescription("Option whether parquet input format uses native file reader. " +
 +				"Native source reader may provide higher performance and support pushing down");
 +
++	public static final ConfigOption<String> TABLE_EXEC_HIVE_PARQUET_NATIVE_READER_MODE =
++			key("table.exec.hive.parquet-native-reader.mode")
++					.stringType()
++					.defaultValue("local")
++					.withDescription("Mode of native file reader. Supported modes: local, remote.");
++
 +	public static final ConfigOption<Boolean> TABLE_EXEC_HIVE_PARQUET_PUSH_DOWN_FILTERS =
 +		key("table.exec.hive.parquet-push-down-filters")
 +			.booleanType()
 +			.defaultValue(false)
 +			.withDescription("If it is true, enabling filters pushing down to source reader." +
 +				"To enable pushing down, 'table.exec.hive.parquet-native-reader' is also needed to be set as true.");
++
++	public static final ConfigOption<Boolean> TABLE_EXEC_HIVE_PARQUET_FILTERS_EVADING_JOIN_REORDER =
++			key("table.exec.hive.parquet-filters-evading-join-reorder")
++					.booleanType()
++					.defaultValue(false)
++					.withDescription("If it is true, Flink will not push down filters when " +
++							"OptimizerConfigOptions.TABLE_OPTIMIZER_JOIN_REORDER_ENABLED is true." +
++							"Join-reorder may make worse performance when table scan get lower priority " +
++							"than before in joins after filters are pushed down.");
 +
 +	public static final ConfigOption<Boolean> TABLE_EXEC_HIVE_PARQUET_PUSH_DOWN_AGGREGATIONS =
 +		key("table.exec.hive.parquet-push-down-aggregations")
@@ -830,10 +845,18 @@ index 161bdaa494..4145eb9d9f 100644
 +
  }
 diff --git a/flink-connectors/flink-connector-hive/src/main/java/org/apache/flink/connectors/hive/HiveTableSource.java b/flink-connectors/flink-connector-hive/src/main/java/org/apache/flink/connectors/hive/HiveTableSource.java
-index 6b87c90a7b..1200e48461 100644
+index 6b87c90a7b..93229a47a5 100644
 --- a/flink-connectors/flink-connector-hive/src/main/java/org/apache/flink/connectors/hive/HiveTableSource.java
 +++ b/flink-connectors/flink-connector-hive/src/main/java/org/apache/flink/connectors/hive/HiveTableSource.java
-@@ -41,27 +41,38 @@ import org.apache.flink.table.connector.ChangelogMode;
+@@ -32,6 +32,7 @@ import org.apache.flink.streaming.api.datastream.DataStream;
+ import org.apache.flink.streaming.api.datastream.DataStreamSource;
+ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+ import org.apache.flink.table.api.TableSchema;
++import org.apache.flink.table.api.config.OptimizerConfigOptions;
+ import org.apache.flink.table.catalog.CatalogTable;
+ import org.apache.flink.table.catalog.ObjectPath;
+ import org.apache.flink.table.catalog.hive.client.HiveShim;
+@@ -41,27 +42,38 @@ import org.apache.flink.table.connector.ChangelogMode;
  import org.apache.flink.table.connector.source.DataStreamScanProvider;
  import org.apache.flink.table.connector.source.DynamicTableSource;
  import org.apache.flink.table.connector.source.ScanTableSource;
@@ -872,7 +895,7 @@ index 6b87c90a7b..1200e48461 100644
  import java.util.List;
  import java.util.Map;
  import java.util.Optional;
-@@ -82,7 +93,9 @@ public class HiveTableSource implements
+@@ -82,7 +94,9 @@ public class HiveTableSource implements
  		ScanTableSource,
  		SupportsPartitionPushDown,
  		SupportsProjectionPushDown,
@@ -883,7 +906,7 @@ index 6b87c90a7b..1200e48461 100644
  
  	private static final Logger LOG = LoggerFactory.getLogger(HiveTableSource.class);
  	private static final Duration DEFAULT_SCAN_MONITOR_INTERVAL = Duration.ofMinutes(1L);
-@@ -100,6 +113,16 @@ public class HiveTableSource implements
+@@ -100,6 +114,20 @@ public class HiveTableSource implements
  	protected int[] projectedFields;
  	private Long limit = null;
  
@@ -892,15 +915,19 @@ index 6b87c90a7b..1200e48461 100644
 +	public static final String JOB_CONF_KEY_PREDICATES_HUMAN =
 +		"parquet.private.native.reader.filter.predicate.human.readable";
 +
++	public static final String JOB_CONF_KEY_AGGREGATES =
++		"parquet.private.native.reader.agg.expressions";
++
 +	protected FilterPredicate predicates = null;
 +
 +	protected List<String> aggOutputNames;
 +	protected List<DataType> aggOutputTypes;
++	protected AggregateExprs aggregateExprs;
 +
  	public HiveTableSource(
  			JobConf jobConf, ReadableConfig flinkConf, ObjectPath tablePath, CatalogTable catalogTable) {
  		this.jobConf = Preconditions.checkNotNull(jobConf);
-@@ -109,6 +132,11 @@ public class HiveTableSource implements
+@@ -109,6 +137,11 @@ public class HiveTableSource implements
  		this.hiveVersion = Preconditions.checkNotNull(jobConf.get(HiveCatalogValidator.CATALOG_HIVE_VERSION),
  				"Hive version is not defined");
  		this.hiveShim = HiveShimLoader.loadHiveShim(hiveVersion);
@@ -912,7 +939,7 @@ index 6b87c90a7b..1200e48461 100644
  	}
  
  	@Override
-@@ -130,6 +158,13 @@ public class HiveTableSource implements
+@@ -130,6 +163,19 @@ public class HiveTableSource implements
  	protected DataStream<RowData> getDataStream(StreamExecutionEnvironment execEnv) {
  		validateScanConfigurations();
  		checkAcidTable(catalogTable, tablePath);
@@ -923,10 +950,16 @@ index 6b87c90a7b..1200e48461 100644
 +			LOG.info("Filters are pushed down to parquet reader.");
 +		}
 +
++		// reset aggregates in job conf
++		setAggregateExpr(aggregateExprs);
++		if (aggregateExprs != null) {
++			LOG.info("Aggregates are pushed down to parquet reader.");
++		}
++
  		List<HiveTablePartition> allHivePartitions = getAllPartitions(
  				jobConf,
  				hiveVersion,
-@@ -224,14 +259,19 @@ public class HiveTableSource implements
+@@ -224,14 +270,19 @@ public class HiveTableSource implements
  
  	protected TableSchema getProducedTableSchema() {
  		TableSchema fullSchema = getTableSchema();
@@ -951,7 +984,7 @@ index 6b87c90a7b..1200e48461 100644
  		}
  	}
  
-@@ -281,9 +321,200 @@ public class HiveTableSource implements
+@@ -281,9 +332,213 @@ public class HiveTableSource implements
  		source.remainingPartitions = remainingPartitions;
  		source.projectedFields = projectedFields;
  		source.limit = limit;
@@ -959,6 +992,7 @@ index 6b87c90a7b..1200e48461 100644
 +		source.predicates = predicates;
 +		source.aggOutputNames = aggOutputNames;
 +		source.aggOutputTypes = aggOutputTypes;
++		source.aggregateExprs = aggregateExprs;
  		return source;
  	}
  
@@ -1018,6 +1052,22 @@ index 6b87c90a7b..1200e48461 100644
 +		try {
 +			SerializationUtil.writeObjectToConfAsBase64(JOB_CONF_KEY_PREDICATES,
 +				parquetPredicate, jobConf);
++		} catch (IOException ex) {
++			throw new RuntimeException(ex);
++		}
++	}
++
++	private void setAggregateExpr(AggregateExprs aggregateExprs) {
++		if (aggregateExprs == null) {
++			jobConf.unset(JOB_CONF_KEY_AGGREGATES);
++			return;
++		}
++
++		try {
++			SerializationUtil.writeObjectToConfAsBase64(
++					JOB_CONF_KEY_AGGREGATES,
++					aggregateExprs,
++					jobConf);
 +		} catch (IOException ex) {
 +			throw new RuntimeException(ex);
 +		}
@@ -1102,9 +1152,6 @@ index 6b87c90a7b..1200e48461 100644
 +			return false;
 +		}
 +
-+		aggOutputNames = outputNames;
-+		aggOutputTypes = outputTypes;
-+
 +		// transform data type names in aggregate expressions
 +		try {
 +			aggregateExprs.translateDataTypeName();
@@ -1113,18 +1160,9 @@ index 6b87c90a7b..1200e48461 100644
 +			return false;
 +		}
 +
-+		try {
-+			SerializationUtil.writeObjectToConfAsBase64(
-+				"parquet.private.native.reader.agg.expressions",
-+				aggregateExprs,
-+				jobConf);
-+		} catch (IOException ex) {
-+			throw new RuntimeException(ex);
-+		}
-+
-+		jobConf.setBoolean(
-+			HiveOptions.TABLE_EXEC_HIVE_PARQUET_PUSH_DOWN_AGGREGATIONS.key(),
-+			true);
++		aggOutputNames = outputNames;
++		aggOutputTypes = outputTypes;
++		this.aggregateExprs = aggregateExprs;
 +
 +		return true;
 +	}
@@ -1134,9 +1172,17 @@ index 6b87c90a7b..1200e48461 100644
 +		boolean useMapRedReader = flinkConf.get(HiveOptions.TABLE_EXEC_HIVE_FALLBACK_MAPRED_READER);
 +		boolean useNativeParquetReader = flinkConf.get(HiveOptions.TABLE_EXEC_HIVE_PARQUET_USE_NATIVE_READER);
 +		boolean filterPushingDownEnabled = flinkConf.get(HiveOptions.TABLE_EXEC_HIVE_PARQUET_PUSH_DOWN_FILTERS);
++		// join re-order does not know filters are pushed down.
++		// This may lead to worse efficiency when it moves backward tables with filters pushed down in joins.
++		boolean joinReorderEnabled = flinkConf.get(OptimizerConfigOptions.TABLE_OPTIMIZER_JOIN_REORDER_ENABLED);
++		// configuration that tells Flink whether push down filters or not when join re-order is enabled.
++		boolean evadingJoinReorder = flinkConf.get(HiveOptions.TABLE_EXEC_HIVE_PARQUET_FILTERS_EVADING_JOIN_REORDER);
 +
 +		// check configurations
-+		if (useMapRedReader || !useNativeParquetReader || !filterPushingDownEnabled) {
++		if (useMapRedReader
++				|| !useNativeParquetReader
++				|| !filterPushingDownEnabled
++				|| (joinReorderEnabled && evadingJoinReorder)) {
 +			return false;
 +		}
 +
@@ -1938,10 +1984,10 @@ index 19c25d8a50..752e78268d 100644
  
 diff --git a/flink-formats/flink-parquet/src/main/java/org/apache/flink/formats/parquet/ape/ConfKeys.java b/flink-formats/flink-parquet/src/main/java/org/apache/flink/formats/parquet/ape/ConfKeys.java
 new file mode 100644
-index 0000000000..9f3757a169
+index 0000000000..fe71b120a6
 --- /dev/null
 +++ b/flink-formats/flink-parquet/src/main/java/org/apache/flink/formats/parquet/ape/ConfKeys.java
-@@ -0,0 +1,27 @@
+@@ -0,0 +1,30 @@
 +/*
 + * Licensed to the Apache Software Foundation (ASF) under one
 + * or more contributor license agreements.  See the NOTICE file
@@ -1968,13 +2014,16 @@ index 0000000000..9f3757a169
 +public class ConfKeys {
 +	// use native parquet reader or not.
 +	public static final String USE_NATIVE_PARQUET_READER = "table.exec.hive.parquet-native-reader";
++
++	// mode of native parquet reader.
++	public static final String NATIVE_PARQUET_READER_MODE = "table.exec.hive.parquet-native-reader.mode";
 +}
 diff --git a/flink-formats/flink-parquet/src/main/java/org/apache/flink/formats/parquet/ape/CustomizedParquetVectorizedInputFormat.java b/flink-formats/flink-parquet/src/main/java/org/apache/flink/formats/parquet/ape/CustomizedParquetVectorizedInputFormat.java
 new file mode 100644
-index 0000000000..466137654e
+index 0000000000..78c739a463
 --- /dev/null
 +++ b/flink-formats/flink-parquet/src/main/java/org/apache/flink/formats/parquet/ape/CustomizedParquetVectorizedInputFormat.java
-@@ -0,0 +1,601 @@
+@@ -0,0 +1,602 @@
 +/*
 + * Licensed to the Apache Software Foundation (ASF) under one
 + * or more contributor license agreements.  See the NOTICE file
@@ -2003,6 +2052,8 @@ index 0000000000..466137654e
 +import org.apache.flink.connector.file.src.util.Pool;
 +import org.apache.flink.core.fs.Path;
 +import org.apache.flink.formats.parquet.utils.ParquetNativeRecordReaderWrapper;
++import org.apache.flink.formats.parquet.utils.ParquetRecordReaderWrapper;
++import org.apache.flink.formats.parquet.utils.ParquetRemoteRecordReaderWrapper;
 +import org.apache.flink.formats.parquet.utils.SerializableConfiguration;
 +import org.apache.flink.formats.parquet.vector.ColumnBatchFactory;
 +import org.apache.flink.formats.parquet.vector.ParquetDecimalVector;
@@ -2070,9 +2121,10 @@ index 0000000000..466137654e
 +	private final boolean isCaseSensitive;
 +	private final boolean isUtcTimestamp;
 +
-+	private boolean useNativeParquetReader;
++	private final boolean useNativeParquetReader;
++	private static final String APE_READER_REMOTE_MODE = "remote";
 +	private boolean aggregatePushedDown = false;
-+	private ParquetNativeRecordReaderWrapper nativeReaderWrapper;
++	private ParquetRecordReaderWrapper nativeReaderWrapper;
 +
 +	private static final Logger LOG = LoggerFactory.getLogger(CustomizedParquetVectorizedInputFormat.class);
 +
@@ -2158,18 +2210,16 @@ index 0000000000..466137654e
 +
 +		// native parquet reader is optional
 +		if (useNativeParquetReader) {
-+			nativeReaderWrapper = new ParquetNativeRecordReaderWrapper(batchSize);
-+			nativeReaderWrapper.initialize(hadoopConfig.conf(), projectedType, split);
-+
-+			// push down filters to native reader
-+			if (predicate != null) {
-+				nativeReaderWrapper.setFilterPredicate(predicate);
++			String readerMode = hadoopConfig.conf().get(ConfKeys.NATIVE_PARQUET_READER_MODE, "");
++			if (!readerMode.equals(APE_READER_REMOTE_MODE)) {
++				nativeReaderWrapper = new ParquetNativeRecordReaderWrapper(batchSize);
++			} else {
++				nativeReaderWrapper = new ParquetRemoteRecordReaderWrapper(batchSize);
 +			}
 +
-+			// push down aggregate to native reader
++			nativeReaderWrapper.initialize(hadoopConfig.conf(), projectedType, split, predicate, aggStr);
 +			if (aggStr != null) {
 +				aggregatePushedDown = true;
-+				nativeReaderWrapper.setAggStr(aggStr);
 +			}
 +		}
 +
@@ -2357,7 +2407,7 @@ index 0000000000..466137654e
 +
 +		private final Pool<ParquetReaderBatch<T>> pool;
 +
-+		private ParquetNativeRecordReaderWrapper nativeReaderWrapper;
++		private ParquetRecordReaderWrapper nativeReaderWrapper;
 +
 +		/**
 +		 * The number of rows that have been returned.
@@ -2389,7 +2439,7 @@ index 0000000000..466137654e
 +			MessageType requestedSchema,
 +			long totalRowCount,
 +			Pool<ParquetReaderBatch<T>> pool,
-+			ParquetNativeRecordReaderWrapper nativeReaderWrapper) {
++			ParquetRecordReaderWrapper nativeReaderWrapper) {
 +			this.reader = reader;
 +			this.requestedSchema = requestedSchema;
 +			this.totalRowCount = totalRowCount;
@@ -2578,10 +2628,10 @@ index 0000000000..466137654e
 +}
 diff --git a/flink-table/flink-table-common/src/main/java/org/apache/flink/table/connector/source/abilities/SupportsAggregationPushDown.java b/flink-table/flink-table-common/src/main/java/org/apache/flink/table/connector/source/abilities/SupportsAggregationPushDown.java
 new file mode 100644
-index 0000000000..8a41fa8ff0
+index 0000000000..08a9a26235
 --- /dev/null
 +++ b/flink-table/flink-table-common/src/main/java/org/apache/flink/table/connector/source/abilities/SupportsAggregationPushDown.java
-@@ -0,0 +1,65 @@
+@@ -0,0 +1,66 @@
 +/*
 + * Licensed to the Apache Software Foundation (ASF) under one
 + * or more contributor license agreements.  See the NOTICE file
@@ -2603,8 +2653,6 @@ index 0000000000..8a41fa8ff0
 +package org.apache.flink.table.connector.source.abilities;
 +
 +import org.apache.flink.table.types.DataType;
-+import org.apache.flink.table.utils.ape.AggregateExpr;
-+import org.apache.flink.table.utils.ape.AggregateExprColumn;
 +import org.apache.flink.table.utils.ape.AggregateExprs;
 +
 +import java.util.List;
@@ -2615,6 +2663,7 @@ index 0000000000..8a41fa8ff0
 + * Commonly, filters should be pushed down too so that the data source can get the partial
 + * aggregation result.
 + *
++ * <p>
 + * For example,
 + * 	select sum(d_date_sk) from date_dim where d_year = 2000;
 + * The original plan of above sql in Flink may be:
@@ -2631,13 +2680,15 @@ index 0000000000..8a41fa8ff0
 + * +- Exchange(distribution=[single])
 + *    +- LocalHashAggregate(select=[Partial_SUM(d_date_sk) AS sum$0])
 + *       +- TableSourceScan(table=[[myhive, tpcds_1g_snappy, date_dim, filter=[equals(d_year, 2000)], project=[d_date_sk]]], fields=[d_date_sk])
++ *</p>
 + *
++ * <p>
 + * Moreover, aggregations are pushed down, the optimized plan becomes:
 + * == Optimized Logical Plan ==
 + * HashAggregate(isMerge=[true], select=[Final_SUM(sum$0) AS EXPR$0])
 + * +- Exchange(distribution=[single])
 + *    +- TableSourceScan(table=[[myhive, tpcds_1g_snappy, date_dim, filter=[equals(d_year, 2000)], project=[d_date_sk], aggregation=[sum$0]]], fields=[sum$0])
-+ *
++ *</p>
 + */
 +public interface SupportsAggregationPushDown {
 +
@@ -2649,10 +2700,10 @@ index 0000000000..8a41fa8ff0
 +}
 diff --git a/flink-table/flink-table-common/src/main/java/org/apache/flink/table/utils/ape/AggregateExpr.java b/flink-table/flink-table-common/src/main/java/org/apache/flink/table/utils/ape/AggregateExpr.java
 new file mode 100644
-index 0000000000..12e9b8705c
+index 0000000000..d1cf0e609c
 --- /dev/null
 +++ b/flink-table/flink-table-common/src/main/java/org/apache/flink/table/utils/ape/AggregateExpr.java
-@@ -0,0 +1,133 @@
+@@ -0,0 +1,140 @@
 +/*
 + * Licensed to the Apache Software Foundation (ASF) under one
 + * or more contributor license agreements.  See the NOTICE file
@@ -2670,14 +2721,14 @@ index 0000000000..12e9b8705c
 + * See the License for the specific language governing permissions and
 + * limitations under the License.
 + */
++
 +package org.apache.flink.table.utils.ape;
 +
 +import java.io.Serializable;
 +import java.util.Arrays;
-+import java.util.Map;
 +
 +/**
-+ * Aggregate expression super class
++ * Aggregate expression super class.
 + */
 +public class AggregateExpr implements Serializable {
 +	protected String exprName;
@@ -2761,12 +2812,17 @@ index 0000000000..12e9b8705c
 +	}
 +
 +	public void translateDataTypeName() {
++		dataType = translateDataTypeNameInternal(dataType);
++		checkOverflowType = translateDataTypeNameInternal(checkOverflowType);
++	}
++
++	private String translateDataTypeNameInternal(String dataType) {
 +		if (dataType != null) {
 +			if (Arrays.asList("BooleanType", "IntegerType", "LongType", "FloatType", "DoubleType",
 +					"StringType").contains(dataType)
 +				|| dataType.startsWith("DecimalType")) {
 +				// no need to translate
-+				return;
++				return dataType;
 +			}
 +
 +			if (Arrays.asList("BOOLEAN", "INTEGER", "FLOAT", "DOUBLE")
@@ -2784,14 +2840,16 @@ index 0000000000..12e9b8705c
 +				throw new RuntimeException("Unsupported data type name in AggregateExpr");
 +			}
 +		}
++
++		return dataType;
 +	}
 +}
 diff --git a/flink-table/flink-table-common/src/main/java/org/apache/flink/table/utils/ape/AggregateExprBinaryOper.java b/flink-table/flink-table-common/src/main/java/org/apache/flink/table/utils/ape/AggregateExprBinaryOper.java
 new file mode 100644
-index 0000000000..2ab917efa2
+index 0000000000..2b95384d83
 --- /dev/null
 +++ b/flink-table/flink-table-common/src/main/java/org/apache/flink/table/utils/ape/AggregateExprBinaryOper.java
-@@ -0,0 +1,92 @@
+@@ -0,0 +1,96 @@
 +/*
 + * Licensed to the Apache Software Foundation (ASF) under one
 + * or more contributor license agreements.  See the NOTICE file
@@ -2809,10 +2867,11 @@ index 0000000000..2ab917efa2
 + * See the License for the specific language governing permissions and
 + * limitations under the License.
 + */
++
 +package org.apache.flink.table.utils.ape;
 +
 +/**
-+ * Aggregate expression binary operator
++ * Aggregate expression binary operator.
 + */
 +public class AggregateExprBinaryOper extends AggregateExpr {
 +
@@ -2846,6 +2905,9 @@ index 0000000000..2ab917efa2
 +		this.rightNode = rightNode;
 +	}
 +
++	/**
++	 * Enum for supported binary operations.
++	 */
 +	public enum Type {
 +		ADD("Add"),
 +		SUBTRACT("Subtract"),
@@ -2886,10 +2948,10 @@ index 0000000000..2ab917efa2
 +}
 diff --git a/flink-table/flink-table-common/src/main/java/org/apache/flink/table/utils/ape/AggregateExprColumn.java b/flink-table/flink-table-common/src/main/java/org/apache/flink/table/utils/ape/AggregateExprColumn.java
 new file mode 100644
-index 0000000000..5330e0b407
+index 0000000000..e4b21af4e3
 --- /dev/null
 +++ b/flink-table/flink-table-common/src/main/java/org/apache/flink/table/utils/ape/AggregateExprColumn.java
-@@ -0,0 +1,41 @@
+@@ -0,0 +1,42 @@
 +/*
 + * Licensed to the Apache Software Foundation (ASF) under one
 + * or more contributor license agreements.  See the NOTICE file
@@ -2907,13 +2969,14 @@ index 0000000000..5330e0b407
 + * See the License for the specific language governing permissions and
 + * limitations under the License.
 + */
++
 +package org.apache.flink.table.utils.ape;
 +
 +/**
-+ * Aggregate expression column
++ * Aggregate expression column.
 + */
 +public class AggregateExprColumn extends AggregateExpr {
-+	public final static String DEFAULT_NAME = "AttributeReference";
++	public static final String DEFAULT_NAME = "AttributeReference";
 +
 +	private String columnName;
 +
@@ -2933,10 +2996,10 @@ index 0000000000..5330e0b407
 +}
 diff --git a/flink-table/flink-table-common/src/main/java/org/apache/flink/table/utils/ape/AggregateExprLiteral.java b/flink-table/flink-table-common/src/main/java/org/apache/flink/table/utils/ape/AggregateExprLiteral.java
 new file mode 100644
-index 0000000000..c7c4ab5076
+index 0000000000..f8173fc7d3
 --- /dev/null
 +++ b/flink-table/flink-table-common/src/main/java/org/apache/flink/table/utils/ape/AggregateExprLiteral.java
-@@ -0,0 +1,41 @@
+@@ -0,0 +1,42 @@
 +/*
 + * Licensed to the Apache Software Foundation (ASF) under one
 + * or more contributor license agreements.  See the NOTICE file
@@ -2954,13 +3017,14 @@ index 0000000000..c7c4ab5076
 + * See the License for the specific language governing permissions and
 + * limitations under the License.
 + */
++
 +package org.apache.flink.table.utils.ape;
 +
 +/**
-+ * Aggregate expression literal
++ * Aggregate expression literal.
 + */
 +public class AggregateExprLiteral extends AggregateExpr {
-+	public final static String DEFAULT_NAME = "Literal";
++	public static final String DEFAULT_NAME = "Literal";
 +
 +	private String value;
 +
@@ -2980,10 +3044,10 @@ index 0000000000..c7c4ab5076
 +}
 diff --git a/flink-table/flink-table-common/src/main/java/org/apache/flink/table/utils/ape/AggregateExprRoot.java b/flink-table/flink-table-common/src/main/java/org/apache/flink/table/utils/ape/AggregateExprRoot.java
 new file mode 100644
-index 0000000000..05f80172cb
+index 0000000000..68afab3ae5
 --- /dev/null
 +++ b/flink-table/flink-table-common/src/main/java/org/apache/flink/table/utils/ape/AggregateExprRoot.java
-@@ -0,0 +1,60 @@
+@@ -0,0 +1,61 @@
 +/*
 + * Licensed to the Apache Software Foundation (ASF) under one
 + * or more contributor license agreements.  See the NOTICE file
@@ -3001,13 +3065,14 @@ index 0000000000..05f80172cb
 + * See the License for the specific language governing permissions and
 + * limitations under the License.
 + */
++
 +package org.apache.flink.table.utils.ape;
 +
 +/**
-+ * Aggregate expression root
++ * Aggregate expression root.
 + */
 +public class AggregateExprRoot extends AggregateExpr {
-+	public final static String DEFAULT_NAME = "RootAgg";
++	public static final String DEFAULT_NAME = "RootAgg";
 +
 +	private boolean isDistinct;
 +
@@ -3046,10 +3111,10 @@ index 0000000000..05f80172cb
 +}
 diff --git a/flink-table/flink-table-common/src/main/java/org/apache/flink/table/utils/ape/AggregateExprRootChild.java b/flink-table/flink-table-common/src/main/java/org/apache/flink/table/utils/ape/AggregateExprRootChild.java
 new file mode 100644
-index 0000000000..fb96bdc7e1
+index 0000000000..47427fd5b9
 --- /dev/null
 +++ b/flink-table/flink-table-common/src/main/java/org/apache/flink/table/utils/ape/AggregateExprRootChild.java
-@@ -0,0 +1,74 @@
+@@ -0,0 +1,78 @@
 +/*
 + * Licensed to the Apache Software Foundation (ASF) under one
 + * or more contributor license agreements.  See the NOTICE file
@@ -3067,10 +3132,11 @@ index 0000000000..fb96bdc7e1
 + * See the License for the specific language governing permissions and
 + * limitations under the License.
 + */
++
 +package org.apache.flink.table.utils.ape;
 +
 +/**
-+ * Aggregate expression root child
++ * Aggregate expression root child.
 + */
 +public class AggregateExprRootChild extends AggregateExpr {
 +
@@ -3089,6 +3155,9 @@ index 0000000000..fb96bdc7e1
 +		this.child = child;
 +	}
 +
++	/**
++	 * Enum of supported aggregate operations.
++	 */
 +	public enum Type {
 +		MAX("Max"),
 +		MIN("Min"),
@@ -3126,10 +3195,10 @@ index 0000000000..fb96bdc7e1
 +}
 diff --git a/flink-table/flink-table-common/src/main/java/org/apache/flink/table/utils/ape/AggregateExprs.java b/flink-table/flink-table-common/src/main/java/org/apache/flink/table/utils/ape/AggregateExprs.java
 new file mode 100644
-index 0000000000..38111b2e97
+index 0000000000..39cb664691
 --- /dev/null
 +++ b/flink-table/flink-table-common/src/main/java/org/apache/flink/table/utils/ape/AggregateExprs.java
-@@ -0,0 +1,52 @@
+@@ -0,0 +1,55 @@
 +/*
 + * Licensed to the Apache Software Foundation (ASF) under one
 + * or more contributor license agreements.  See the NOTICE file
@@ -3153,6 +3222,9 @@ index 0000000000..38111b2e97
 +import java.io.Serializable;
 +import java.util.List;
 +
++/**
++ * Class to hold the whole aggregate expressions to be pushed down.
++ */
 +public class AggregateExprs implements Serializable {
 +	private List<AggregateExpr> groupByExprs;
 +	private List<AggregateExpr> aggregateExprs;
@@ -3289,10 +3361,10 @@ index 49747b4525..0e89d279c5 100644
  }
 diff --git a/flink-table/flink-table-planner-blink/src/main/scala/org/apache/flink/table/planner/plan/rules/physical/batch/PushLocalHashAggCalcIntoTableSourceScanRule.scala b/flink-table/flink-table-planner-blink/src/main/scala/org/apache/flink/table/planner/plan/rules/physical/batch/PushLocalHashAggCalcIntoTableSourceScanRule.scala
 new file mode 100644
-index 0000000000..ebeb3d9f6c
+index 0000000000..c6e3ae2df8
 --- /dev/null
 +++ b/flink-table/flink-table-planner-blink/src/main/scala/org/apache/flink/table/planner/plan/rules/physical/batch/PushLocalHashAggCalcIntoTableSourceScanRule.scala
-@@ -0,0 +1,234 @@
+@@ -0,0 +1,233 @@
 +/*
 + * Licensed to the Apache Software Foundation (ASF) under one
 + * or more contributor license agreements.  See the NOTICE file
@@ -3319,15 +3391,11 @@ index 0000000000..ebeb3d9f6c
 +import org.apache.flink.table.connector.source.abilities.SupportsAggregationPushDown
 +import org.apache.flink.table.planner.calcite.FlinkTypeFactory
 +import org.apache.flink.table.planner.plan.nodes.FlinkConventions
-+import org.apache.flink.table.planner.plan.nodes.physical.batch.{BatchExecCalc, BatchExecExchange}
-+import org.apache.flink.table.planner.plan.nodes.physical.batch.BatchExecLocalHashAggregate
-+import org.apache.flink.table.planner.plan.nodes.physical.batch.BatchExecTableSourceScan
++import org.apache.flink.table.planner.plan.nodes.physical.batch.{BatchExecCalc, BatchExecExchange, BatchExecLocalHashAggregate, BatchExecTableSourceScan}
 +import org.apache.flink.table.planner.plan.schema.TableSourceTable
 +import org.apache.flink.table.planner.plan.utils.AggregateUtil
 +import org.apache.flink.table.types.utils.TypeConversions
-+import org.apache.flink.table.utils.ape.{AggregateExpr, AggregateExprBinaryOper}
-+import org.apache.flink.table.utils.ape.{AggregateExprColumn, AggregateExprLiteral}
-+import org.apache.flink.table.utils.ape.AggregateExprs
++import org.apache.flink.table.utils.ape._
 +
 +import scala.collection.JavaConversions._
 +import scala.collection.mutable.ArrayBuffer
@@ -3421,9 +3489,12 @@ index 0000000000..ebeb3d9f6c
 +
 +    // 3. collect grouped columns from calc columns
 +    val groups = new ArrayBuffer[AggregateExpr]
-+    localAgg.getGrouping.foreach(index =>
-+      groups.add(calcOutputColumns.get(index))
-+    )
++    localAgg.getGrouping.foreach(index => {
++      calcOutputColumns.get(index) match {
++        case c: AggregateExprColumn => groups.add(c)
++        case _ => return None
++      }
++    })
 +
 +    // 4. collect output columns of agg functions from input columns
 +    // some functions may produce more than 1 type. eg. sum
@@ -3529,10 +3600,10 @@ index 0000000000..ebeb3d9f6c
 +}
 diff --git a/flink-table/flink-table-planner-blink/src/main/scala/org/apache/flink/table/planner/plan/rules/physical/batch/PushLocalHashAggIntoTableSourceScanRule.scala b/flink-table/flink-table-planner-blink/src/main/scala/org/apache/flink/table/planner/plan/rules/physical/batch/PushLocalHashAggIntoTableSourceScanRule.scala
 new file mode 100644
-index 0000000000..82868ee2fb
+index 0000000000..7cb51ed8b3
 --- /dev/null
 +++ b/flink-table/flink-table-planner-blink/src/main/scala/org/apache/flink/table/planner/plan/rules/physical/batch/PushLocalHashAggIntoTableSourceScanRule.scala
-@@ -0,0 +1,159 @@
+@@ -0,0 +1,160 @@
 +/*
 + * Licensed to the Apache Software Foundation (ASF) under one
 + * or more contributor license agreements.  See the NOTICE file
@@ -3552,14 +3623,12 @@ index 0000000000..82868ee2fb
 + */
 +package org.apache.flink.table.planner.plan.rules.physical.batch
 +
-+import org.apache.calcite.plan.{RelOptRule, RelOptRuleCall}
 +import org.apache.calcite.plan.RelOptRule.{any, operand}
++import org.apache.calcite.plan.{RelOptRule, RelOptRuleCall}
 +import org.apache.flink.table.connector.source.abilities.SupportsAggregationPushDown
 +import org.apache.flink.table.planner.calcite.FlinkTypeFactory
 +import org.apache.flink.table.planner.plan.nodes.FlinkConventions
-+import org.apache.flink.table.planner.plan.nodes.physical.batch.BatchExecExchange
-+import org.apache.flink.table.planner.plan.nodes.physical.batch.BatchExecLocalHashAggregate
-+import org.apache.flink.table.planner.plan.nodes.physical.batch.BatchExecTableSourceScan
++import org.apache.flink.table.planner.plan.nodes.physical.batch.{BatchExecExchange, BatchExecLocalHashAggregate, BatchExecTableSourceScan}
 +import org.apache.flink.table.planner.plan.schema.TableSourceTable
 +import org.apache.flink.table.planner.plan.utils.AggregateUtil
 +import org.apache.flink.table.types.utils.TypeConversions
@@ -3645,9 +3714,12 @@ index 0000000000..82868ee2fb
 +
 +    // 2. collect grouped columns from input columns
 +    val groups = new ArrayBuffer[AggregateExpr]
-+    localAgg.getGrouping.foreach(index =>
-+      groups.add(inputColumns.get(index))
-+    )
++    localAgg.getGrouping.foreach(index => {
++      inputColumns.get(index) match {
++        case c: AggregateExprColumn => groups.add(c)
++        case _ => return None
++      }
++    })
 +
 +    // 3. collect output columns of agg functions from input columns
 +    // some functions may produce more than 1 type. eg. sum

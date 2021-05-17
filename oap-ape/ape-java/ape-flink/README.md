@@ -20,6 +20,7 @@ This module bridges customized Flink and native APE engine.
     - [Enable filters pushing down](#enable-filters-pushing-down)
     - [Enable aggregates pushing down \(experimental\)](#enable-aggregates-pushing-down-experimental)
     - [Enable cache of column chunks in native parquet reader](#enable-cache-of-column-chunks-in-native-parquet-reader)
+    - [APE in disaggregated mode](#ape-in-disaggregated-mode)
 
 <!-- /MarkdownTOC -->
 
@@ -180,7 +181,7 @@ Required Configurations:
 ```
     <property>
         <name>fs.ape.reader.plasmaCacheEnabled</name>
-        <value>false</value>
+        <value>true</value>
     </property>
 ```
 
@@ -219,3 +220,23 @@ Optional configurations for cache locality:
 
 ```
 
+<a id="ape-in-disaggregated-mode"></a>
+### APE in disaggregated mode
+With below configurations, Flink can request data from remote APE servers in separate clusters.
+
+In this mode, `arrow` and `ape-native` are not required on Hadoop Yarn nodes.
+
+***(config in Flink applications)***
+
+```
+tableEnv.getConfig().getConfiguration().setString(HiveOptions.TABLE_EXEC_HIVE_PARQUET_NATIVE_READER_MODE.key(), "remote");
+```
+
+***(config in $HADOOP_HOME/etc/hadoop/hdfs-site.xml on `client-node`)***
+
+```
+    <property>
+        <name>fs.ape.client.remote.servers</name>
+        <value>host1:port1,host2:port2</value>
+    </property>
+```
