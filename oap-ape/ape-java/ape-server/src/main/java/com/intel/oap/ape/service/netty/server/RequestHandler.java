@@ -75,7 +75,7 @@ public class RequestHandler extends SimpleChannelInboundHandler<NettyMessage> {
                     ctx.writeAndFlush(response);
                     final long duration = (System.nanoTime() - start) / 1_000;
 
-                    LOG.debug("Sending batch response takes: {} us, response: {}",
+                    LOG.info("Sending batch response takes: {} us, response: {}",
                             duration, response);
 
                     batchCount--;
@@ -181,6 +181,8 @@ public class RequestHandler extends SimpleChannelInboundHandler<NettyMessage> {
     }
 
     private NettyMessage.ReadBatchResponse handleReadBatchRequest(ChannelHandlerContext ctx) {
+        final long start = System.nanoTime();
+
         // read batch
         int rowCount = ParquetReaderJNI.readBatch(
                 reader, batchSize, nativeDataBuffers, nativeNullBuffers);
@@ -190,8 +192,6 @@ public class RequestHandler extends SimpleChannelInboundHandler<NettyMessage> {
 
         // check next batch
         boolean hasNextBatch = ParquetReaderJNI.hasNext(reader);
-
-        final long start = System.nanoTime();
 
         // header info
         boolean[] compositeFlags = new boolean[columnCount];
@@ -220,6 +220,13 @@ public class RequestHandler extends SimpleChannelInboundHandler<NettyMessage> {
                 int dataBufferLength = 0;
                 ByteBuf compositedDataBuffer = ctx.alloc().ioBuffer(4 * rowCount);
                 for (int j = 0; j < rowCount; j ++) {
+                    // check null
+                    boolean isNull = !(nullBuffers[i].getBoolean(j));
+                    if (isNull) {
+                        compositedElementLengths.writeInt(0);
+                        continue;
+                    }
+
                     // get address and size of real data
                     long elementBaseAddr = nativeDataBuffers[i] + j * 16;
                     int dataSize = Platform.getInt(null, elementBaseAddr);
@@ -246,7 +253,7 @@ public class RequestHandler extends SimpleChannelInboundHandler<NettyMessage> {
         }
 
         final long duration = (System.nanoTime() - start) / 1_000;
-        LOG.debug("Composing batch response takes: {} us.", duration);
+        LOG.info("Composing batch response takes: {} us.", duration);
 
         return new NettyMessage.ReadBatchResponse(
                 sequenceId++,

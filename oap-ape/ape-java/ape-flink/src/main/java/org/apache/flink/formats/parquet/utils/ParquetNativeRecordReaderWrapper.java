@@ -64,6 +64,10 @@ public class ParquetNativeRecordReaderWrapper implements ParquetRecordReaderWrap
 
     private boolean isAggregatePushedDown = false;
 
+    private long lastBatchTime = 0L;
+    private long batchProcessingTime = 0L;
+    private long batchRequestingTime = 0L;
+
     public ParquetNativeRecordReaderWrapper(int capacity) {
         this.batchSize = capacity;
     }
@@ -301,11 +305,19 @@ public class ParquetNativeRecordReaderWrapper implements ParquetRecordReaderWrap
             Platform.freeMemory(addr);
         }
         allocatedMemory.clear();
+
+        LOG.info("Requesting batches takes: {} ms", batchRequestingTime / 1_000_000);
+        LOG.info("Processing batches takes: {} ms", batchProcessingTime / 1_000_000);
     }
 
     public boolean nextBatch(WritableColumnVector[] columns) {
         if (reader == 0) {
             return false;
+        }
+
+        if (lastBatchTime > 0) {
+            final long duration = (System.nanoTime() - lastBatchTime);
+            batchProcessingTime += duration;
         }
 
         long[] bufferPtrs = new long[columns.length];
@@ -322,7 +334,14 @@ public class ParquetNativeRecordReaderWrapper implements ParquetRecordReaderWrap
             index++;
         }
 
+        final long start = System.nanoTime();
+
         rowsRead = ParquetReaderJNI.readBatch(reader, batchSize, bufferPtrs, nullPtrs);
+
+        final long duration = (System.nanoTime() - start);
+        batchRequestingTime += duration;
+
+        lastBatchTime = System.nanoTime();
 
         if (rowsRead < 0) {
             return false;

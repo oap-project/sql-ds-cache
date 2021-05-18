@@ -86,7 +86,7 @@ cd oap-ape/ape-java/
 mvn clean install
 
 cd ape-server
-java -jar target/ape-server-*.jar
+java -cp target/*:$HADOOP_CLASSPATH com.intel.oap.ape.service.netty.server.NettyServer
 ```
 
 <a id="5-configure-ape-servers"></a>
