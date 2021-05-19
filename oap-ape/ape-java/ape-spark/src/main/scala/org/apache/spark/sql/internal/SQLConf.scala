@@ -2613,6 +2613,11 @@ object SQLConf {
       .booleanConf
       .createWithDefault(false)
 
+  val APE_PARQUET_READER_LOCATION: ConfigEntry[String] =
+    buildConf("spark.sql.ape.reader.location")
+      .stringConf
+      .createWithDefault("local")
+
   /**
    * Holds information about keys that have been deprecated.
    *
@@ -2917,6 +2922,7 @@ class SQLConf extends Serializable with Logging {
   def apeRedisPasswd: String = getConf(APE_REDIS_PASSWORD)
   def apeAggPDEnabled: Boolean = getConf(APE_AGGREGATION_PUSHDOWN_ENABLED)
   def apePreBufferEnabled: Boolean = getConf(APE_PRE_BUFFER_ENABLED)
+  def apeParquetReaderLocation: String = getConf(APE_PARQUET_READER_LOCATION)
 
   /**
    * Returns the [[Resolver]] for the current configuration, which can be used to determine if two

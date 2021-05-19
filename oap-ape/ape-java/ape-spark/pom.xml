@@ -43,6 +43,12 @@
       <artifactId>ape-common</artifactId>
       <version>${ape.version}</version>
     </dependency>
+    <dependency>
+      <groupId>com.intel.oap</groupId>
+      <artifactId>ape-client</artifactId>
+      <version>${ape.version}</version>
+      <scope>compile</scope>
+    </dependency>
   </dependencies>
 
   <build>

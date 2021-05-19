@@ -18,56 +18,31 @@
 package org.apache.spark.sql.execution.datasources.parquet;
 
 import java.io.IOException;
-import java.util.List;
 
 import com.intel.ape.ParquetReaderJNI;
 import com.intel.ape.util.ParquetFilterPredicateConvertor;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.InputSplit;
-import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.hadoop.ParquetInputSplit;
-import org.apache.parquet.hadoop.metadata.BlockMetaData;
-import org.apache.parquet.hadoop.metadata.ParquetMetadata;
+import org.apache.spark.sql.execution.vectorized.NativeColumnVector;
+import org.apache.spark.sql.vectorized.ColumnarBatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static org.apache.parquet.hadoop.ParquetFileReader.readFooter;
-
-import org.apache.spark.sql.execution.vectorized.NativeColumnVector;
 import org.apache.spark.sql.types.*;
-import org.apache.spark.sql.vectorized.ColumnarBatch;
 import org.apache.spark.unsafe.Platform;
 
-public class ParquetNativeRecordReaderWrapper extends RecordReader<Void, Object> {
+public class ParquetNativeRecordReaderWrapper extends ParquetRecordReaderWrapper {
   private static final Logger LOG =
           LoggerFactory.getLogger(ParquetNativeRecordReaderWrapper.class);
 
   long reader = 0;
-  int batchSize = 0;
-
-  long[] bufferPtrs;
-  long[] nullPtrs;
-
   long readTime = 0;
 
-  boolean cacheEnabled = false;
-  boolean preBufferEnabled = false;
-
-  private ColumnarBatch columnarBatch;
-
-  private NativeColumnVector[] columnVectors;
-
-  private int inputSplitRowGroupStartIndex = 0;
-  private int inputSplitRowGroupNum = 0;
-
-  StructType sparkSchema;
-
   public ParquetNativeRecordReaderWrapper(int capacity) {
-    this.batchSize = capacity;
+    super(capacity);
   }
 
   @Override
@@ -92,78 +67,20 @@ public class ParquetNativeRecordReaderWrapper extends RecordReader<Void, Object>
             false);
   }
 
-  public void getRequiredSplitRowGroup(ParquetInputSplit split, Configuration configuration)
-          throws IOException {
-    long splitStart = split.getStart();
-    long splitSize = split.getLength();
-    Path file = split.getPath();
-
-    ParquetMetadata footer = readFooter(configuration, file);
-    List<BlockMetaData> blocks = footer.getBlocks();
-
-    Long currentOffset = 0L;
-    Long PARQUET_MAGIC_NUMBER = 4L;
-    currentOffset += PARQUET_MAGIC_NUMBER;
-
-    int rowGroupIndex = 0;
-
-    boolean flag = false;
-    for (BlockMetaData blockMetaData : blocks) {
-      // check mid point rather than start point to avoid data/task skew.
-      if (splitStart <= currentOffset + blockMetaData.getCompressedSize() / 2 &&
-          splitStart + splitSize >= currentOffset + blockMetaData.getCompressedSize() / 2) {
-        if (!flag) {
-          flag = true;
-          inputSplitRowGroupStartIndex = rowGroupIndex;
-        }
-        inputSplitRowGroupNum ++;
-      }
-      rowGroupIndex ++;
-      currentOffset += blockMetaData.getCompressedSize();
-    }
-  }
-
-  public void setCacheEnabled(boolean cacheEnabled) {
-    this.cacheEnabled = cacheEnabled;
-  }
-
-  public void setPreBufferEnabled(boolean preBufferEnabled) {
-    this.preBufferEnabled = preBufferEnabled;
-  }
-
+  @Override
   public void setFilter(FilterPredicate predicate) {
     String predicateStr = ParquetFilterPredicateConvertor.toJsonString(predicate);
     ParquetReaderJNI.setFilterStr(reader, predicateStr);
   }
 
+  @Override
   public void setAgg(String aggExpresion) {
     ParquetReaderJNI.setAggStr(reader, aggExpresion);
   }
 
+  @Override
   public void setPlasmaCacheRedis(String host, int port, String password) {
     ParquetReaderJNI.setPlasmaCacheRedis(reader, host, port, password);
-  }
-
-  @Override
-  public boolean nextKeyValue() throws IOException, InterruptedException {
-    if (columnarBatch == null) initBatch();
-    return nextBatch();
-  }
-
-  @Override
-  public Void getCurrentKey() throws IOException, InterruptedException {
-    return null;
-  }
-
-  @Override
-  public Object getCurrentValue() throws IOException, InterruptedException {
-    return columnarBatch;
-  }
-
-  @Override
-  public float getProgress() throws IOException, InterruptedException {
-    // todo: impl getTotalRows method in JNI layer
-    return 0;
   }
 
   @Override
@@ -188,7 +105,8 @@ public class ParquetNativeRecordReaderWrapper extends RecordReader<Void, Object>
     LOG.info("close reader, spend time: " + readTime + " ns");
   }
 
-  private boolean nextBatch() {
+  @Override
+  public boolean nextBatch() {
     long before = System.nanoTime();
     if (reader == 0) {
       return false;
@@ -209,7 +127,8 @@ public class ParquetNativeRecordReaderWrapper extends RecordReader<Void, Object>
     return true;
   }
 
-  private void initBatch() {
+  @Override
+  void initBatch() {
     // allocate buffers here according schema
     StructField[] fileds = sparkSchema.fields();
     columnVectors = new NativeColumnVector[fileds.length];
@@ -237,7 +156,7 @@ public class ParquetNativeRecordReaderWrapper extends RecordReader<Void, Object>
         // TODO: will add byte and short type. Not sure about Map
         throw new UnsupportedOperationException("Type not support yet");
       }
-      columnVectors[i].set(bufferPtr, nullPtr, batchSize);
+      ((NativeColumnVector)columnVectors[i]).set(bufferPtr, nullPtr, batchSize);
       bufferPtrs[i] = bufferPtr;
       nullPtrs[i] = nullPtr;
     }
