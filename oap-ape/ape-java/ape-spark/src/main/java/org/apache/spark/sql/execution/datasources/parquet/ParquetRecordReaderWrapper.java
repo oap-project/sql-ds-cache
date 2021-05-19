@@ -132,5 +132,5 @@ public abstract class ParquetRecordReaderWrapper extends RecordReader<Void, Obje
     return 0;
   }
 
-  void initBatch() {}
+  abstract void initBatch();
 }

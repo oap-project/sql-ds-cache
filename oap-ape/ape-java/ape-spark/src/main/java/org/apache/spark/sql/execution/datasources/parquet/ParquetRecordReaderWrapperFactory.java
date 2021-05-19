@@ -26,6 +26,6 @@ public class ParquetRecordReaderWrapperFactory {
     } else if (parquetRecordReaderWrapperType == "remote") {
       return new ParquetRemoteRecordReaderWrapper(capacity);
     }
-    return null;
+    throw new UnsupportedOperationException("Please specify Parquet Reader: local or remote.");
   }
 }
