@@ -21,7 +21,7 @@ import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.expressions.aggregate._
 import org.apache.spark.sql.catalyst.plans.logical.{Filter, Project}
 import org.apache.spark.sql.execution.{PlanLater, SparkPlan}
-import org.apache.spark.sql.execution.datasources.{HadoopFsRelation, LogicalRelation}
+import org.apache.spark.sql.execution.datasources.{DataSourceStrategy, HadoopFsRelation, LogicalRelation}
 import org.apache.spark.sql.execution.streaming.{StateStoreRestoreExec, StateStoreSaveExec}
 
 /**
@@ -89,6 +89,14 @@ object AggUtils {
     }
   }
 
+  def splitConjunctivePredicates(condition: Expression): Seq[Expression] = {
+    condition match {
+      case And(cond1, cond2) =>
+        splitConjunctivePredicates(cond1) ++ splitConjunctivePredicates(cond2)
+      case other => other :: Nil
+    }
+  }
+
   def planAggregateWithoutDistinct(
       groupingExpressions: Seq[NamedExpression],
       aggregateExpressions: Seq[AggregateExpression],
@@ -142,17 +150,27 @@ object AggUtils {
                  }
                case filter: Filter =>
                 filter.child match {
-                  case LogicalRelation (fsRelation: HadoopFsRelation, _, _, _) =>
+                  case l@LogicalRelation (fsRelation: HadoopFsRelation, _, _, _) =>
                     if (!fsRelation.resultExpr.isEmpty) {
-                      val agg = createAggregate(
-                        requiredChildDistributionExpressions = Some(groupingAttributes),
-                        groupingExpressions = groupingAttributes,
-                        aggregateExpressions = finalAggregateExpressions,
-                        aggregateAttributes = finalAggregateAttributes,
-                        initialInputBufferOffset = groupingExpressions.length,
-                        resultExpressions = resultExpressions,
-                        child = child)
-                      return agg :: Nil
+                      // judge whether all filter could pushdown here, if not, we will NOT
+                      // do agg push down(don't ignore partial agg)
+                      val filterExpressions = splitConjunctivePredicates(filter.condition)
+                      val normalizedFilter = DataSourceStrategy.normalizeExprs(
+                        filterExpressions.filter((_.deterministic)), l.output)
+                      val pushedFilters =
+                        normalizedFilter.flatMap(DataSourceStrategy.translateFilter(_, true))
+
+                      if(pushedFilters.size == normalizedFilter.size) {
+                        val agg = createAggregate(
+                          requiredChildDistributionExpressions = Some(groupingAttributes),
+                          groupingExpressions = groupingAttributes,
+                          aggregateExpressions = finalAggregateExpressions,
+                          aggregateAttributes = finalAggregateAttributes,
+                          initialInputBufferOffset = groupingExpressions.length,
+                          resultExpressions = resultExpressions,
+                          child = child)
+                        return agg :: Nil
+                      }
                     }
                   case _ => // do nothing, fix queries like tpc-ds q45
                 }
