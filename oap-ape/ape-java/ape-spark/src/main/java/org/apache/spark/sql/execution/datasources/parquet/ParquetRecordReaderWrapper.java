@@ -18,6 +18,9 @@
 
 package org.apache.spark.sql.execution.datasources.parquet;
 
+import java.io.IOException;
+import java.util.List;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.RecordReader;
@@ -25,14 +28,12 @@ import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.hadoop.ParquetInputSplit;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
+
+import static org.apache.parquet.hadoop.ParquetFileReader.readFooter;
+
 import org.apache.spark.sql.types.*;
 import org.apache.spark.sql.vectorized.ColumnVector;
 import org.apache.spark.sql.vectorized.ColumnarBatch;
-
-import java.io.IOException;
-import java.util.List;
-
-import static org.apache.parquet.hadoop.ParquetFileReader.readFooter;
 
 /**
  * Common API of APE reader wrappers.

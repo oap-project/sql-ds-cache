@@ -18,15 +18,16 @@
 
 package org.apache.spark.sql.execution.vectorized;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
+
 import io.netty.buffer.ByteBuf;
+
 import org.apache.spark.sql.types.*;
 import org.apache.spark.sql.vectorized.ColumnVector;
 import org.apache.spark.sql.vectorized.ColumnarArray;
 import org.apache.spark.sql.vectorized.ColumnarMap;
 import org.apache.spark.unsafe.types.UTF8String;
-
-import java.math.BigDecimal;
-import java.math.BigInteger;
 
 public class RemoteColumnVector extends ColumnVector {
 

@@ -25,7 +25,6 @@ import scala.collection.mutable
 import scala.util.{Failure, Try}
 
 import com.intel.ape.ParquetReaderJNI
-
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileStatus, Path}
 import org.apache.hadoop.mapreduce._
@@ -351,7 +350,8 @@ class ParquetFileFormat
         if (ParquetReaderJNI.isNativeEnabled) {
           logInfo("using ape")
           // val reader = new ParquetNativeRecordReaderWrapper(capacity)
-          val reader = ParquetRecordReaderWrapperFactory.getParquetRecordReaderWrapper(apeParquetReaderLocation, capacity);
+          val reader = ParquetRecordReaderWrapperFactory.getParquetRecordReaderWrapper(
+            apeParquetReaderLocation, capacity);
           val iter = new RecordReaderIterator(reader)
           // SPARK-23457 Register a task completion listener before `initialization`.
           taskContext.foreach(_.addTaskCompletionListener[Unit](_ => iter.close()))

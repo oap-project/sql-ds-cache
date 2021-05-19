@@ -18,6 +18,12 @@
 
 package org.apache.spark.sql.execution.datasources.parquet;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import com.intel.ape.service.netty.NettyMessage;
 import com.intel.ape.service.params.ParquetReaderInitParams;
 import com.intel.ape.util.ParquetFilterPredicateConvertor;
@@ -29,17 +35,12 @@ import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.hadoop.ParquetInputSplit;
-import org.apache.spark.sql.execution.vectorized.RemoteColumnVector;
-import org.apache.spark.sql.types.*;
-import org.apache.spark.sql.vectorized.ColumnarBatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import org.apache.spark.sql.execution.vectorized.RemoteColumnVector;
+import org.apache.spark.sql.types.*;
+import org.apache.spark.sql.vectorized.ColumnarBatch;
 
 public class ParquetRemoteRecordReaderWrapper extends ParquetRecordReaderWrapper {
   private static final Logger LOG =
@@ -101,7 +102,8 @@ public class ParquetRemoteRecordReaderWrapper extends ParquetRecordReaderWrapper
     // set cache locality
     ParquetReaderInitParams.CacheLocalityStorage cacheLocalityStorage;
     if (redisEnabled) {
-      cacheLocalityStorage = new ParquetReaderInitParams.CacheLocalityStorage(redisHost, redisPort, redisPassword);
+      cacheLocalityStorage = new ParquetReaderInitParams.CacheLocalityStorage(
+              redisHost, redisPort, redisPassword);
       params.setCacheLocalityStorage(cacheLocalityStorage);
     }
     if (predicateStr != null) {
@@ -138,10 +140,12 @@ public class ParquetRemoteRecordReaderWrapper extends ParquetRecordReaderWrapper
       if (type instanceof BooleanType) {
         typeSizes.add(1);
         variableLengthFlags.add(false);
-      } else if (type instanceof DateType || type instanceof IntegerType || type instanceof FloatType) {
+      } else if (type instanceof DateType || type instanceof IntegerType
+              || type instanceof FloatType) {
         typeSizes.add(4);
         variableLengthFlags.add(false);
-      } else if (type instanceof LongType || type instanceof DoubleType || type instanceof TimestampType) {
+      } else if (type instanceof LongType || type instanceof DoubleType
+              || type instanceof TimestampType) {
         typeSizes.add(8);
         variableLengthFlags.add(false);
       } else if (type instanceof BinaryType || type instanceof StringType) {
