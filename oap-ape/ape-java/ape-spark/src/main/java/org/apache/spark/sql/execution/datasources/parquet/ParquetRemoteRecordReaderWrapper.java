@@ -236,7 +236,15 @@ public class ParquetRemoteRecordReaderWrapper extends ParquetRecordReaderWrapper
     if (trackingId > 0) {
       NettyMessage.ReadBatchResponse response = responses.remove(trackingId);
       response.releaseBuffers();
+      for (int i = 0; i < columnVectors.length; i++) {
+        ByteBuf preElementLengthBuf = ((RemoteColumnVector) columnVectors[i]).getElementLengthBuf();
+        if (preElementLengthBuf != null) {
+          preElementLengthBuf.release();
+          preElementLengthBuf = null;
+        }
+      }
     }
+
     // read next batch
     int rowsRead = 0;
     try {
