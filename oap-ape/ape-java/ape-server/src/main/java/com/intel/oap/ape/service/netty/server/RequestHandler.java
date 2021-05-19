@@ -75,8 +75,12 @@ public class RequestHandler extends SimpleChannelInboundHandler<NettyMessage> {
                     ctx.writeAndFlush(response);
                     final long duration = (System.nanoTime() - start) / 1_000;
 
-                    LOG.info("Sending batch response takes: {} us, response: {}",
+                    LOG.debug("Sending batch response takes: {} us, response: {}",
                             duration, response);
+
+                    if (!response.hasNextBatch()) {
+                        break;
+                    }
 
                     batchCount--;
                 }
@@ -253,7 +257,7 @@ public class RequestHandler extends SimpleChannelInboundHandler<NettyMessage> {
         }
 
         final long duration = (System.nanoTime() - start) / 1_000;
-        LOG.info("Composing batch response takes: {} us.", duration);
+        LOG.debug("Composing batch response takes: {} us.", duration);
 
         return new NettyMessage.ReadBatchResponse(
                 sequenceId++,

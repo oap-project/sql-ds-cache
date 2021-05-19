@@ -387,6 +387,9 @@ public class ParquetRemoteRecordReaderWrapper implements ParquetRecordReaderWrap
             final long start = System.nanoTime();
 
             NettyMessage.ReadBatchResponse response = requestClient.nextBatch();
+            if (response.hasNextBatch()) {
+                requestClient.sendReadBatchRequest();
+            }
 
             final long duration = (System.nanoTime() - start);
             batchRequestingTime += duration;
