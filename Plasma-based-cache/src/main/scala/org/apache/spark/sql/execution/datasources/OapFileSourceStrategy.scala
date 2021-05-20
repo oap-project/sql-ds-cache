@@ -62,8 +62,8 @@ object OapFileSourceStrategy extends Strategy with Logging {
       head match {
         // ProjectExec -> FilterExec -> FileSourceScanExec
         case ProjectExec(projectList, FilterExec(condition,
-          FileSourceScanExec(relation, output, outputSchema, partitionFilters, optionalBucketSet,
-          dataFilters, tableIdentifier))) =>
+          FileSourceScanExec(relation, output, outputSchema, partitionFilters, optionalBucketSet, None,
+          dataFilters, tableIdentifier, false))) =>
 
           var canCache = true
           if(tableEnable) {
@@ -95,7 +95,7 @@ object OapFileSourceStrategy extends Strategy with Logging {
         // ProjectExec -> FileSourceScanExec
         case ProjectExec(projectList,
           FileSourceScanExec(relation, output, outputSchema, partitionFilters, optionalBucketSet,
-          dataFilters, tableIdentifier)) =>
+          None, dataFilters, tableIdentifier, false)) =>
 
           var canCache = true
           if(tableEnable) {
@@ -126,7 +126,7 @@ object OapFileSourceStrategy extends Strategy with Logging {
           }
         // FilterExec -> FileSourceScanExec
         case FilterExec(condition, FileSourceScanExec(relation, output, outputSchema,
-          partitionFilters, optionalBucketSet, dataFilters, tableIdentifier)) =>
+          partitionFilters, optionalBucketSet, None, dataFilters, tableIdentifier, false)) =>
 
           var canCache = true
           if(tableEnable) {
@@ -157,7 +157,7 @@ object OapFileSourceStrategy extends Strategy with Logging {
           }
         // FileSourceScanExec
         case FileSourceScanExec(relation, output, outputSchema, partitionFilters, optionalBucketSet,
-          dataFilters, tableIdentifier) =>
+          None, dataFilters, tableIdentifier, false) =>
 
           var canCache = true
           if(tableEnable) {
