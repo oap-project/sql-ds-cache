@@ -21,7 +21,7 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.parquet.format.CompressionCodec
 import org.scalacheck.{Arbitrary, Gen, Properties}
 import org.scalacheck.Prop.forAllNoShrink
-import org.scalatest.prop.Checkers
+import org.scalatestplus.scalacheck.Checkers
 
 import org.apache.spark.SparkFunSuite
 import org.apache.spark.sql.execution.datasources.oap.adapter.PropertiesAdapter

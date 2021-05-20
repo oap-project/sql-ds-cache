@@ -113,9 +113,6 @@ class OapSparkSqlParser(session: SparkSession, delegate: ParserInterface) extend
 
   override def parseDataType(sqlText: String): DataType = delegate.parseDataType(sqlText)
 
-  /** Similar to `parseDataType`, but without CHAR/VARCHAR replacement. */
-  override def parseRawDataType(sqlText: String): DataType = delegate.parseRawDataType(sqlText)
-
 }
 
 /**
