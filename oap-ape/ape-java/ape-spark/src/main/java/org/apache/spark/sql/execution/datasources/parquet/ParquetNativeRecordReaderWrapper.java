@@ -41,6 +41,9 @@ public class ParquetNativeRecordReaderWrapper extends ParquetRecordReaderWrapper
   long reader = 0;
   long readTime = 0;
 
+  private FilterPredicate filterPredicate;
+  private String aggExpr;
+
   public ParquetNativeRecordReaderWrapper(int capacity) {
     super(capacity);
   }
@@ -65,17 +68,31 @@ public class ParquetNativeRecordReaderWrapper extends ParquetRecordReaderWrapper
     reader = ParquetReaderJNI.init(fileName, hdfsHost, hdfsPort, sparkSchema.json(),
             inputSplitRowGroupStartIndex, inputSplitRowGroupNum, cacheEnabled, preBufferEnabled,
             false);
+    if (filterPredicate != null) {
+      setFilterToNative(filterPredicate);
+    }
+    if (aggExpr != null) {
+      setAggToNative(aggExpr);
+    }
   }
 
-  @Override
-  public void setFilter(FilterPredicate predicate) {
+  private void setFilterToNative(FilterPredicate predicate) {
     String predicateStr = ParquetFilterPredicateConvertor.toJsonString(predicate);
     ParquetReaderJNI.setFilterStr(reader, predicateStr);
   }
 
   @Override
+  public void setFilter(FilterPredicate predicate) {
+    this.filterPredicate = predicate;
+  }
+
+  private void setAggToNative(String aggExpr) {
+    ParquetReaderJNI.setAggStr(reader, aggExpr);
+  }
+
+  @Override
   public void setAgg(String aggExpresion) {
-    ParquetReaderJNI.setAggStr(reader, aggExpresion);
+    this.aggExpr = aggExpresion;
   }
 
   @Override

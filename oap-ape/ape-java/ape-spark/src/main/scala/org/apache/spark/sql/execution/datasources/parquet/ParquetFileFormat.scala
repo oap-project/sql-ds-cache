@@ -282,7 +282,7 @@ class ParquetFileFormat
     } else {
       ("", 0, "")
     }
-    val apeParquetReaderLocation = sqlConf.apeParquetReaderLocation
+    val parquetReaderLocation = sqlConf.apeParquetReaderLocation
 
     (file: PartitionedFile) => {
       assert(file.partitionValues.numFields == partitionSchema.size)
@@ -351,7 +351,7 @@ class ParquetFileFormat
           logInfo("using ape")
           // val reader = new ParquetNativeRecordReaderWrapper(capacity)
           val reader = ParquetRecordReaderWrapperFactory.getParquetRecordReaderWrapper(
-            apeParquetReaderLocation, capacity);
+            parquetReaderLocation, capacity);
           val iter = new RecordReaderIterator(reader)
           // SPARK-23457 Register a task completion listener before `initialization`.
           taskContext.foreach(_.addTaskCompletionListener[Unit](_ => iter.close()))

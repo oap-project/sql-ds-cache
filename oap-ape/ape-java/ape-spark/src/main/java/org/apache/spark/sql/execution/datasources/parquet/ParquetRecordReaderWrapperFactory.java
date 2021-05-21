@@ -21,9 +21,9 @@ package org.apache.spark.sql.execution.datasources.parquet;
 public class ParquetRecordReaderWrapperFactory {
   public static ParquetRecordReaderWrapper getParquetRecordReaderWrapper(
           String parquetRecordReaderWrapperType, int capacity) {
-    if (parquetRecordReaderWrapperType == "local") {
+    if (parquetRecordReaderWrapperType.equals("local")) {
       return new ParquetNativeRecordReaderWrapper(capacity);
-    } else if (parquetRecordReaderWrapperType == "remote") {
+    } else if (parquetRecordReaderWrapperType.equals("remote")) {
       return new ParquetRemoteRecordReaderWrapper(capacity);
     }
     throw new UnsupportedOperationException("Please specify Parquet Reader: local or remote.");
