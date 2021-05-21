@@ -1,13 +1,13 @@
-From 153ca298832c879faca0734b5b5a39633afa5419 Mon Sep 17 00:00:00 2001
+From 95a8215a29060230bdce8fd3c6c20c8dd428d0a3 Mon Sep 17 00:00:00 2001
 From: iyupeng <peng.yu@intel.com>
-Date: Fri, 14 May 2021 14:52:53 +0800
-Subject: [PATCH] merge flink changes (#6)
+Date: Wed, 19 May 2021 10:52:21 +0800
+Subject: [PATCH] merge flink changes (#8)
 
 * squashed internal dev changes
 ---
  .../hive/ExpressionToPredicateConverter.java  | 733 ++++++++++++++++++
  .../flink/connectors/hive/HiveOptions.java    |  38 +
- .../connectors/hive/HiveTableSource.java      | 267 ++++++-
+ .../connectors/hive/HiveTableSource.java      | 272 ++++++-
  .../connectors/hive/PredicateOptimizers.java  | 213 +++++
  .../org/apache/flink/core/fs/FileSystem.java  |   1 +
  .../flink-cached-fs-hadoop/pom.xml            | 188 +++++
@@ -35,7 +35,7 @@ Subject: [PATCH] merge flink changes (#6)
  ...alHashAggCalcIntoTableSourceScanRule.scala | 233 ++++++
  ...hLocalHashAggIntoTableSourceScanRule.scala | 160 ++++
  .../table/filesystem/LimitableBulkFormat.java |  10 +-
- 30 files changed, 3396 insertions(+), 13 deletions(-)
+ 30 files changed, 3401 insertions(+), 13 deletions(-)
  create mode 100644 flink-connectors/flink-connector-hive/src/main/java/org/apache/flink/connectors/hive/ExpressionToPredicateConverter.java
  create mode 100644 flink-connectors/flink-connector-hive/src/main/java/org/apache/flink/connectors/hive/PredicateOptimizers.java
  create mode 100644 flink-filesystems/flink-cached-fs-hadoop/pom.xml
@@ -845,7 +845,7 @@ index 161bdaa494..86b7a4e5df 100644
 +
  }
 diff --git a/flink-connectors/flink-connector-hive/src/main/java/org/apache/flink/connectors/hive/HiveTableSource.java b/flink-connectors/flink-connector-hive/src/main/java/org/apache/flink/connectors/hive/HiveTableSource.java
-index 6b87c90a7b..93229a47a5 100644
+index 6b87c90a7b..f732ad92bb 100644
 --- a/flink-connectors/flink-connector-hive/src/main/java/org/apache/flink/connectors/hive/HiveTableSource.java
 +++ b/flink-connectors/flink-connector-hive/src/main/java/org/apache/flink/connectors/hive/HiveTableSource.java
 @@ -32,6 +32,7 @@ import org.apache.flink.streaming.api.datastream.DataStream;
@@ -927,7 +927,7 @@ index 6b87c90a7b..93229a47a5 100644
  	public HiveTableSource(
  			JobConf jobConf, ReadableConfig flinkConf, ObjectPath tablePath, CatalogTable catalogTable) {
  		this.jobConf = Preconditions.checkNotNull(jobConf);
-@@ -109,6 +137,11 @@ public class HiveTableSource implements
+@@ -109,6 +137,16 @@ public class HiveTableSource implements
  		this.hiveVersion = Preconditions.checkNotNull(jobConf.get(HiveCatalogValidator.CATALOG_HIVE_VERSION),
  				"Hive version is not defined");
  		this.hiveShim = HiveShimLoader.loadHiveShim(hiveVersion);
@@ -936,10 +936,15 @@ index 6b87c90a7b..93229a47a5 100644
 +			HiveOptions.TABLE_EXEC_HIVE_PARQUET_USE_NATIVE_READER.key(),
 +			flinkConf.get(HiveOptions.TABLE_EXEC_HIVE_PARQUET_USE_NATIVE_READER)
 +		);
++
++		jobConf.set(
++				HiveOptions.TABLE_EXEC_HIVE_PARQUET_NATIVE_READER_MODE.key(),
++				flinkConf.get(HiveOptions.TABLE_EXEC_HIVE_PARQUET_NATIVE_READER_MODE)
++		);
  	}
  
  	@Override
-@@ -130,6 +163,19 @@ public class HiveTableSource implements
+@@ -130,6 +168,19 @@ public class HiveTableSource implements
  	protected DataStream<RowData> getDataStream(StreamExecutionEnvironment execEnv) {
  		validateScanConfigurations();
  		checkAcidTable(catalogTable, tablePath);
@@ -959,7 +964,7 @@ index 6b87c90a7b..93229a47a5 100644
  		List<HiveTablePartition> allHivePartitions = getAllPartitions(
  				jobConf,
  				hiveVersion,
-@@ -224,14 +270,19 @@ public class HiveTableSource implements
+@@ -224,14 +275,19 @@ public class HiveTableSource implements
  
  	protected TableSchema getProducedTableSchema() {
  		TableSchema fullSchema = getTableSchema();
@@ -984,7 +989,7 @@ index 6b87c90a7b..93229a47a5 100644
  		}
  	}
  
-@@ -281,9 +332,213 @@ public class HiveTableSource implements
+@@ -281,9 +337,213 @@ public class HiveTableSource implements
  		source.remainingPartitions = remainingPartitions;
  		source.projectedFields = projectedFields;
  		source.limit = limit;
