@@ -150,7 +150,7 @@ private[oap] class SampleBasedStatisticsWriter(schema: StructType, conf: Configu
     }
   }
 
-  def buildSampleArray(keyArray: Array[Product2[Key, Seq[Int]]], isLast: Boolean): Unit = {
+  def buildSampleArray(keyArray: Array[Product2[Key, ArrayBuffer[Int]]], isLast: Boolean): Unit = {
     keyArray.foreach(
       value => {
         value._2.foreach(

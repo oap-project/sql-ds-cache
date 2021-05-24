@@ -265,7 +265,7 @@ private[oap] class PartByValueStatisticsWriter(schema: StructType, conf: Configu
 
   // This should provide the same function to get the metas as buildPartMeta().
   // And this will be used when using the oapExternalSorter data
-  def buildMetas(keyArray: Array[Product2[Key, Seq[Int]]], isLast: Boolean): Unit = {
+  def buildMetas(keyArray: Array[Product2[Key, ArrayBuffer[Int]]], isLast: Boolean): Unit = {
     var kv: Product2[Key, Seq[Int]] = null
     if (keyArray != null && keyArray.size != 0) {
       keyArray.foreach(

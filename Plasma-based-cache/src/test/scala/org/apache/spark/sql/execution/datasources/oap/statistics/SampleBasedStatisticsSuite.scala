@@ -167,7 +167,7 @@ class SampleBasedStatisticsSuite extends StatisticsTest {
     val keys = (1 to 300).map(i => rowGen(i)).toArray
 
     val product2Keys = keys.map(v => (v, Seq(1)))
-      .asInstanceOf[Array[Product2[Key, Seq[Int]]]]
+      .asInstanceOf[Array[Product2[Key, ArrayBuffer[Int]]]]
 
     val testSampleWriter = new TestSampleWriter(schema)
     testSampleWriter.initParams(product2Keys.size)
@@ -192,7 +192,7 @@ class SampleBasedStatisticsSuite extends StatisticsTest {
     val keys = (1 to 300).map(i => rowGen(i)).toArray
 
     val product2Keys = keys.map(v => (v, Seq(1)))
-      .asInstanceOf[Array[Product2[Key, Seq[Int]]]]
+      .asInstanceOf[Array[Product2[Key, ArrayBuffer[Int]]]]
 
     val testSampleWriter = new TestSampleWriter(schema)
     testSampleWriter.initParams(product2Keys.size)
