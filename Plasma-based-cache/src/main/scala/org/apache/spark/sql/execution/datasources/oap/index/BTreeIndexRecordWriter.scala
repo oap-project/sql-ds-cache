@@ -74,14 +74,14 @@ abstract class BTreeIndexRecordWriter(
   @transient private lazy val genericProjector = SafeProjection.create(keySchema)
   @transient protected lazy val nnkw = new NonNullKeyWriter(keySchema)
 
-  private val combiner: Int => Seq[Int] = Seq(_)
-  private val merger: (Seq[Int], Int) => Seq[Int] = _ :+ _
-  private val mergeCombiner: (Seq[Int], Seq[Int]) => Seq[Int] = _ ++ _
+  private val combiner: Int => ArrayBuffer[Int] = ArrayBuffer[Int](_)
+  private val merger: (ArrayBuffer[Int], Int) => ArrayBuffer[Int] = _ += _
+  private val mergeCombiner: (ArrayBuffer[Int], ArrayBuffer[Int]) => ArrayBuffer[Int] = _ ++= _
   private val aggregator =
-    new Aggregator[InternalRow, Int, Seq[Int]](combiner, merger, mergeCombiner)
+    new Aggregator[InternalRow, Int, ArrayBuffer[Int]](combiner, merger, mergeCombiner)
   private val externalSorter = {
     val taskContext = TaskContext.get()
-    val sorter = new OapExternalSorter[InternalRow, Int, Seq[Int]](
+    val sorter = new OapExternalSorter[InternalRow, Int, ArrayBuffer[Int]](
       taskContext, Some(aggregator), Some(ordering))
     taskContext.addTaskCompletionListener[Unit](_ => sorter.stop())
     sorter
@@ -260,7 +260,7 @@ abstract class BTreeIndexRecordWriter(
    * @return BTreeNodeMetaData
    */
   private def serializeNode(
-      uniqueKeys: Array[Product2[InternalRow, Seq[Int]]],
+      uniqueKeys: Array[Product2[InternalRow, ArrayBuffer[Int]]],
       initRowPos: Int,
       rowIdListWriter: IndexFileWriter,
       rowIdListBuffer: ByteArrayOutputStream): BTreeNodeMetaData = {
