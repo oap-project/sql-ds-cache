@@ -147,9 +147,13 @@ object FileSourceStrategy extends Strategy with Logging {
       // but will keep agg info in fsRelation. Ideally, following filter/ projection
       // will apply FileSourceStrategy very soon.
       if (SparkSession.getActiveSession.get.conf.get(APE_AGGREGATION_PUSHDOWN_ENABLED, false)) {
-        fsRelation.groupExpr = Some(groupingExpr)
-        fsRelation.resultExpr = Some(aggExpr
-          .map(expr => expr.asInstanceOf[AggregateExpression]))
+        var withoutDistict = true
+        aggExpr.map(expr => if (expr.isDistinct) withoutDistict = false)
+
+        if (withoutDistict) {
+          fsRelation.groupExpr = Some(groupingExpr)
+          fsRelation.resultExpr = Some(aggExpr)
+        }
       }
       Seq()
 
@@ -241,14 +245,21 @@ object FileSourceStrategy extends Strategy with Logging {
       val partialResultExpressions =
         groupingAttributes ++
           partialAggregateExpressions.flatMap(_.aggregateFunction.inputAggBufferAttributes)
-      val aggregateExpression = DataSourceStrategy.translateAggregate(gExpression, aggExpressions)
+      val aggregateExpression = {
+        if (afterScanFilters.isEmpty) DataSourceStrategy.translateAggregate(gExpression, aggExpressions)
+        else ""
+      }
+      logInfo("agg pd info: " + gExpression.mkString +
+        " " + aggExpressions.mkString)
       // set null to avoid influence later node/plan.
       fsRelation.groupExpr = None
       fsRelation.resultExpr = None
+      val onlyGroup = (aggExpressions.size == 0) && (gExpression.size > 0)
 
       val outAttributes: Seq[Attribute] =
-        if (!partialResultExpressions.isEmpty) partialResultExpressions
-        else outputAttributes
+        if (!onlyGroup && !partialResultExpressions.isEmpty && afterScanFilters.isEmpty) {
+          partialResultExpressions
+        } else outputAttributes
 
       val schema = outAttributes.toStructType
       logInfo(s"Output Data Schema after agg pd: ${schema.simpleString}")

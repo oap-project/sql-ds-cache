@@ -128,10 +128,13 @@ public class AggregateConvertor {
       ((ObjectNode) tmpNode).put("dataType", tmpExpr.dataType().toString());
       ((ObjectNode) tmpNode).put("value", tmpExpr.value().toString());
       return tmpNode;
+    } else if (expr instanceof UnscaledValue) {
+      // TODO: cast to Long?
+      return constructTree(exprs.get(0), tmpNode);
 
     } else {
       //TODO: will include other type?
-      throw new UnsupportedOperationException("should not reach here.");
+      throw new UnsupportedOperationException("should not reach here. Expr: " + expr.toString());
 
     }
 
