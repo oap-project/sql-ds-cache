@@ -89,7 +89,10 @@ class DumpUtils {
           break;
         }
         case ResultType::DoubleType: {
-          // TODO: convert
+          // TODO: this is just for UnscaledValue case, if the data type is Double, this
+          // will not work
+          arrow::Decimal128 tmp(result.data[i]);
+          *((double*)bufferAddr + i) = tmp.ToDouble(0);
           break;
         }
         case ResultType::Decimal64Type: {

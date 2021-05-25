@@ -27,7 +27,9 @@
 
 namespace ape {
 
-Reader::Reader() {}
+Reader::Reader() {
+  arrow::util::ArrowLog::StartArrowLog("", arrow::util::ArrowLogLevel::ARROW_DEBUG);
+}
 
 void Reader::init(std::string fileName, std::string hdfsHost, int hdfsPort,
                   std::string requiredSchema, int firstRowGroup, int rowGroupToRead) {
@@ -193,7 +195,10 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
       int rowsAfterFilter = doFilter(rowsToRead, buffersPtr, nullsPtr);
       ARROW_LOG(DEBUG) << "after filter " << rowsAfterFilter;
 
-      rowsRet = doAggregation(rowsAfterFilter, map, keys, results, buffersPtr, nullsPtr);
+      int tmp = doAggregation(rowsAfterFilter, map, keys, results, buffersPtr, nullsPtr);
+      // if the last batch are empty after filter, it will return 0 regard less of the
+      // group num
+      if (tmp != 0) rowsRet = tmp;
     }
 
     if (aggExprs.size()) {
@@ -370,9 +375,6 @@ int Reader::doAggregation(int batchSize, ApeHashMap& map, std::vector<Key>& keys
           std::dynamic_pointer_cast<RootAggExpression>(agg)->getResult(
               results[i], keys.size(), indexes);
         } else {
-          if (results[i].nullVector->size() == 0) {
-            results[i].nullVector->resize(1);
-          }
           std::dynamic_pointer_cast<RootAggExpression>(agg)->getResult(results[i]);
         }
       } else {
