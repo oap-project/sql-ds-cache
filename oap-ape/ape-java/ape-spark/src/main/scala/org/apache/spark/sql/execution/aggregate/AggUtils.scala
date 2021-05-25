@@ -161,10 +161,6 @@ object AggUtils {
                         normalizedFilter.flatMap(DataSourceStrategy.translateFilter(_, true))
 
                       if(pushedFilters.size == normalizedFilter.size) {
-                        // scalastyle:off println
-                        System.err.println("ignore partial agg here!")
-                        System.err.println("resultExpr: " + fsRelation.resultExpr.mkString)
-                        // scalastyle:on println
                         val agg = createAggregate(
                           requiredChildDistributionExpressions = Some(groupingAttributes),
                           groupingExpressions = groupingAttributes,
