@@ -73,7 +73,11 @@ public class ParquetRemoteRecordReaderWrapper implements ParquetRecordReaderWrap
 
     private NettyParquetRequestHelper parquetRequestHelper;
     private ParquetDataRequestClient requestClient;
-    private Map<Integer, NettyMessage.ReadBatchResponse> responses;
+    private final Map<Integer, NettyMessage.ReadBatchResponse> responses;
+
+    private long lastBatchTime = 0L;
+    private long batchProcessingTime = 0L;
+    private long batchRequestingTime = 0L;
 
     public ParquetRemoteRecordReaderWrapper(int batchSize) {
         this.batchSize = batchSize;
@@ -104,7 +108,7 @@ public class ParquetRemoteRecordReaderWrapper implements ParquetRecordReaderWrap
 
         // get required columns
         List<String> projectedFields = projectedType.getFieldNames();
-        List<String> fieldTypeList = new ArrayList<String>();
+        List<String> fieldTypeList = new ArrayList<>();
         LogicalType[] projectedTypes = projectedType.getChildren().toArray(new LogicalType[0]);
         for (LogicalType type : projectedTypes) {
             fieldTypeList.add(type.getTypeRoot().name());
@@ -177,6 +181,7 @@ public class ParquetRemoteRecordReaderWrapper implements ParquetRecordReaderWrap
             requestClient = parquetRequestHelper.createRequestClient(
                     file, split.offset(), split.length());
             requestClient.initRemoteParquetReader(params);
+            requestClient.sendReadBatchRequest(3);
         } catch (InterruptedException e) {
             throw new IOException(e);
         }
@@ -365,6 +370,11 @@ public class ParquetRemoteRecordReaderWrapper implements ParquetRecordReaderWrap
             return false;
         }
 
+        if (lastBatchTime > 0) {
+            final long duration = (System.nanoTime() - lastBatchTime);
+            batchProcessingTime += duration;
+        }
+
         // release buffers in used response
         int trackingId = ((AbstractRemoteVector) columns[0]).getTrackingId();
         if (trackingId > 0) {
@@ -374,7 +384,16 @@ public class ParquetRemoteRecordReaderWrapper implements ParquetRecordReaderWrap
 
         // read next batch
         try {
+            final long start = System.nanoTime();
+
             NettyMessage.ReadBatchResponse response = requestClient.nextBatch();
+            if (response.hasNextBatch()) {
+                requestClient.sendReadBatchRequest();
+            }
+
+            final long duration = (System.nanoTime() - start);
+            batchRequestingTime += duration;
+
             int batchSequenceId = response.getSequenceId();
             responses.put(batchSequenceId, response);
             rowsRead = response.getRowCount();
@@ -405,6 +424,8 @@ public class ParquetRemoteRecordReaderWrapper implements ParquetRecordReaderWrap
                             "Invalid invoke of nextBatch on non-remote vectors.");
                 }
             }
+
+            lastBatchTime = System.nanoTime();
 
             return rowsRead > 0 || response.hasNextBatch();
         } catch (Exception ex) {
@@ -442,6 +463,9 @@ public class ParquetRemoteRecordReaderWrapper implements ParquetRecordReaderWrap
             response.releaseBuffers();
         }
         responses.clear();
+
+        LOG.info("Requesting batches takes: {} ms", batchRequestingTime / 1_000_000);
+        LOG.info("Processing batches takes: {} ms", batchProcessingTime / 1_000_000);
 
     }
 }

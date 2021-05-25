@@ -147,6 +147,7 @@ object FileSourceStrategy extends Strategy with Logging {
       // but will keep agg info in fsRelation. Ideally, following filter/ projection
       // will apply FileSourceStrategy very soon.
       if (SparkSession.getActiveSession.get.conf.get(APE_AGGREGATION_PUSHDOWN_ENABLED, false)) {
+
         var withoutDistict = true
         aggExpr.map(expr => if (expr.isDistinct) withoutDistict = false)
 
@@ -154,6 +155,7 @@ object FileSourceStrategy extends Strategy with Logging {
           fsRelation.groupExpr = Some(groupingExpr)
           fsRelation.resultExpr = Some(aggExpr)
         }
+
       }
       Seq()
 
@@ -245,12 +247,14 @@ object FileSourceStrategy extends Strategy with Logging {
       val partialResultExpressions =
         groupingAttributes ++
           partialAggregateExpressions.flatMap(_.aggregateFunction.inputAggBufferAttributes)
+
       val aggregateExpression = {
         if (afterScanFilters.isEmpty) DataSourceStrategy.translateAggregate(gExpression, aggExpressions)
         else ""
       }
       logInfo("agg pd info: " + gExpression.mkString +
         " " + aggExpressions.mkString)
+
       // set null to avoid influence later node/plan.
       fsRelation.groupExpr = None
       fsRelation.resultExpr = None

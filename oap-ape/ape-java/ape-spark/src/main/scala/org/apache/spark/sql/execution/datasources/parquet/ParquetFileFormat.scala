@@ -29,7 +29,6 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileStatus, Path}
 import org.apache.hadoop.mapreduce._
 import org.apache.hadoop.mapreduce.task.TaskAttemptContextImpl
-import org.apache.parquet.filter2.compat.FilterCompat
 import org.apache.parquet.filter2.predicate.FilterApi
 import org.apache.parquet.format.converter.ParquetMetadataConverter.SKIP_ROW_GROUPS
 import org.apache.parquet.hadoop._
@@ -42,12 +41,10 @@ import org.apache.spark.{SparkException, TaskContext}
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql._
 import org.apache.spark.sql.catalyst.InternalRow
-import org.apache.spark.sql.catalyst.expressions._
-import org.apache.spark.sql.catalyst.expressions.codegen.GenerateUnsafeProjection
 import org.apache.spark.sql.catalyst.parser.LegacyTypeStringParser
 import org.apache.spark.sql.catalyst.util.DateTimeUtils
 import org.apache.spark.sql.execution.datasources._
-import org.apache.spark.sql.execution.vectorized.{NativeColumnVector, OffHeapColumnVector, OnHeapColumnVector}
+import org.apache.spark.sql.execution.vectorized.{NativeColumnVector, OffHeapColumnVector, OnHeapColumnVector, RemoteColumnVector}
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types._
@@ -179,8 +176,13 @@ class ParquetFileFormat
       partitionSchema: StructType,
       sqlConf: SQLConf): Option[Seq[String]] = {
     Option(Seq.fill(requiredSchema.fields.length + partitionSchema.fields.length)(
-      if (ParquetReaderJNI.isNativeEnabled) {
+      // TODO: need to replace this
+      if (ParquetReaderJNI.isNativeEnabled
+        && sqlConf.getConf(SQLConf.APE_PARQUET_READER_LOCATION) == "local") {
         classOf[NativeColumnVector].getName
+      } else if (ParquetReaderJNI.isNativeEnabled
+        && sqlConf.getConf(SQLConf.APE_PARQUET_READER_LOCATION) == "remote") {
+        classOf[RemoteColumnVector].getName
       } else {
         if (!sqlConf.offHeapColumnVectorEnabled) {
           classOf[OnHeapColumnVector].getName
@@ -280,6 +282,7 @@ class ParquetFileFormat
     } else {
       ("", 0, "")
     }
+    val parquetReaderLocation = sqlConf.apeParquetReaderLocation
 
     (file: PartitionedFile) => {
       assert(file.partitionValues.numFields == partitionSchema.size)
@@ -343,20 +346,26 @@ class ParquetFileFormat
       }
       val taskContext = Option(TaskContext.get())
       if (enableVectorizedReader) {
+        // TODO: need to replace?
         if (ParquetReaderJNI.isNativeEnabled) {
           logInfo("using ape")
-          val reader = new ParquetNativeRecordReaderWrapper(capacity)
+          // val reader = new ParquetNativeRecordReaderWrapper(capacity)
+          val reader = ParquetRecordReaderWrapperFactory.getParquetRecordReaderWrapper(
+            parquetReaderLocation, capacity);
           val iter = new RecordReaderIterator(reader)
           // SPARK-23457 Register a task completion listener before `initialization`.
           taskContext.foreach(_.addTaskCompletionListener[Unit](_ => iter.close()))
+          // set parameters of reader first before initialization
           reader.setCacheEnabled(cacheEnabled)
           reader.setPreBufferEnabled(preBufferEnabled)
-          reader.initialize(split, hadoopAttemptContext)
+          reader.setRedisEnabled(redisEnabled)
           if(cacheEnabled && redisEnabled) {
             reader.setPlasmaCacheRedis(redisHost, redisPort, redisPasswd)
           }
           if (enableParquetFilterPushDown && pushed.isDefined) reader.setFilter(pushed.get)
           if (aggPdEnabled) reader.setAgg(aggExpr)
+          reader.initialize(split, hadoopAttemptContext)
+
           // UnsafeRowParquetRecordReader appends the columns internally to avoid another copy.
           iter.asInstanceOf[Iterator[InternalRow]]
         } else {
