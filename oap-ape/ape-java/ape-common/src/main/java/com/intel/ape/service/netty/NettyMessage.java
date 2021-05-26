@@ -66,7 +66,7 @@ public abstract class NettyMessage {
     static final int MESSAGE_ID_ERROR_RESPONSE = 5;
     static final int MESSAGE_ID_BOOLEAN_RESPONSE = 6;
     static final int MESSAGE_ID_READ_BATCH_RESPONSE = 7;
-    static final int MESSAGE_ID_BATCH_RECEIPT = 8;
+    static final int MESSAGE_ID_BATCH_RESPONSE_RECEIPT = 8;
 
     abstract void write(ChannelOutboundInvoker out, ChannelPromise promise,
                         ByteBufAllocator allocator) throws IOException;
@@ -703,7 +703,7 @@ public abstract class NettyMessage {
     }
 
     public static class BatchResponseReceipt extends NettyMessage {
-        public static final byte ID = MESSAGE_ID_BATCH_RECEIPT;
+        public static final byte ID = MESSAGE_ID_BATCH_RESPONSE_RECEIPT;
 
         @Override
         void write(ChannelOutboundInvoker out, ChannelPromise promise, ByteBufAllocator allocator)
