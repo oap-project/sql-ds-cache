@@ -28,6 +28,8 @@ import com.intel.ape.util.Platform;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 
@@ -51,6 +53,10 @@ public class RequestHandler extends SimpleChannelInboundHandler<NettyMessage> {
     private long[] nativeDataBuffers;
     private long[] nativeNullBuffers;
 
+    private boolean hasNextBatch = true;
+    private int pendingBatchCount = 0;
+    private boolean waitingReceipt = false;
+
     @Override
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
         LOG.info("Received connection from: {}", ctx.channel().remoteAddress());
@@ -68,22 +74,18 @@ public class RequestHandler extends SimpleChannelInboundHandler<NettyMessage> {
                         (NettyMessage.ReadBatchRequest)msg;
 
                 int batchCount = request.getBatchCount();
-                while (batchCount > 0) {
-                    NettyMessage.ReadBatchResponse response = handleReadBatchRequest(ctx);
+                if (batchCount > 0) {
+                    pendingBatchCount += batchCount;
 
-                    final long start = System.nanoTime();
-                    ctx.writeAndFlush(response);
-                    final long duration = (System.nanoTime() - start) / 1_000;
-
-                    LOG.debug("Sending batch response takes: {} us, response: {}",
-                            duration, response);
-
-                    if (!response.hasNextBatch()) {
-                        break;
+                    // start `sendNextBatch` when all before pending batches were sent.
+                    // otherwise, previous call of `sendNextBatch` will handle all pending batches.
+                    if (!waitingReceipt) {
+                        sendNextBatch(ctx.channel());
                     }
-
-                    batchCount--;
                 }
+            } else if (msgClazz == NettyMessage.BatchResponseReceipt.class) {
+                waitingReceipt = false;
+                sendNextBatch(ctx.channel());
             } else if (msgClazz == NettyMessage.ParquetReaderInitRequest.class) {
                 NettyMessage.ParquetReaderInitRequest request =
                         (NettyMessage.ParquetReaderInitRequest)msg;
@@ -120,7 +122,16 @@ public class RequestHandler extends SimpleChannelInboundHandler<NettyMessage> {
     }
 
     private void respondWithError(ChannelHandlerContext ctx, Throwable error) {
-        ctx.writeAndFlush(new NettyMessage.ErrorResponse(error));
+        handleException(ctx.channel(), error);
+    }
+
+    private void handleException(Channel channel, Throwable cause) {
+        handleCloseReader();
+
+        if (channel.isActive()) {
+            channel.writeAndFlush(new NettyMessage.ErrorResponse(cause))
+                    .addListener(ChannelFutureListener.CLOSE);
+        }
     }
 
     private void handleParquetReaderInitRequest(NettyMessage.ParquetReaderInitRequest request) {
@@ -184,7 +195,7 @@ public class RequestHandler extends SimpleChannelInboundHandler<NettyMessage> {
         }
     }
 
-    private NettyMessage.ReadBatchResponse handleReadBatchRequest(ChannelHandlerContext ctx) {
+    private NettyMessage.ReadBatchResponse readNextBatch(Channel channel) {
         final long start = System.nanoTime();
 
         // read batch
@@ -195,13 +206,13 @@ public class RequestHandler extends SimpleChannelInboundHandler<NettyMessage> {
         }
 
         // check next batch
-        boolean hasNextBatch = ParquetReaderJNI.hasNext(reader);
+        hasNextBatch = ParquetReaderJNI.hasNext(reader);
 
         // header info
         boolean[] compositeFlags = new boolean[columnCount];
         int[] dataBufferLengths = new int[columnCount];
         int compositedElementCount = 0;
-        ByteBuf compositedElementLengths = ctx.alloc().ioBuffer(4 * rowCount);
+        ByteBuf compositedElementLengths = channel.alloc().ioBuffer(4 * rowCount);
         ByteBuf[] dataBuffers = new ByteBuf[columnCount];
         ByteBuf[] nullBuffers = new ByteBuf[columnCount];
 
@@ -222,7 +233,7 @@ public class RequestHandler extends SimpleChannelInboundHandler<NettyMessage> {
                 compositedElementCount += rowCount;
 
                 int dataBufferLength = 0;
-                ByteBuf compositedDataBuffer = ctx.alloc().ioBuffer(4 * rowCount);
+                ByteBuf compositedDataBuffer = channel.alloc().ioBuffer(4 * rowCount);
                 for (int j = 0; j < rowCount; j ++) {
                     // check null
                     boolean isNull = !(nullBuffers[i].getBoolean(j));
@@ -298,5 +309,22 @@ public class RequestHandler extends SimpleChannelInboundHandler<NettyMessage> {
 
     private boolean handleSkipNextRowGroup() {
         return ParquetReaderJNI.skipNextRowGroup(reader);
+    }
+
+    private void sendNextBatch(final Channel channel) {
+        if (pendingBatchCount > 0) {
+            pendingBatchCount--;
+
+            NettyMessage.ReadBatchResponse response = readNextBatch(channel);
+            channel.writeAndFlush(response);
+
+            if (!hasNextBatch) {
+                pendingBatchCount = 0;
+            }
+
+            // a receipt is required before sending next batch.
+            // this is to avoid overwriting native buffers.
+            waitingReceipt = true;
+        }
     }
 }

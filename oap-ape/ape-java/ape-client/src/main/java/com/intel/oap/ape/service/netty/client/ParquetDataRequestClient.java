@@ -105,8 +105,10 @@ public class ParquetDataRequestClient {
 
         requestedBatchCount += batchCount;
 
-        tcpChannel.writeAndFlush(new NettyMessage.ReadBatchRequest(batchCount))
-                .addListener(throwErrorListener);
+        synchronized (responseHandler) {
+            tcpChannel.writeAndFlush(new NettyMessage.ReadBatchRequest(batchCount))
+                    .addListener(throwErrorListener);
+        }
     }
 
     /**

@@ -366,7 +366,7 @@ public class ParquetRemoteRecordReaderWrapper implements ParquetRecordReaderWrap
     }
 
     public boolean nextBatch(WritableColumnVector[] columns) {
-        if (requestClient == null) {
+        if (requestClient == null || !requestClient.hasNextBatch()) {
             return false;
         }
 
