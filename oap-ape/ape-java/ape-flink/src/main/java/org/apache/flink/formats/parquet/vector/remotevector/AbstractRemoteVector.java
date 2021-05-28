@@ -27,7 +27,7 @@ public abstract class AbstractRemoteVector extends AbstractWritableVector {
     protected final int vectorLength;
     protected final int typeSize;
 
-    private int trackingId = 0; // tracking batch ID for resource recycling.
+    private int trackingId = -1; // tracking batch ID for resource recycling.
 
     protected ByteBuf dataBuf;
     protected ByteBuf nullBuf;

@@ -177,9 +177,6 @@ public class RequestHandler extends SimpleChannelInboundHandler<NettyMessage> {
             throw new InvalidParameterException("Batch size should be greater than 0.");
         }
         columnCount = params.getTypeSizes().size();
-        if (columnCount == 0) {
-            throw new InvalidParameterException("Column count should be greater than 0.");
-        }
 
         variableTypeFlags = params.getVariableLengthFlags();
         typeSizes = params.getTypeSizes();

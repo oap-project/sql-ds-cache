@@ -376,8 +376,9 @@ public class ParquetRemoteRecordReaderWrapper implements ParquetRecordReaderWrap
         }
 
         // release buffers in used response
-        int trackingId = ((AbstractRemoteVector) columns[0]).getTrackingId();
-        if (trackingId > 0) {
+        int trackingId = columns.length > 0 ?
+                ((AbstractRemoteVector) columns[0]).getTrackingId() : -1;
+        if (trackingId >= 0) {
             NettyMessage.ReadBatchResponse response = responses.remove(trackingId);
             response.releaseBuffers();
         }

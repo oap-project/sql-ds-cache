@@ -546,7 +546,7 @@ public abstract class NettyMessage {
             this.dataBuffers = dataBuffers;
             this.nullBuffers = nullBuffers;
 
-            if (dataBuffers == null || dataBuffers.length != columnCount || columnCount <= 0) {
+            if (dataBuffers == null || dataBuffers.length != columnCount) {
                 throw new InvalidParameterException("Mismatch of column count and buffer count");
             }
         }
@@ -639,11 +639,13 @@ public abstract class NettyMessage {
             for (int i = 0; i < columnCount; i++) {
                 out.write(dataBuffers[i]);
             }
-            int columnIndex = 0;
-            for (; columnIndex < columnCount - 1; columnIndex++) {
-                out.write(nullBuffers[columnIndex]);
+            if (columnCount > 0) {
+                int columnIndex = 0;
+                for (; columnIndex < columnCount - 1; columnIndex++) {
+                    out.write(nullBuffers[columnIndex]);
+                }
+                out.write(nullBuffers[columnIndex], promise);
             }
-            out.write(nullBuffers[columnIndex], promise);
         }
 
         static ReadBatchResponse readFrom(ByteBuf buffer) {
