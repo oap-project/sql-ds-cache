@@ -57,6 +57,8 @@ public class RequestHandler extends SimpleChannelInboundHandler<NettyMessage> {
     private int pendingBatchCount = 0;
     private boolean waitingReceipt = false;
 
+    private int rowGroupsToRead = 0;
+
     @Override
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
         LOG.info("Received connection from: {}", ctx.channel().remoteAddress());
@@ -136,6 +138,7 @@ public class RequestHandler extends SimpleChannelInboundHandler<NettyMessage> {
 
     private void handleParquetReaderInitRequest(NettyMessage.ParquetReaderInitRequest request) {
         ParquetReaderInitParams params = request.getParams();
+        rowGroupsToRead = params.getTotalGroupsToRead();
 
         // init reader
         reader = ParquetReaderJNI.init(
@@ -195,15 +198,21 @@ public class RequestHandler extends SimpleChannelInboundHandler<NettyMessage> {
     private NettyMessage.ReadBatchResponse readNextBatch(Channel channel) {
         final long start = System.nanoTime();
 
-        // read batch
-        int rowCount = ParquetReaderJNI.readBatch(
-                reader, batchSize, nativeDataBuffers, nativeNullBuffers);
-        if (rowCount < 0) {
-            rowCount = 0;
-        }
+        int rowCount = 0;
+        hasNextBatch = false;
 
-        // check next batch
-        hasNextBatch = ParquetReaderJNI.hasNext(reader);
+        // read batch
+        if (rowGroupsToRead > 0) {
+            rowCount = ParquetReaderJNI.readBatch(
+                    reader, batchSize, nativeDataBuffers, nativeNullBuffers);
+
+            if (rowCount < 0) {
+                rowCount = 0;
+            }
+
+            // check next batch
+            hasNextBatch = ParquetReaderJNI.hasNext(reader);
+        }
 
         // header info
         boolean[] compositeFlags = new boolean[columnCount];
