@@ -218,7 +218,7 @@ public class RequestHandler extends SimpleChannelInboundHandler<NettyMessage> {
         boolean[] compositeFlags = new boolean[columnCount];
         int[] dataBufferLengths = new int[columnCount];
         int compositedElementCount = 0;
-        ByteBuf compositedElementLengths = channel.alloc().ioBuffer(4 * rowCount);
+        ByteBuf compositedElementLengths = channel.alloc().ioBuffer(Integer.BYTES * rowCount);
         ByteBuf[] dataBuffers = new ByteBuf[columnCount];
         ByteBuf[] nullBuffers = new ByteBuf[columnCount];
 
@@ -239,7 +239,7 @@ public class RequestHandler extends SimpleChannelInboundHandler<NettyMessage> {
                 compositedElementCount += rowCount;
 
                 int dataBufferLength = 0;
-                ByteBuf compositedDataBuffer = channel.alloc().ioBuffer(4 * rowCount);
+                ByteBuf compositedDataBuffer = channel.alloc().ioBuffer(Integer.BYTES * rowCount);
                 for (int j = 0; j < rowCount; j ++) {
                     // check null
                     boolean isNull = !(nullBuffers[i].getBoolean(j));
@@ -249,15 +249,15 @@ public class RequestHandler extends SimpleChannelInboundHandler<NettyMessage> {
                     }
 
                     // get address and size of real data
-                    long elementBaseAddr = nativeDataBuffers[i] + j * 16;
+                    long elementBaseAddr = nativeDataBuffers[i] + j * (Long.BYTES + Long.BYTES);
                     int dataSize = Platform.getInt(null, elementBaseAddr);
-                    long dataAddr = Platform.getLong(null, elementBaseAddr + 8);
+                    long dataAddr = Platform.getLong(null, elementBaseAddr + Long.BYTES);
 
                     // accumulate total length of column data
                     dataBufferLength += dataSize;
 
                     // save lengths of column elements
-                    ByteBuf buf = Unpooled.wrappedBuffer(elementBaseAddr, 4, false);
+                    ByteBuf buf = Unpooled.wrappedBuffer(elementBaseAddr, Integer.BYTES, false);
                     compositedElementLengths.writeBytes(buf);
                     buf.release();
 

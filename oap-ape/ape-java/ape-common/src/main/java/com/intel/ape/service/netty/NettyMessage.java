@@ -665,7 +665,8 @@ public abstract class NettyMessage {
             }
 
             int compositedElementCount = buffer.readInt();
-            ByteBuf compositedElementLengths = buffer.readRetainedSlice(4 * compositedElementCount);
+            ByteBuf compositedElementLengths =
+                    buffer.readRetainedSlice(Integer.BYTES * compositedElementCount);
 
             ByteBuf[] dataBuffers = new ByteBuf[columnCount];
             for (int i = 0; i < columnCount; i++) {
