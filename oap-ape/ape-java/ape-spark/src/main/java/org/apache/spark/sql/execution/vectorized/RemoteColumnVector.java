@@ -180,7 +180,11 @@ public class RemoteColumnVector extends ColumnVector {
   }
 
   @Override
-  public void close()  {}
+  public void close()  {
+    dataBuf = null;
+    nullBuf = null;
+    elementLengthBuf = null;
+  }
 
   public ByteBuf getElementLengthBuf() {
     return elementLengthBuf;
