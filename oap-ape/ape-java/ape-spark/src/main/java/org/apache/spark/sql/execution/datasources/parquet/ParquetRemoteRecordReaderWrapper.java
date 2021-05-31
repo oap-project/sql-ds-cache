@@ -236,43 +236,42 @@ public class ParquetRemoteRecordReaderWrapper extends ParquetRecordReaderWrapper
     if (trackingId > 0) {
       NettyMessage.ReadBatchResponse response = responses.remove(trackingId);
       response.releaseBuffers();
-      for (int i = 0; i < columnVectors.length; i++) {
-        ByteBuf preElementLengthBuf = ((RemoteColumnVector) columnVectors[i]).getElementLengthBuf();
-        if (preElementLengthBuf != null) {
-          preElementLengthBuf.release();
-          preElementLengthBuf = null;
-        }
-      }
     }
 
     // read next batch
     int rowsRead = 0;
     try {
       NettyMessage.ReadBatchResponse response = requestClient.nextBatch();
+      if (response.hasNextBatch()) {
+        requestClient.sendReadBatchRequest();
+      }
       int batchSequenceId = response.getSequenceId();
       responses.put(batchSequenceId, response);
       rowsRead = response.getRowCount();
-      // parse response data
-      for (int i = 0; i < columnVectors.length; i++) {
-        // check if column elements have variable lengths
-        ByteBuf elementLengthBuf = null;
-        if (response.getCompositeFlags()[i]) {
-          // slice buffer of element lengths for current column
-          elementLengthBuf = response.getCompositedElementLengths()
-                  .readRetainedSlice(rowsRead * 4);
-        }
-        // set data into vector
-        if ((columnVectors[i] instanceof RemoteColumnVector)) {
-          RemoteColumnVector remoteColumnVector = (RemoteColumnVector) columnVectors[i];
-          remoteColumnVector.setTrackingId(batchSequenceId);
-          remoteColumnVector.setBuffers(
-                  response.getDataBuffers()[i],
-                  response.getNullBuffers()[i],
-                  elementLengthBuf
-          );
-        } else {
-          throw new RuntimeException(
-                  "Invalid invoke of nextBatch on non-remote vectors.");
+      if (rowsRead > 0) {
+        columnarBatch.setNumRows(rowsRead);
+        // parse response data
+        for (int i = 0; i < columnVectors.length; i++) {
+          // check if column elements have variable lengths
+          ByteBuf elementLengthBuf = null;
+          if (response.getCompositeFlags()[i]) {
+            // slice buffer of element lengths for current column
+            elementLengthBuf = response.getCompositedElementLengths()
+                    .readRetainedSlice(rowsRead * 4);
+          }
+          // set data into vector
+          if ((columnVectors[i] instanceof RemoteColumnVector)) {
+            RemoteColumnVector remoteColumnVector = (RemoteColumnVector) columnVectors[i];
+            remoteColumnVector.setTrackingId(batchSequenceId);
+            remoteColumnVector.setBuffers(
+                    response.getDataBuffers()[i],
+                    response.getNullBuffers()[i],
+                    elementLengthBuf
+            );
+          } else {
+            throw new RuntimeException(
+                    "Invalid invoke of nextBatch on non-remote vectors.");
+          }
         }
       }
       return rowsRead > 0 || response.hasNextBatch();

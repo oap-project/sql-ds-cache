@@ -61,6 +61,8 @@ public class RemoteColumnVector extends ColumnVector {
         cur += size;
         i++;
       }
+      elementLengthBuf.release();
+      elementLengthBuf = null;
     }
   }
   public void setTrackingId(int id) {
@@ -177,18 +179,11 @@ public class RemoteColumnVector extends ColumnVector {
     throw new UnsupportedOperationException("Not support yet");
   }
 
-  private void reset() {
-    // Only element length buffer is sliced from batch response.
-    // Data buffer and null buffer will be released by response itself.
-    if (elementLengthBuf != null) {
-      elementLengthBuf.release();
-      elementLengthBuf = null;
-    }
-  }
-
   @Override
   public void close()  {
-    reset();
+    dataBuf = null;
+    nullBuf = null;
+    elementLengthBuf = null;
   }
 
   public ByteBuf getElementLengthBuf() {
