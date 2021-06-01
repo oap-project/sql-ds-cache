@@ -116,6 +116,8 @@ class AggExpression : public WithResultExpression {
       }
       resultCache = result;
       done = true;
+    } else {
+      result = resultCache;
     }
   }
 
@@ -416,14 +418,26 @@ class Add : public ArithmeticExpression {
     result.precision = precision;
     result.scale = scale;
     if (left.data.size() == 1) {
+      arrow::Decimal128 leftValue = left.data[0];
+
+      // rescale may be needed. e.g. literal value in SQL
+      if (left.scale != result.scale) {
+        leftValue = leftValue.Rescale(left.scale, result.scale).ValueOrDie();
+      }
       for (int i = 0; i < right.data.size(); i++) {
-        arrow::BasicDecimal128 out = left.data[0] + right.data[i];
+        arrow::BasicDecimal128 out = leftValue + right.data[i];
         result.data.push_back(out);
       }
       result.nullVector = right.nullVector;
     } else if (right.data.size() == 1) {
+      arrow::Decimal128 rightValue = right.data[0];
+
+      // rescale may be needed. e.g. literal value in SQL
+      if (right.scale != result.scale) {
+        rightValue = rightValue.Rescale(right.scale, result.scale).ValueOrDie();
+      }
       for (int i = 0; i < left.data.size(); i++) {
-        arrow::BasicDecimal128 out = left.data[i] + right.data[0];
+        arrow::BasicDecimal128 out = left.data[i] + rightValue;
         result.data.push_back(out);
       }
       result.nullVector = left.nullVector;
@@ -470,14 +484,26 @@ class Sub : public ArithmeticExpression {
     result.precision = precision;
     result.scale = scale;
     if (left.data.size() == 1) {
+      arrow::Decimal128 leftValue = left.data[0];
+
+      // rescale may be needed. e.g. literal value in SQL
+      if (left.scale != result.scale) {
+        leftValue = leftValue.Rescale(left.scale, result.scale).ValueOrDie();
+      }
       for (int i = 0; i < right.data.size(); i++) {
-        arrow::BasicDecimal128 out = left.data[0] - right.data[i];
+        arrow::BasicDecimal128 out = leftValue - right.data[i];
         result.data.push_back(out);
       }
       result.nullVector = right.nullVector;
     } else if (right.data.size() == 1) {
+      arrow::Decimal128 rightValue = right.data[0];
+
+      // rescale may be needed. e.g. literal value in SQL
+      if (right.scale != result.scale) {
+        rightValue = rightValue.Rescale(right.scale, result.scale).ValueOrDie();
+      }
       for (int i = 0; i < left.data.size(); i++) {
-        arrow::BasicDecimal128 out = left.data[i] - right.data[0];
+        arrow::BasicDecimal128 out = left.data[i] - rightValue;
         result.data.push_back(out);
       }
       result.nullVector = left.nullVector;
