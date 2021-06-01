@@ -166,7 +166,7 @@ class SampleBasedStatisticsSuite extends StatisticsTest {
   test("test write2 function") {
     val keys = (1 to 300).map(i => rowGen(i)).toArray
 
-    val product2Keys = keys.map(v => (v, Seq(1)))
+    val product2Keys = keys.map(v => (v, ArrayBuffer(1)))
       .asInstanceOf[Array[Product2[Key, ArrayBuffer[Int]]]]
 
     val testSampleWriter = new TestSampleWriter(schema)
@@ -191,7 +191,7 @@ class SampleBasedStatisticsSuite extends StatisticsTest {
   test("read and write2") {
     val keys = (1 to 300).map(i => rowGen(i)).toArray
 
-    val product2Keys = keys.map(v => (v, Seq(1)))
+    val product2Keys = keys.map(v => (v, ArrayBuffer(1)))
       .asInstanceOf[Array[Product2[Key, ArrayBuffer[Int]]]]
 
     val testSampleWriter = new TestSampleWriter(schema)
