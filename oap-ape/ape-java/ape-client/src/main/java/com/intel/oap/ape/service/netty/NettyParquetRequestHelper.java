@@ -26,7 +26,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import com.google.common.hash.Hashing;
 import com.intel.ape.util.ConsistentHash;
