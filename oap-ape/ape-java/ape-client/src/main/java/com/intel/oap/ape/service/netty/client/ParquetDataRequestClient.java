@@ -105,8 +105,12 @@ public class ParquetDataRequestClient {
 
         requestedBatchCount += batchCount;
 
-        tcpChannel.writeAndFlush(new NettyMessage.ReadBatchRequest(batchCount))
-                .addListener(throwErrorListener);
+        // send batch request when there's no conflict with response handler.
+        // a response handler may also send messages out when receiving batches.
+        synchronized (responseHandler) {
+            tcpChannel.writeAndFlush(new NettyMessage.ReadBatchRequest(batchCount))
+                    .addListener(throwErrorListener);
+        }
     }
 
     /**

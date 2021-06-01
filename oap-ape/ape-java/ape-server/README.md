@@ -84,6 +84,7 @@ git checkout -b ape origin/ape
 
 cd oap-ape/ape-java/
 mvn clean install
+mvn clean install -Pshading -pl ape-server
 
 cd ape-server
 java -cp target/*:$HADOOP_CLASSPATH com.intel.oap.ape.service.netty.server.NettyServer

@@ -66,7 +66,7 @@ public class ResponseHandler extends SimpleChannelInboundHandler<NettyMessage> {
             if (msgClazz == NettyMessage.ReadBatchResponse.class) {
                 NettyMessage.ReadBatchResponse response = (NettyMessage.ReadBatchResponse)msg;
 
-                handleReadBatchResponse(response);
+                handleReadBatchResponse(ctx, response);
             } else if (msgClazz == NettyMessage.BooleanResponse.class) {
                 synchronized (boolResponseLock) {
                     needListenersWakeup = true;
@@ -106,7 +106,8 @@ public class ResponseHandler extends SimpleChannelInboundHandler<NettyMessage> {
         recentBoolResponse = null;
     }
 
-    private void handleReadBatchResponse(NettyMessage.ReadBatchResponse response) {
+    private void handleReadBatchResponse(
+            ChannelHandlerContext ctx, NettyMessage.ReadBatchResponse response) {
         if (closed) {
             return;
         }
@@ -116,6 +117,10 @@ public class ResponseHandler extends SimpleChannelInboundHandler<NettyMessage> {
                 return;
             }
 
+            // send receipt to server, let server send next batch if having pending batches
+            ctx.writeAndFlush(new NettyMessage.BatchResponseReceipt());
+
+            // offer the new batch to consumer
             receivedBatches.add(response);
 
             while (receivedBatches.peek() != null
