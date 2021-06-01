@@ -23,8 +23,10 @@ import java.security.InvalidParameterException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Random;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import com.google.common.hash.Hashing;
 import com.intel.ape.util.ConsistentHash;
@@ -46,11 +48,16 @@ public class NettyParquetRequestHelper {
     public static final String CONF_KEY_CLIENT_TIMEOUT = "fs.ape.client.timeout.seconds";
     public static final String CONF_KEY_CLIENT_THREADS = "fs.ape.client.threads";
     public static final String CONF_KEY_SERVER_LIST = "fs.ape.client.remote.servers";
+    public static final String CONF_KEY_CLIENT_CREATE_RETRIES = "fs.ape.client.create.retries";
+
+    public static final int DEFAULT_VALUE_CLIENT_CREATE_RETRIES = 3;
 
     private final Configuration hadoopConfig;
     private NettyClient nettyClient;
     private Map<String, List<RemoteServer>> remoteServerGroups;
     private ConsistentHash<String> remoteServerHosts;
+    private List<RemoteServer> remoteServers;
+    private final int createClientMaxRetries;
 
     static class RemoteServer {
         private final String host;
@@ -64,6 +71,20 @@ public class NettyParquetRequestHelper {
         @Override
         public String toString() {
             return host + ":" + port;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            RemoteServer that = (RemoteServer) o;
+            return port == that.port &&
+                    host.equals(that.host);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(host, port);
         }
     }
 
@@ -99,6 +120,9 @@ public class NettyParquetRequestHelper {
         this.hadoopConfig = hadoopConfig;
         initializeNettyClient();
         initializeServersHash();
+
+        createClientMaxRetries = hadoopConfig.getInt(
+                CONF_KEY_CLIENT_CREATE_RETRIES, DEFAULT_VALUE_CLIENT_CREATE_RETRIES);
     }
 
     /**
@@ -130,13 +154,56 @@ public class NettyParquetRequestHelper {
                 splitLength
         );
 
-        RemoteServer remoteServer = selectRemoteServer(request);
-        LOG.info("Creating request client to server: {}", remoteServer.toString());
-
         // start and return a new request client
+        ParquetDataRequestClient requestClient = createRequestClientWithRetries(request);
+
+        if (requestClient == null) {
+            throw new IOException(
+                    "Failed to create parquet data client. Retries: " + createClientMaxRetries);
+        }
+
+        return requestClient;
+    }
+
+    private ParquetDataRequestClient createRequestClientWithRetries(ParquetSplitRequest request)
+            throws IOException {
+
         ParquetDataRequestClientFactory factory =
                 new ParquetDataRequestClientFactory(nettyClient);
-        return factory.createParquetDataRequestClient(remoteServer.host, remoteServer.port);
+        RemoteServer remoteServer = selectRemoteServer(request);
+        int initialIndex = remoteServers.indexOf(remoteServer);
+
+        // start and return a new request client
+        int retry = 0;
+        ParquetDataRequestClient requestClient = null;
+        while (retry <= createClientMaxRetries) {
+            try {
+                LOG.info("Try creating request client to server: {}", remoteServer.toString());
+                requestClient = factory.createParquetDataRequestClient(
+                        remoteServer.host, remoteServer.port);
+            } catch (Exception ex) {
+                remoteServer = getNextRemoteServer(remoteServer, initialIndex);
+
+                if (remoteServer == null) {
+                    throw new IOException("No more available servers to retry creating client.");
+                }
+
+                retry++;
+            }
+        }
+
+        return requestClient;
+    }
+
+    private RemoteServer getNextRemoteServer(RemoteServer current, int initialIndex) {
+        int currentIndex = remoteServers.indexOf(current);
+        int nextIndex = (currentIndex + 1) % remoteServers.size();
+
+        if (nextIndex != initialIndex) {
+            return remoteServers.get(nextIndex);
+        }
+
+        return null;
     }
 
     private void initializeNettyClient() {
@@ -166,13 +233,15 @@ public class NettyParquetRequestHelper {
         }
 
         // parse remote servers
-        remoteServerGroups =
+        remoteServers =
                 Arrays.stream(serversConf.split(","))
                         .distinct()
                         .map(s -> s.split(":"))
                         .filter(s -> s.length == 2)
-                        .map(s -> new RemoteServer(s[0], Integer.parseInt(s[1])) )
-                        .collect(Collectors.groupingBy(s -> s.host));
+                        .map(s -> new RemoteServer(s[0], Integer.parseInt(s[1])))
+                        .collect(Collectors.toList());
+
+        remoteServerGroups = remoteServers.stream().collect(Collectors.groupingBy(s -> s.host));
 
         remoteServerHosts = new ConsistentHash<>(
                 Hashing.sha256(),
