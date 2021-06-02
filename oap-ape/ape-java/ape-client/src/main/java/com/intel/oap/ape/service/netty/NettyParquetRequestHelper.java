@@ -180,7 +180,9 @@ public class NettyParquetRequestHelper {
                 LOG.info("Try creating request client to server: {}", remoteServer.toString());
                 requestClient = factory.createParquetDataRequestClient(
                         remoteServer.host, remoteServer.port);
+                break;
             } catch (Exception ex) {
+                LOG.warn("Failed to connect to remote server: {}, {}", remoteServer, ex);
                 remoteServer = getNextRemoteServer(remoteServer, initialIndex);
 
                 if (remoteServer == null) {
