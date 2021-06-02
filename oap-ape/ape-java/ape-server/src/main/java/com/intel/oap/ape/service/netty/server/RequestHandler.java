@@ -123,11 +123,18 @@ public class RequestHandler extends SimpleChannelInboundHandler<NettyMessage> {
         }
     }
 
+    @Override
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+        respondWithError(ctx, cause);
+    }
+
     private void respondWithError(ChannelHandlerContext ctx, Throwable error) {
         handleException(ctx.channel(), error);
     }
 
     private void handleException(Channel channel, Throwable cause) {
+        LOG.warn("Exception caught on channel: {}, {}", channel.remoteAddress(), cause.toString());
+
         handleCloseReader();
 
         if (channel.isActive()) {

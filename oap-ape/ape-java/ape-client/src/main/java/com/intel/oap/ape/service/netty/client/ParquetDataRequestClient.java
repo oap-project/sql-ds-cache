@@ -63,14 +63,17 @@ public class ParquetDataRequestClient {
 
                 LOG.error("Sending request to '{}' failed.", remoteAddr);
 
-                throw new IOException(future.cause());
+                // save error to responseHandler
+                responseHandler.handleError(remoteAddr.toString(), future.cause());
             }
         };
         LOG.info("Connected to remote server: {} with address: {}",
                 tcpChannel.remoteAddress(), tcpChannel.localAddress());
     }
 
-    public void initRemoteParquetReader(ParquetReaderInitParams params) {
+    public void initRemoteParquetReader(ParquetReaderInitParams params) throws IOException {
+        checkError();
+
         tcpChannel.writeAndFlush(new NettyMessage.ParquetReaderInitRequest(params))
                 .addListener(throwErrorListener);
 
@@ -91,6 +94,8 @@ public class ParquetDataRequestClient {
      * @param batchCount number of batches that need to be retrieved from remote server.
      */
     public void sendReadBatchRequest(int batchCount) throws IOException, InterruptedException {
+        checkError();
+
         if (batchCount <= 0) {
             throw new InvalidParameterException("batchCount should be greater than 0.");
         }
@@ -121,6 +126,8 @@ public class ParquetDataRequestClient {
      * it's no longer used.
      */
     public NettyMessage.ReadBatchResponse nextBatch() throws InterruptedException, IOException {
+        // This is a blocking method. checkError will be done in responseHandler
+
         if (requestedBatchCount == 0) {
             sendReadBatchRequest();
         }
@@ -133,6 +140,8 @@ public class ParquetDataRequestClient {
     }
 
     public void skipNextRowGroup() throws IOException, InterruptedException {
+        checkError();
+
         if (!readerInitRequested) {
             throw new IllegalStateException(
                     "skipNextRowGroup should not be called before initialization of reader.");
@@ -158,6 +167,8 @@ public class ParquetDataRequestClient {
     }
 
     public void waitForReaderInitResult() throws IOException, InterruptedException {
+        // This is a blocking method. checkError will be done in responseHandler
+
         boolean initResult = waitForBoolResponse(NettyMessage.ParquetReaderInitRequest.ID);
         if (initResult) {
             readerInitialized = true;
@@ -201,6 +212,18 @@ public class ParquetDataRequestClient {
                         future.channel().close();
                     }
                 });
+    }
+
+    /**
+     * Check error in netty handler.
+     * @throws IOException ex
+     */
+    private void checkError() throws IOException {
+        if (responseHandler.getError() != null) {
+            throw new IOException(
+                    "Error on remote server: " + tcpChannel.remoteAddress(),
+                    responseHandler.getError());
+        }
     }
 
 }

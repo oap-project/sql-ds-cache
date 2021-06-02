@@ -75,7 +75,7 @@ public class ResponseHandler extends SimpleChannelInboundHandler<NettyMessage> {
                 NettyMessage.ErrorResponse response = (NettyMessage.ErrorResponse)msg;
 
                 SocketAddress remoteAddr = ctx.channel().remoteAddress();
-                handleErrorResponse(remoteAddr.toString(), response.getCause());
+                handleError(remoteAddr.toString(), response.getCause());
             } else {
                 throw new IllegalStateException("Received unknown message from server: "
                         + ctx.channel().remoteAddress());
@@ -120,11 +120,11 @@ public class ResponseHandler extends SimpleChannelInboundHandler<NettyMessage> {
         availableBatches.add(res);
     }
 
-    private void handleErrorResponse(String remoteServer, Throwable cause) {
+    public void handleError(String remoteServer, Throwable cause) {
         error = cause;
 
+        LOG.warn("Error on remote server: {}, {}", remoteServer, cause);
         if (closed) {
-            LOG.warn("Error on remote server: {}, {}", remoteServer, cause);
             return;
         }
 
@@ -195,6 +195,10 @@ public class ResponseHandler extends SimpleChannelInboundHandler<NettyMessage> {
             }
             receivedBatches.clear();
         }
+    }
+
+    public Throwable getError() {
+        return error;
     }
 
 }
