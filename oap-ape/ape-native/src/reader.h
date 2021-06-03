@@ -59,7 +59,8 @@ class Reader {
 
   void setAgg(std::string aggStr);
 
-  void setPlasmaCacheEnabled(bool isEnabled, bool asyncCaching);
+  void setPlasmaCacheEnabled(bool isEnabled, bool asyncCaching,
+                             PlasmaClientPool* clientPool);
 
   void setPlasmaCacheRedis(std::string host, int port, std::string password);
 
@@ -148,7 +149,8 @@ class Reader {
 
   bool plasmaCacheEnabled = false;
   bool plasmaCacheAsync = false;
-  std::shared_ptr<PlasmaCacheManagerProvider> plasmaCacheManagerProvider;
+  PlasmaClientPool* plasmaClientPool = NULL;
+  std::shared_ptr<RedisBackedCacheManagerProvider> cacheManagerProvider;
   std::shared_ptr<sw::redis::ConnectionOptions> redisConnectionOptions;
 
   bool preBufferEnabled = false;

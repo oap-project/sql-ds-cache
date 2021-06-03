@@ -27,12 +27,13 @@ extern "C" {
 /*
  * Class:     com_intel_ape_ParquetReaderJNI
  * Method:    init
- * Signature: (Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;IIZZZ)J
+ * Signature: (Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;IIZZZJ)J
  */
 JNIEXPORT jlong JNICALL Java_com_intel_ape_ParquetReaderJNI_init(JNIEnv*, jclass, jstring,
                                                                  jstring, jint, jstring,
                                                                  jint, jint, jboolean,
-                                                                 jboolean, jboolean);
+                                                                 jboolean, jboolean,
+                                                                 jlong);
 
 /*
  * Class:     com_intel_ape_ParquetReaderJNI
@@ -99,6 +100,14 @@ JNIEXPORT void JNICALL Java_com_intel_ape_ParquetReaderJNI_setPlasmaCacheRedis(
  */
 JNIEXPORT jboolean JNICALL Java_com_intel_ape_ParquetReaderJNI_isNativeEnabled(JNIEnv*,
                                                                                jclass);
+
+/*
+ * Class:     com_intel_ape_ParquetReaderJNI
+ * Method:    createPlasmaClientPool
+ * Signature: (I)J
+ */
+JNIEXPORT jlong JNICALL
+Java_com_intel_ape_ParquetReaderJNI_createPlasmaClientPool(JNIEnv*, jclass, jint);
 
 #ifdef __cplusplus
 }

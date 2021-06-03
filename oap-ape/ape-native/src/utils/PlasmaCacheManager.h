@@ -22,6 +22,8 @@
 #include <thread>
 #include <condition_variable>
 
+#include <openssl/sha.h>
+
 #include <parquet/api/reader.h>
 #include <plasma/client.h>
 #include <sw/redis++/redis++.h>
@@ -74,6 +76,13 @@ class AsyncCacheWriter {
   std::vector<std::thread> some_threads_;
 };
 
+struct CacheKeyGenerator {
+  static std::string cacheKeyofFileRange(std::string file_path,
+                                         ::arrow::io::ReadRange range);
+  static plasma::ObjectID objectIdOfFileRange(std::string file_path,
+                                              ::arrow::io::ReadRange range);
+};
+
 class PlasmaCacheManager : public parquet::CacheManager, public AsyncCacheWriter {
  public:
   explicit PlasmaCacheManager(std::string file_path);
@@ -81,7 +90,6 @@ class PlasmaCacheManager : public parquet::CacheManager, public AsyncCacheWriter
   bool connected();
   void close();
   void release();
-  plasma::ObjectID objectIdOfFileRange(::arrow::io::ReadRange range);
 
   void setCacheRedis(std::shared_ptr<sw::redis::ConnectionOptions> options);
   void setCacheWriter(std::shared_ptr<PlasmaCacheManager> cache_writer);
@@ -98,7 +106,6 @@ class PlasmaCacheManager : public parquet::CacheManager, public AsyncCacheWriter
 
  protected:
   bool cacheFileRangeInternal(::arrow::io::ReadRange range, std::shared_ptr<Buffer> data);
-  std::string cacheKeyofFileRange(::arrow::io::ReadRange range);
   void setCacheInfoToRedis();
 
  private:
@@ -117,23 +124,116 @@ class PlasmaCacheManager : public parquet::CacheManager, public AsyncCacheWriter
   std::shared_ptr<PlasmaCacheManager> cache_writer_;
 };
 
-class PlasmaCacheManagerProvider : public parquet::CacheManagerProvider {
+class RedisBackedCacheManagerProvider : public parquet::CacheManagerProvider {
+ public:
+  explicit RedisBackedCacheManagerProvider(){};
+  virtual ~RedisBackedCacheManagerProvider() = default;
+  virtual void setCacheRedis(std::shared_ptr<sw::redis::ConnectionOptions> options);
+  virtual void close(){};
+  virtual bool connected() = 0;
+
+ protected:
+  std::shared_ptr<sw::redis::ConnectionOptions> redis_options_;
+};
+
+class PlasmaCacheManagerProvider : public RedisBackedCacheManagerProvider {
  public:
   explicit PlasmaCacheManagerProvider(std::string file_path, bool enable_cache_writer);
   ~PlasmaCacheManagerProvider();
-  void close();
-  bool connected();
-  void setCacheRedis(std::shared_ptr<sw::redis::ConnectionOptions> options);
+  void close() override;
+  bool connected() override;
 
   // override methods
   std::shared_ptr<parquet::CacheManager> defaultCacheManager() override;
   std::shared_ptr<parquet::CacheManager> newCacheManager() override;
+  void setCacheRedis(std::shared_ptr<sw::redis::ConnectionOptions> options) override;
 
  private:
   std::string file_path_;
   std::vector<std::shared_ptr<PlasmaCacheManager>> managers_;
-  std::shared_ptr<sw::redis::ConnectionOptions> redis_options_;
   bool enable_cache_writer_ = false;
+};
+
+class PlasmaClientPool {
+ public:
+  PlasmaClientPool(int capacity);
+  ~PlasmaClientPool();
+
+  int capacity();
+
+  std::shared_ptr<plasma::PlasmaClient> take();
+  void put(std::shared_ptr<plasma::PlasmaClient> client);
+
+ private:
+  int capacity_;
+  std::vector<std::shared_ptr<plasma::PlasmaClient>> allocated_clients_;
+  std::queue<std::shared_ptr<plasma::PlasmaClient>> free_clients_;
+
+  // a mutex to protect client queues
+  std::mutex queue_mutex_;
+  // condition variable for waiting threads
+  std::condition_variable queue_cv_;
+
+  int waiting_count_ = 0;
+};
+
+class ShareClientPlasmaCacheManager : public parquet::CacheManager {
+ public:
+  explicit ShareClientPlasmaCacheManager(std::string file_path,
+                                         PlasmaClientPool* client_pool);
+  ~ShareClientPlasmaCacheManager();
+  bool connected();
+  void close();
+  void release();
+
+  void setCacheRedis(std::shared_ptr<sw::redis::ConnectionOptions> options);
+  void setCacheWriter(std::shared_ptr<PlasmaCacheManager> cache_writer);
+
+  // override methods
+  bool containsFileRange(::arrow::io::ReadRange range) override;
+  std::shared_ptr<Buffer> getFileRange(::arrow::io::ReadRange range) override;
+  bool cacheFileRange(::arrow::io::ReadRange range,
+                      std::shared_ptr<Buffer> data) override;
+  bool deleteFileRange(::arrow::io::ReadRange range) override;
+
+ protected:
+  bool cacheFileRangeInternal(::arrow::io::ReadRange range, std::shared_ptr<Buffer> data,
+                              std::shared_ptr<plasma::PlasmaClient> client);
+  void setCacheInfoToRedis();
+
+ private:
+  std::string file_path_;
+  PlasmaClientPool* client_pool_;
+  // plasma client to release loaded objects, this client should be used for `Get`
+  std::shared_ptr<plasma::PlasmaClient> preferred_client_;
+  std::vector<plasma::ObjectID> object_ids;
+  std::shared_ptr<sw::redis::Redis> redis_;
+
+  // data which will be saved to redis
+  std::string hostname;
+  int cache_hit_count_ = 0;
+  int cache_miss_count_ = 0;
+  std::vector<::arrow::io::ReadRange> cached_ranges_;
+};
+
+class ShareClientPlasmaCacheManagerProvider : public RedisBackedCacheManagerProvider {
+ public:
+  explicit ShareClientPlasmaCacheManagerProvider(std::string file_path,
+                                                 PlasmaClientPool* client_pool);
+  ~ShareClientPlasmaCacheManagerProvider();
+  void close() override;
+  bool connected() override;
+
+  // override methods
+  std::shared_ptr<parquet::CacheManager> defaultCacheManager() override;
+  std::shared_ptr<parquet::CacheManager> newCacheManager() override;
+  void setCacheRedis(std::shared_ptr<sw::redis::ConnectionOptions> options) override;
+
+ private:
+  std::string file_path_;
+  PlasmaClientPool* client_pool_;
+  std::vector<std::shared_ptr<ShareClientPlasmaCacheManager>> managers_;
+  std::shared_ptr<sw::redis::ConnectionOptions> redis_options_;
 };
 
 }  // namespace ape

@@ -29,14 +29,24 @@ public class ParquetReaderJNI {
   public static long init(String fileName, String hdfsHost, int hdfsPort, String requiredSchema,
                           int firstRowGroupIndex, int totalGroupToRead) {
     return init(fileName, hdfsHost, hdfsPort, requiredSchema,
-            firstRowGroupIndex, totalGroupToRead, false, false, false);
+            firstRowGroupIndex, totalGroupToRead, false, false, false, 0L);
+  }
+
+  public static long init(String fileName, String hdfsHost, int hdfsPort,
+                          String requiredSchema, int firstRowGroupIndex,
+                          int totalGroupToRead, boolean plasmaCacheEnabled,
+                          boolean preBufferEnabled, boolean plasmaCacheAsync) {
+    return init(fileName, hdfsHost, hdfsPort, requiredSchema,
+            firstRowGroupIndex, totalGroupToRead, plasmaCacheEnabled,
+            preBufferEnabled, plasmaCacheAsync, 0L);
   }
 
   // return a reader pointer
   public static native long init(String fileName, String hdfsHost, int hdfsPort,
                                  String requiredSchema, int firstRowGroupIndex,
                                  int totalGroupToRead, boolean plasmaCacheEnabled,
-                                 boolean preBufferEnabled, boolean plasmaCacheAsync);
+                                 boolean preBufferEnabled, boolean plasmaCacheAsync,
+                                 long plasmaClientPoolPtr);
 
   public static native int readBatch(long reader, int batchSize, long[] buffers, long[] nulls);
 
@@ -57,4 +67,6 @@ public class ParquetReaderJNI {
                                                 int port, String password);
 
   public static native boolean isNativeEnabled();
+
+  public static native long createPlasmaClientPool(int capacity);
 }

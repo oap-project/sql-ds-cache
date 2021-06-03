@@ -147,6 +147,11 @@ public class RequestHandler extends SimpleChannelInboundHandler<NettyMessage> {
         ParquetReaderInitParams params = request.getParams();
         rowGroupsToRead = params.getTotalGroupsToRead();
 
+        long plasmaClientPoolPtr = 0L;
+        if (params.isPlasmaCacheEnabled()) {
+            plasmaClientPoolPtr = PlasmaClientPoolInitializer.getClientPoolPtr();
+        }
+
         // init reader
         reader = ParquetReaderJNI.init(
                     params.getFileName(),
@@ -157,7 +162,8 @@ public class RequestHandler extends SimpleChannelInboundHandler<NettyMessage> {
                     params.getTotalGroupsToRead(),
                     params.isPlasmaCacheEnabled(),
                     params.isPreBufferEnabled(),
-                    params.isPlasmaCacheAsync()
+                    params.isPlasmaCacheAsync(),
+                    plasmaClientPoolPtr
         );
 
         // set storage of cache locality
@@ -340,4 +346,29 @@ public class RequestHandler extends SimpleChannelInboundHandler<NettyMessage> {
             waitingReceipt = true;
         }
     }
+
+    static class PlasmaClientPoolInitializer {
+        // native pointer of the pool for plasma clients.
+        // this can save virtual memory consumption of server processes.
+        private static long plasmaClientPoolPtr = 0L;
+
+        public static long getClientPoolPtr() {
+            if (plasmaClientPoolPtr != 0L) {
+                return plasmaClientPoolPtr;
+            }
+
+            synchronized (PlasmaClientPoolInitializer.class) {
+                if (plasmaClientPoolPtr != 0L) {
+                    return plasmaClientPoolPtr;
+                }
+
+                plasmaClientPoolPtr =
+                    ParquetReaderJNI.createPlasmaClientPool(
+                            NettyServer.DEFAULT_PLASMA_CLIENT_POOL_CAPACITY);
+            }
+
+            return plasmaClientPoolPtr;
+        }
+    }
+
 }

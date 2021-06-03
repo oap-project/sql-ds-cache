@@ -49,6 +49,8 @@ import org.slf4j.LoggerFactory;
 public class NettyServer {
     private static final Logger LOG = LoggerFactory.getLogger(NettyServer.class);
 
+    // TODO make these configurable
+    public static final int DEFAULT_PLASMA_CLIENT_POOL_CAPACITY = 10;
     public static final int DEFAULT_CHANNEL_TIMEOUT_SECONDS = 300;
 
     private int port;

@@ -21,11 +21,14 @@
 JNIEXPORT jlong JNICALL Java_com_intel_ape_ParquetReaderJNI_init(
     JNIEnv* env, jclass cls, jstring fileName, jstring hdfsHost, jint hdfsPort,
     jstring requiredSchema, jint firstRowGroup, jint rowGroupToRead,
-    jboolean plasmaCacheEnabled, jboolean preBufferEnabled, jboolean plasmaCacheAsync) {
+    jboolean plasmaCacheEnabled, jboolean preBufferEnabled, jboolean plasmaCacheAsync,
+    jlong plasmaClientPool) {
   int i = 0;
   ape::Reader* reader = new ape::Reader();
 
-  reader->setPlasmaCacheEnabled(plasmaCacheEnabled, plasmaCacheAsync);
+  ape::PlasmaClientPool* clientPool =
+      reinterpret_cast<ape::PlasmaClientPool*>(plasmaClientPool);
+  reader->setPlasmaCacheEnabled(plasmaCacheEnabled, plasmaCacheAsync, clientPool);
   reader->setPreBufferEnabled(preBufferEnabled);
 
   std::string schema_ = env->GetStringUTFChars(requiredSchema, nullptr);
@@ -102,4 +105,10 @@ JNIEXPORT void JNICALL Java_com_intel_ape_ParquetReaderJNI_setPlasmaCacheRedis(
 JNIEXPORT jboolean JNICALL
 Java_com_intel_ape_ParquetReaderJNI_isNativeEnabled(JNIEnv* env, jclass cls) {
   return ape::Reader::isNativeEnabled();
+}
+
+JNIEXPORT jlong JNICALL Java_com_intel_ape_ParquetReaderJNI_createPlasmaClientPool(
+    JNIEnv* env, jclass cls, jint capacity) {
+  ape::PlasmaClientPool* pool = new ape::PlasmaClientPool(capacity);
+  return reinterpret_cast<int64_t>(pool);
 }
