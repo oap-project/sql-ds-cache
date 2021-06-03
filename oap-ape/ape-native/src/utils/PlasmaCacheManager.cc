@@ -493,18 +493,18 @@ std::shared_ptr<plasma::PlasmaClient> PlasmaClientPool::take() {
       std::shared_ptr<plasma::PlasmaClient> client = free_clients_.front();
       free_clients_.pop();
 
-      ARROW_LOG(INFO) << "PlasmaClientPool, take free client";
+      ARROW_LOG(DEBUG) << "PlasmaClientPool, take free client";
 
       return client;
     }
 
-    ARROW_LOG(INFO) << "PlasmaClientPool, wait for free client";
+    ARROW_LOG(DEBUG) << "PlasmaClientPool, wait for free client";
 
     waiting_count_ += 1;
     queue_cv_.wait(lck);
     waiting_count_ -= 1;
 
-    ARROW_LOG(INFO) << "PlasmaClientPool, wake up";
+    ARROW_LOG(DEBUG) << "PlasmaClientPool, wake up";
   }
 }
 
@@ -516,7 +516,7 @@ void PlasmaClientPool::put(std::shared_ptr<plasma::PlasmaClient> client) {
   lck.unlock();
 
   if (waiting_count_ > 0) {
-    ARROW_LOG(INFO) << "PlasmaClientPool, notification of free client";
+    ARROW_LOG(DEBUG) << "PlasmaClientPool, notification of free client";
     queue_cv_.notify_one();
   }
 }
