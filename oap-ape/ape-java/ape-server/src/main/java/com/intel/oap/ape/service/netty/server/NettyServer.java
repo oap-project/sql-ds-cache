@@ -36,6 +36,7 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.handler.timeout.ReadTimeoutHandler;
 import io.netty.util.internal.PlatformDependent;
 
 import org.slf4j.Logger;
@@ -47,6 +48,8 @@ import org.slf4j.LoggerFactory;
  */
 public class NettyServer {
     private static final Logger LOG = LoggerFactory.getLogger(NettyServer.class);
+
+    public static final int DEFAULT_CHANNEL_TIMEOUT_SECONDS = 300;
 
     private int port;
     private final String address;
@@ -89,6 +92,7 @@ public class NettyServer {
                     public void initChannel(SocketChannel ch) throws Exception {
                         ch.pipeline().addLast(
                                 encoder,
+                                new ReadTimeoutHandler(DEFAULT_CHANNEL_TIMEOUT_SECONDS),
                                 new NettyMessage.NettyMessageDecoder(),
                                 new RequestHandler());
                     }

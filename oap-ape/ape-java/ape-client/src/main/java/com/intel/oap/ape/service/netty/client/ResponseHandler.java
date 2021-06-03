@@ -51,6 +51,8 @@ public class ResponseHandler extends SimpleChannelInboundHandler<NettyMessage> {
 
     private boolean closed = false;
 
+    private Throwable error = null;
+
     public ResponseHandler() {
         receivedBatches = new PriorityQueue<>(
                 Comparator.comparingInt(NettyMessage.ReadBatchResponse::getSequenceId));
@@ -68,18 +70,12 @@ public class ResponseHandler extends SimpleChannelInboundHandler<NettyMessage> {
 
                 handleReadBatchResponse(ctx, response);
             } else if (msgClazz == NettyMessage.BooleanResponse.class) {
-                synchronized (boolResponseLock) {
-                    needListenersWakeup = true;
-                    recentBoolResponse = (NettyMessage.BooleanResponse)msg;
-
-                    boolResponseLock.notifyAll();
-                }
+                notifyBooleanResponseListeners((NettyMessage.BooleanResponse)msg);
             } else if (msgClazz == NettyMessage.ErrorResponse.class) {
                 NettyMessage.ErrorResponse response = (NettyMessage.ErrorResponse)msg;
 
                 SocketAddress remoteAddr = ctx.channel().remoteAddress();
-                throw new IOException("Error on remote server: " + remoteAddr, response.getCause());
-
+                handleError(remoteAddr.toString(), response.getCause());
             } else {
                 throw new IllegalStateException("Received unknown message from server: "
                         + ctx.channel().remoteAddress());
@@ -93,7 +89,12 @@ public class ResponseHandler extends SimpleChannelInboundHandler<NettyMessage> {
         return boolResponseLock;
     }
 
-    public NettyMessage.BooleanResponse getRecentBoolResponse() {
+    public NettyMessage.BooleanResponse getRecentBoolResponse() throws IOException {
+        // error handling
+        if (error != null) {
+            throw new IOException(error);
+        }
+
         return recentBoolResponse;
     }
 
@@ -104,6 +105,32 @@ public class ResponseHandler extends SimpleChannelInboundHandler<NettyMessage> {
     public void resetBoolResponse() {
         needListenersWakeup = false;
         recentBoolResponse = null;
+    }
+
+    private void notifyBooleanResponseListeners(NettyMessage.BooleanResponse msg) {
+        synchronized (boolResponseLock) {
+            needListenersWakeup = true;
+            recentBoolResponse = msg;
+
+            boolResponseLock.notifyAll();
+        }
+    }
+
+    private void notifyReadBatchResponseListeners(NettyMessage.ReadBatchResponse res) {
+        availableBatches.add(res);
+    }
+
+    public void handleError(String remoteServer, Throwable cause) {
+        error = cause;
+
+        LOG.warn("Error on remote server: {}, {}", remoteServer, cause);
+        if (closed) {
+            return;
+        }
+
+        // wake up waiting threads
+        notifyBooleanResponseListeners(new NettyMessage.BooleanResponse(false, (byte)-1));
+        notifyReadBatchResponseListeners(NettyMessage.ReadBatchResponse.newEmptyResponse());
     }
 
     private void handleReadBatchResponse(
@@ -125,7 +152,7 @@ public class ResponseHandler extends SimpleChannelInboundHandler<NettyMessage> {
 
             while (receivedBatches.peek() != null
                     && receivedBatches.peek().getSequenceId() == sequenceId) {
-                availableBatches.add(receivedBatches.poll());
+                notifyReadBatchResponseListeners(receivedBatches.poll());
                 sequenceId++;
             }
         }
@@ -140,8 +167,15 @@ public class ResponseHandler extends SimpleChannelInboundHandler<NettyMessage> {
      * Wait for and return the next batch response from remote server.
      * @return NettyMessage.ReadBatchResponse
      */
-    public NettyMessage.ReadBatchResponse nextBatch() throws InterruptedException {
+    public NettyMessage.ReadBatchResponse nextBatch() throws InterruptedException, IOException {
         NettyMessage.ReadBatchResponse response = availableBatches.take();
+
+        // error handling
+        if (error != null) {
+            response.releaseBuffers();
+            throw new IOException(error);
+        }
+
         hasNextBatch = response.hasNextBatch();
 
         return response;
@@ -161,6 +195,10 @@ public class ResponseHandler extends SimpleChannelInboundHandler<NettyMessage> {
             }
             receivedBatches.clear();
         }
+    }
+
+    public Throwable getError() {
+        return error;
     }
 
 }

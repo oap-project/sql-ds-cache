@@ -30,6 +30,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.buffer.ByteBufOutputStream;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelOutboundHandlerAdapter;
@@ -701,6 +702,21 @@ public abstract class NettyMessage {
                 dataBuffers[i].release();
                 nullBuffers[i].release();
             }
+        }
+
+        public static ReadBatchResponse newEmptyResponse() {
+            return new ReadBatchResponse(
+                    -1,
+                    false,
+                    0,
+                    0,
+                    new int[0],
+                    new boolean[0],
+                    0,
+                    Unpooled.buffer(0),
+                    new ByteBuf[0],
+                    new ByteBuf[0]
+            );
         }
 
     }
