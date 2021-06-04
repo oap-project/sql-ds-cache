@@ -71,9 +71,10 @@ int AggExpression::ExecuteWithParam(int batchSize,
 
 void Count::getResultInternal(DecimalVector& result) {
   result.type = ResultType::LongType;
-  if (result.nullVector->size() == 0) {
-    result.nullVector->resize(1);
-    result.nullVector->at(0) = 1;
+  result.nullVector->resize(1);
+  result.nullVector->at(0) = 1;
+  if (result.data.size() == 0) {
+    result.data.push_back(arrow::BasicDecimal128(0));
   }
   if (typeid(*child) == typeid(LiteralExpression)) {  // for count(*) or count(1)
     result.data[0] += arrow::BasicDecimal128(batchSize_);
@@ -84,7 +85,7 @@ void Count::getResultInternal(DecimalVector& result) {
     auto tmp = DecimalVector();
     child->getResult(tmp);
     for (int i = 0; i < tmp.data.size(); i++) {
-      if (tmp.nullVector->at(i)) result.data[0] += 1;
+      if (tmp.nullVector->at(i)) result.data[0] += arrow::BasicDecimal128(1);
     }
   }
 }

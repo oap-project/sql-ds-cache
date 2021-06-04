@@ -546,6 +546,7 @@ object DataSourceStrategy {
    */
   protected[sql] def translateAggregate(groupingExpressions: Seq[Expression],
                                         aggregateExpressions: Seq[AggregateExpression]): String = {
+    if (groupingExpressions.size > 0 && aggregateExpressions.size == 0) return ""
     AggregateConvertor.toJsonString(
       scala.collection.JavaConverters.seqAsJavaList(groupingExpressions),
       scala.collection.JavaConverters.seqAsJavaList(aggregateExpressions))

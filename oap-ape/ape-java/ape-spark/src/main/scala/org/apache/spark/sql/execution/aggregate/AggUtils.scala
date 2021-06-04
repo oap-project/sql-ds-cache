@@ -151,7 +151,9 @@ object AggUtils {
                case filter: Filter =>
                 filter.child match {
                   case l@LogicalRelation (fsRelation: HadoopFsRelation, _, _, _) =>
-                    if (!fsRelation.resultExpr.isEmpty) {
+
+                    if (!fsRelation.resultExpr.isEmpty && fsRelation.resultExpr.get.size != 0) {
+
                       // judge whether all filter could pushdown here, if not, we will NOT
                       // do agg push down(don't ignore partial agg)
                       val filterExpressions = splitConjunctivePredicates(filter.condition)

@@ -19,6 +19,7 @@
 
 #include <arrow/type.h>
 #include <arrow/util/basic_decimal.h>
+#include <arrow/util/decimal.h>
 #include <cstdint>
 
 namespace ape {
