@@ -126,6 +126,8 @@ public class ParquetRemoteRecordReaderWrapper implements ParquetRecordReaderWrap
                 hadoopConfig.getBoolean("fs.ape.reader.preBufferEnabled", false);
         boolean cacheLocalityEnabled =
                 hadoopConfig.getBoolean("fs.ape.reader.cacheLocalityEnabled", false);
+        boolean remoteReaderCompressEnabled =
+                hadoopConfig.getBoolean("fs.ape.reader.remote.compress", false);
 
         // parse type lengths in requested schema
         List<Integer> typeSizes = new ArrayList<>();
@@ -145,7 +147,8 @@ public class ParquetRemoteRecordReaderWrapper implements ParquetRecordReaderWrap
                 batchSize,
                 plasmaCacheEnabled,
                 preBufferEnabled,
-                plasmaCacheAsync
+                plasmaCacheAsync,
+                remoteReaderCompressEnabled
         );
 
         // set cache locality

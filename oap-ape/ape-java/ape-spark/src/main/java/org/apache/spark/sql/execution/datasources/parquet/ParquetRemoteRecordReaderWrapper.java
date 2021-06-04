@@ -97,7 +97,8 @@ public class ParquetRemoteRecordReaderWrapper extends ParquetRecordReaderWrapper
             batchSize,
             cacheEnabled,
             preBufferEnabled,
-            false
+            false,
+            remoteReaderCompressEnabled
     );
     // set cache locality
     ParquetReaderInitParams.CacheLocalityStorage cacheLocalityStorage;
@@ -234,7 +235,7 @@ public class ParquetRemoteRecordReaderWrapper extends ParquetRecordReaderWrapper
     // release buffers in used response
     int trackingId = columnVectors != null && columnVectors.length > 0 ?
             ((RemoteColumnVector)columnVectors[0]).getTrackingId() : -1;
-    if (trackingId >= 0) {
+    if (trackingId > 0) {
       NettyMessage.ReadBatchResponse response = responses.remove(trackingId);
       response.releaseBuffers();
     }

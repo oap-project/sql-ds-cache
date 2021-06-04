@@ -112,5 +112,10 @@
       <artifactId>netty-all</artifactId>
       <version>${netty.version}</version>
     </dependency>
+    <dependency>
+      <groupId>com.github.luben</groupId>
+      <artifactId>zstd-jni</artifactId>
+      <version>1.4.8-1</version>
+    </dependency>
   </dependencies>
 </project>

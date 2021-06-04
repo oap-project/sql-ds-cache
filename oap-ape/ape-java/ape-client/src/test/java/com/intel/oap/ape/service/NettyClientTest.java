@@ -76,6 +76,7 @@ public class NettyClientTest extends NettyClientTestBase {
                 batchSize,
                 false,
                 false,
+                false,
                 false
         );
     }
@@ -106,6 +107,7 @@ public class NettyClientTest extends NettyClientTestBase {
                 typeSizes,
                 variableLengthFlags,
                 batchSize,
+                false,
                 false,
                 false,
                 false

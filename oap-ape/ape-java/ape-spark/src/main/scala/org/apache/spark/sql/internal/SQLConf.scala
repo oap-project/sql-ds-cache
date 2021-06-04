@@ -2618,6 +2618,10 @@ object SQLConf {
       .stringConf
       .createWithDefault("local")
 
+  val APE_REMOTE_READER_COMPRESSED =
+    buildConf("spark.sql.ape.remote.reader.compressed")
+      .booleanConf
+      .createWithDefault(false)
   /**
    * Holds information about keys that have been deprecated.
    *
@@ -2923,6 +2927,7 @@ class SQLConf extends Serializable with Logging {
   def apeAggPDEnabled: Boolean = getConf(APE_AGGREGATION_PUSHDOWN_ENABLED)
   def apePreBufferEnabled: Boolean = getConf(APE_PRE_BUFFER_ENABLED)
   def apeParquetReaderLocation: String = getConf(APE_PARQUET_READER_LOCATION)
+  def apeRemoteReaderCompressed: Boolean = getConf(APE_REMOTE_READER_COMPRESSED)
 
   /**
    * Returns the [[Resolver]] for the current configuration, which can be used to determine if two

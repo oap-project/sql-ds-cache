@@ -50,6 +50,7 @@ public abstract class ParquetRecordReaderWrapper extends RecordReader<Void, Obje
   boolean cacheEnabled = false;
   boolean preBufferEnabled = false;
   boolean redisEnabled = false;
+  boolean remoteReaderCompressEnabled = false;
 
   ColumnarBatch columnarBatch;
 
@@ -100,6 +101,11 @@ public abstract class ParquetRecordReaderWrapper extends RecordReader<Void, Obje
   public void setRedisEnabled(boolean redisEnabled) {
     this.redisEnabled = redisEnabled;
   }
+
+  public void setRemoteReaderCompressEnabled(boolean compressEnabled) {
+    this.remoteReaderCompressEnabled = compressEnabled;
+  }
+
   public void setFilter(FilterPredicate predicate) {}
 
   public void setAgg(String aggExpresion) {}
