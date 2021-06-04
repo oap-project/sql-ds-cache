@@ -17,11 +17,9 @@ Following table shows features of 4 cache strategies on PMem.
 | guava | noevict | vmemcache | external cache |
 | :----- | :----- | :----- | :-----|
 | Use memkind lib to operate on PMem and guava cache strategy when data eviction happens. | Use memkind lib to operate on PMem and doesn't allow data eviction. | Use vmemcache lib to operate on PMem and LRU cache strategy when data eviction happens. | Use Plasma/dlmalloc to operate on PMem and LRU cache strategy when data eviction happens. |
-| Need numa patch in Spark for better performance. | Need numa patch in Spark for better performance. | Need numa patch in Spark for better performance. | Doesn't need numa patch. |
-| Suggest using 2 executors one node to keep aligned with PMem paths and numa nodes number. | Suggest using 2 executors one node to keep aligned with PMem paths and numa nodes number. | Suggest using 2 executors one node to keep aligned with PMem paths and numa nodes number. | Node-level cache so there are no limitation for executor number. |
 | Cache data cleaned once executors exited. | Cache data cleaned once executors exited. | Cache data cleaned once executors exited. | No data loss when executors exit thus is friendly to dynamic allocation. But currently it has performance overhead than other cache solutions. |
 
-- For cache solution `guava/noevict`, make sure [Memkind](https://github.com/memkind/memkind/tree/v1.10.1-rc2) library installed on every cluster worker node. If you have finished [OAP Installation Guide](OAP-Installation-Guide.md), libmemkind will be installed. Or manually build and install it following [memkind-installation](./Developer-Guide.md#memkind-installation), then place `libmemkind.so.0` under `/lib64/` on each worker node.
+- For cache solution `guava/noevict`, make sure [Memkind](https://github.com/memkind/memkind/tree/v1.10.1) library installed on every cluster worker node. If you have finished [OAP Installation Guide](OAP-Installation-Guide.md), libmemkind will be installed. Or manually build and install it following [memkind-installation](./Developer-Guide.md#memkind-installation), then place `libmemkind.so.0` under `/lib64/` on each worker node.
 
 - For cache solution `vmemcahe/external` cache, make sure [Vmemcache](https://github.com/pmem/vmemcache) library has been installed on every cluster worker node. If you have finished [OAP Installation Guide](OAP-Installation-Guide.md), libvmemcache will be installed. Or you can follow the [vmemcache-installation](./Developer-Guide.md#vmemcache-installation) steps and make sure `libvmemcache.so.0` exist under `/lib64/` directory on each worker node.
 
@@ -50,21 +48,9 @@ The following are required to configure OAP to use PMem cache.
   mount -o dax /dev/pmem1 /mnt/pmem1
 ```
 
-   In this case file systems are generated for 2 NUMA nodes, which can be checked by "numactl --hardware". For a different number of NUMA nodes, a corresponding number of namespaces should be created to assure correct file system paths mapping to NUMA nodes.
-   
    For more information you can refer to [Quick Start Guide: Provision Intel® Optane™ DC Persistent Memory](https://software.intel.com/content/www/us/en/develop/articles/quick-start-guide-configure-intel-optane-dc-persistent-memory-on-linux.html)
 
-#### Configuration for NUMA
 
-1. Install `numactl` to bind the executor to the PMem device on the same NUMA node. 
-
-   ```yum install numactl -y ```
-
-2. We strongly recommend you use NUMA-patched Spark to achieve better performance gain for the following 3 cache strategies. Besides, currently using Community Spark occasionally has the problem of two executors being bound to the same PMem path. 
-   
-   Build Spark from source to enable NUMA-binding support, refer to [Enabling-NUMA-binding-for-PMem-in-Spark](./Developer-Guide.md#Enabling-NUMA-binding-for-PMem-in-Spark). 
-
-  
 #### Configuration for PMem 
 
 Create `persistent-memory.xml` under `$SPARK_HOME/conf` if it doesn't exist. Use the following template and change the `initialPath` to your mounted paths for PMem devices. 
@@ -89,8 +75,6 @@ Guava cache is based on memkind library, built on top of jemalloc and provides m
 **NOTE**: `spark.executor.sql.oap.cache.persistent.memory.reserved.size`: When we use PMem as memory through memkind library, some portion of the space needs to be reserved for memory management overhead, such as memory segmentation. We suggest reserving 20% - 25% of the available PMem capacity to avoid memory allocation failure. But even with an allocation failure, OAP will continue the operation to read data from original input data and will not cache the data block.
 
 ```
-# enable numa
-spark.yarn.numa.enabled                                        true
 spark.executorEnv.MEMKIND_ARENA_NUM_PER_KIND                   1
 # for Parquet file format, enable binary cache
 spark.sql.oap.parquet.binary.cache.enabled                     true
@@ -128,8 +112,6 @@ The noevict cache strategy is also supported in OAP based on the memkind library
 To use it in your workload, follow [prerequisites](#prerequisites) to set up PMem hardware correctly, also make sure memkind library installed. Then follow the configuration below.
 
 ```
-# enable numa
-spark.yarn.numa.enabled                                      true
 spark.executorEnv.MEMKIND_ARENA_NUM_PER_KIND                 1
 # for Parquet file format, enable binary cache
 spark.sql.oap.parquet.binary.cache.enabled                   true 
@@ -154,7 +136,7 @@ spark.driver.extraClassPath       $HOME/miniconda2/envs/oapenv/oap_jars/plasma-s
 
 - Make sure [Vmemcache](https://github.com/pmem/vmemcache) library has been installed on every cluster worker node if vmemcache strategy is chosen for PMem cache. If you have finished [OAP-Installation-Guide](OAP-Installation-Guide.md), vmemcache library will be automatically installed by Conda.
   
-  Or you can follow the [build/install](./Developer-Guide.md#build-and-install-vmemcache) steps and make sure `libvmemcache.so` exist in `/lib64` directory on each worker node.
+  Or you can follow the [build/install](./Developer-Guide.md#vmemcache-installation) steps and make sure `libvmemcache.so` exist in `/lib64` directory on each worker node.
 - To use it in your workload, follow [prerequisites](#prerequisites) to set up PMem hardware correctly.
 
 #### Configure to enable PMem cache
@@ -164,8 +146,6 @@ Make the following configuration changes in `$SPARK_HOME/conf/spark-defaults.con
 ```
 # 2x number of your worker nodes
 spark.executor.instances          6
-# enable numa
-spark.yarn.numa.enabled           true
 # Enable OAP extension in Spark
 spark.sql.extensions              org.apache.spark.sql.OapExtensions
 
@@ -188,7 +168,6 @@ spark.executor.sql.oap.cache.guardian.memory.size            10g
 ```
 The `vmem` cache strategy is based on libvmemcache (buffer based LRU cache), which provides a key-value store API. Follow these steps to enable vmemcache support in Data Source Cache.
 
-- `spark.executor.instances`: We suggest setting the value to 2X the number of worker nodes when NUMA binding is enabled. Each worker node runs two executors, each executor is bound to one of the two sockets, and accesses the corresponding PMem device on that socket.
 - `spark.executor.sql.oap.cache.persistent.memory.initial.size`: It is configured to the available PMem capacity to be used as data cache per exectutor.
  
 **NOTE**: If "PendingFiber Size" (on spark web-UI OAP page) is large, or some tasks fail with "cache guardian use too much memory" error, set `spark.executor.sql.oap.cache.guardian.memory.size ` to a larger number as the default size is 10GB. The user could also increase `spark.sql.oap.cache.guardian.free.thread.nums` or decrease `spark.sql.oap.cache.dispose.timeout.ms` to free memory more quickly.
@@ -196,8 +175,6 @@ The `vmem` cache strategy is based on libvmemcache (buffer based LRU cache), whi
 #### Verify PMem cache functionality
 
 - After finishing configuration, restart Spark Thrift Server for the configuration changes to take effect. Start at step 2 of the [Use DRAM Cache](./User-Guide.md#use-dram-cache) guide to verify that cache is working correctly.
-
-- Verify NUMA binding status by confirming keywords like `numactl --cpubind=1 --membind=1` contained in executor launch command.
 
 - Check PMem cache size by checking disk space with `df -h`.For `vmemcache` strategy, disk usage will reach the initial cache size once the PMem cache is initialized and will not change during workload execution. For `Guava/Noevict` strategies, the command will show disk space usage increases along with workload execution. 
 
@@ -239,8 +216,6 @@ spark.sql.oap.mix.data.cache.backend                         external
 
 # 2x number of your worker nodes
 spark.executor.instances                                     6
-# enable numa
-spark.yarn.numa.enabled                                      true
 spark.memory.offHeap.enabled                                 false
 
 spark.sql.oap.dcpmm.free.wait.threshold                      50000000000
@@ -267,8 +242,6 @@ spark.sql.oap.cache.memory.manager                           mix
 
 # 2x number of your worker nodes
 spark.executor.instances                                     6
-# enable numa
-spark.yarn.numa.enabled                                      true
 spark.executorEnv.MEMKIND_ARENA_NUM_PER_KIND                 1
 spark.memory.offHeap.enabled                                 false
 # PMem capacity per executor
