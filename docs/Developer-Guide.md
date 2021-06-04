@@ -5,7 +5,7 @@ After following that document, you can continue more details for SQL Index and D
 
 ## Building
 
-### Building SQL DS Cache 
+### Prerequisites for building 
 
 Building with [Apache Maven\*](http://maven.apache.org/).
 
@@ -17,61 +17,11 @@ cd pmem-common
 mvn clean install -DskipTests
 ```
 
-Build the SQL DS Cache package:
-
-```
-git clone -b <tag-version> https://github.com/oap-project/sql-ds-cache.git
-cd sql-ds-cache
-mvn clean -DskipTests package
-```
-
-### Running Tests
-
-Run all the tests:
-```
-mvn clean test
-```
-Run a specific test suite, for example `OapDDLSuite`:
-```
-mvn -DwildcardSuites=org.apache.spark.sql.execution.datasources.oap.OapDDLSuite test
-```
-**NOTE**: Log level of unit tests currently default to ERROR, please override `sql-ds-cache/Plasma-based-cache/src/test/resources/log4j.properties` if needed.
-
-### Building with Intel® Optane™ DC Persistent Memory Module
-
-#### Prerequisites for building with PMem support
-
 Install the required packages on the build system:
 
 - [cmake](https://cmake.org/install/)
-- [memkind](https://github.com/memkind/memkind/tree/v1.10.1)
-- [vmemcache](https://github.com/pmem/vmemcache)
 - [Plasma](http://arrow.apache.org/blog/2017/08/08/plasma-in-memory-object-store/)
 
-####  memkind installation
-
-The memkind library depends on `libnuma` at the runtime, so it must already exist in the worker node system. Build the latest memkind lib from source:
-
-```
-git clone -b v1.10.1 https://github.com/memkind/memkind
-cd memkind
-./autogen.sh
-./configure
-make
-make install
-``` 
-#### vmemcache installation
-
-To build vmemcache library from source, you can (for RPM-based linux as example):
-```
-git clone https://github.com/pmem/vmemcache
-cd vmemcache
-mkdir build
-cd build
-cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DCPACK_GENERATOR=rpm
-make package
-sudo rpm -i libvmemcache*.rpm
-```
 #### Plasma installation
 
 To use optimized Plasma cache with OAP, you need following components:  
@@ -105,31 +55,26 @@ mvn clean -q -pl plasma -am -DskipTests install
 ```
 
 
-#### Building the package
-You need to add `-Ppersistent-memory` to build with PMem support. For `noevict` cache strategy, you also need to build with `-Ppersistent-memory` parameter.
+Build the SQL DS Cache package:
+
 ```
-cd <path>/pmem-common
-mvn clean install -Ppersistent-memory -DskipTests 
-cd <path>/sql-ds-cache
+git clone -b <tag-version> https://github.com/oap-project/sql-ds-cache.git
+cd sql-ds-cache
 mvn clean -DskipTests package
 ```
 
-For vmemcache cache strategy, please build with command:
+### Running Tests
 
+Run all the tests:
 ```
-cd <path>/pmem-common
-mvn clean install -Pvmemcache -DskipTests
-cd <path>/sql-ds-cache
-mvn clean -DskipTests package
+mvn clean test
 ```
+Run a specific test suite, for example `OapDDLSuite`:
+```
+mvn -DwildcardSuites=org.apache.spark.sql.execution.datasources.oap.OapDDLSuite test
+```
+**NOTE**: Log level of unit tests currently default to ERROR, please override `sql-ds-cache/Plasma-based-cache/src/test/resources/log4j.properties` if needed.
 
-Build with this command to use all of them:
 
-```
-cd <path>/pmem-common
-mvn clean install -Ppersistent-memory -Pvmemcache -DskipTests
-cd <path>/sql-ds-cache
-mvn clean -DskipTests package
-```
 
 ###### \*Other names and brands may be claimed as the property of others.
