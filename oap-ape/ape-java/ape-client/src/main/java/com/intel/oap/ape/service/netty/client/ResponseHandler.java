@@ -120,10 +120,15 @@ public class ResponseHandler extends SimpleChannelInboundHandler<NettyMessage> {
         availableBatches.add(res);
     }
 
+    @Override
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+        handleError(ctx.channel().remoteAddress().toString(), cause);
+    }
+
     public void handleError(String remoteServer, Throwable cause) {
         error = cause;
 
-        LOG.warn("Error on remote server: {}, {}", remoteServer, cause);
+        LOG.warn("Error on remote server: {}, {}", remoteServer, cause.toString());
         if (closed) {
             return;
         }
