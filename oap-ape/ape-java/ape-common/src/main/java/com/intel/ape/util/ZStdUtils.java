@@ -49,7 +49,7 @@ public class ZStdUtils {
 
   }
 
-  public static ByteBuf decompress(ByteBuf byteBuf, int originLength) throws IOException{
+  public static ByteBuf decompress(ByteBuf byteBuf, int originLength) throws IOException {
     byte[] compressedData = new byte[byteBuf.readableBytes()];
     byteBuf.readBytes(compressedData);
     // release ByteBuf compressed from buffer.retainedSlice()
