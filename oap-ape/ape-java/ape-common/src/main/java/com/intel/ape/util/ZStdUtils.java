@@ -52,6 +52,8 @@ public class ZStdUtils {
   public static ByteBuf decompress(ByteBuf byteBuf, int originLength) throws IOException{
     byte[] compressedData = new byte[byteBuf.readableBytes()];
     byteBuf.readBytes(compressedData);
+    // release ByteBuf compressed from buffer.retainedSlice()
+    byteBuf.release();
     ByteArrayInputStream inputStream = new ByteArrayInputStream(compressedData);
     ZstdInputStream zstdInputStream = new ZstdInputStream(inputStream);
     byte[] originData = new byte[originLength];
