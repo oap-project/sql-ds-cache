@@ -369,6 +369,13 @@ public class RequestHandler extends SimpleChannelInboundHandler<NettyMessage> {
 
             return plasmaClientPoolPtr;
         }
+
+        public static void closeClientPool() {
+            if (plasmaClientPoolPtr != 0L) {
+                ParquetReaderJNI.closePlasmaClientPool(plasmaClientPoolPtr);
+                plasmaClientPoolPtr = 0L;
+            }
+        }
     }
 
 }

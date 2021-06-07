@@ -462,6 +462,7 @@ PlasmaClientPool::PlasmaClientPool(int capacity) : capacity_(capacity) {
 
     if (status.ok()) {
       free_clients_.push(client);
+      allocated_clients_.push_back(client);
     } else {
       ARROW_LOG(WARNING) << "plasma, Connect failed: " << status.message();
     }
@@ -471,7 +472,13 @@ PlasmaClientPool::PlasmaClientPool(int capacity) : capacity_(capacity) {
                   << free_clients_.size();
 }
 
-PlasmaClientPool::~PlasmaClientPool() {
+PlasmaClientPool::~PlasmaClientPool() { close(); }
+
+void PlasmaClientPool::close() {
+  if (allocated_clients_.empty()) {
+    return;
+  }
+
   for (int i = 0; i < allocated_clients_.size(); i++) {
     // disconnct
     arrow::Status status = allocated_clients_[i]->Disconnect();
@@ -481,6 +488,8 @@ PlasmaClientPool::~PlasmaClientPool() {
   }
 
   allocated_clients_.clear();
+
+  ARROW_LOG(INFO) << "PlasmaClientPool, closed";
 }
 
 int PlasmaClientPool::capacity() { return capacity_; }

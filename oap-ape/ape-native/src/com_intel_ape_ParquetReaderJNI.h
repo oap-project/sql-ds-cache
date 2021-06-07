@@ -109,6 +109,15 @@ JNIEXPORT jboolean JNICALL Java_com_intel_ape_ParquetReaderJNI_isNativeEnabled(J
 JNIEXPORT jlong JNICALL
 Java_com_intel_ape_ParquetReaderJNI_createPlasmaClientPool(JNIEnv*, jclass, jint);
 
+/*
+ * Class:     com_intel_ape_ParquetReaderJNI
+ * Method:    closePlasmaClientPool
+ * Signature: (J)V
+ */
+JNIEXPORT void JNICALL Java_com_intel_ape_ParquetReaderJNI_closePlasmaClientPool(JNIEnv*,
+                                                                                 jclass,
+                                                                                 jlong);
+
 #ifdef __cplusplus
 }
 #endif

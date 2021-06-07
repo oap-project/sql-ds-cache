@@ -125,6 +125,10 @@ public class NettyServer {
             bootstrap.config().childGroup().shutdownGracefully();
             bootstrap = null;
         }
+
+        // close plasma client pool
+        RequestHandler.PlasmaClientPoolInitializer.closeClientPool();
+
         final long duration = (System.nanoTime() - start) / 1_000_000;
         LOG.info("Successful shutdown (took {} ms).", duration);
     }

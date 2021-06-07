@@ -112,3 +112,10 @@ JNIEXPORT jlong JNICALL Java_com_intel_ape_ParquetReaderJNI_createPlasmaClientPo
   ape::PlasmaClientPool* pool = new ape::PlasmaClientPool(capacity);
   return reinterpret_cast<int64_t>(pool);
 }
+
+JNIEXPORT void JNICALL Java_com_intel_ape_ParquetReaderJNI_closePlasmaClientPool(
+    JNIEnv* env, jclass cls, jlong poolPtr) {
+  ape::PlasmaClientPool* pool = reinterpret_cast<ape::PlasmaClientPool*>(poolPtr);
+  pool->close();
+  delete pool;
+}

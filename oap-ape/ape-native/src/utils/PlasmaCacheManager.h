@@ -158,6 +158,7 @@ class PlasmaClientPool {
  public:
   PlasmaClientPool(int capacity);
   ~PlasmaClientPool();
+  void close();
 
   int capacity();
 

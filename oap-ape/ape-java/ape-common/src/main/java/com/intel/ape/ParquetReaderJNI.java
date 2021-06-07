@@ -69,4 +69,6 @@ public class ParquetReaderJNI {
   public static native boolean isNativeEnabled();
 
   public static native long createPlasmaClientPool(int capacity);
+
+  public static native void closePlasmaClientPool(long plasmaClientPoolPtr);
 }
