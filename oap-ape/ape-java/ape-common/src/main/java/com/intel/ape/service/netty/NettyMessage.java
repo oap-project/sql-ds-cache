@@ -618,13 +618,7 @@ public abstract class NettyMessage {
             // compositeFlags(columnCount), compositedElementCount(4), compressEnabled(1),
             // contentLength(4)
             int headerLength = 4 + 1 + 4 + 4 + columnCount * 4 + columnCount + 4 + 1 + 4;
-            int originLength = 0;
-            originLength += compositedElementLengths.readableBytes();
-
-            for (int buffLength : dataBufferLengths) {
-                originLength += buffLength;
-            }
-            originLength += (columnCount * rowCount); // for null buffers
+            int originLength = getContentLength();
             if (!compressEnabled) {
                 // set header
                 ByteBuf headerBuf = allocateBuffer(allocator, ID, headerLength,
@@ -689,6 +683,16 @@ public abstract class NettyMessage {
                     e.printStackTrace();
                 }
             }
+        }
+        private int getContentLength() {
+            int originLength = 0;
+            originLength += compositedElementLengths.readableBytes();
+
+            for (int buffLength : dataBufferLengths) {
+                originLength += buffLength;
+            }
+            originLength += (columnCount * rowCount); // for null buffers
+            return originLength;
         }
 
         static ReadBatchResponse readFrom(ByteBuf buffer) {
