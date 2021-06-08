@@ -36,31 +36,28 @@ Then the dependencies below will be installed:
 * [Arrow](https://github.com/oap-project/arrow/tree/arrow-4.0.0-oap-1.1.1)
 * [LLVM](https://llvm.org/) 
 
-Run the following command to learn more.
-
-```
-# sh dev/scripts/prepare_oap_env.sh --help
-```
-
-Run the following command to automatically install specific dependency such as Maven.
-
-```
-# sh dev/scripts/prepare_oap_env.sh --prepare_maven
-```
-
 - **Requirements for Shuffle Remote PMem Extension**  
 If enable Shuffle Remote PMem extension with RDMA, you can refer to [PMem Shuffle](https://github.com/oap-project/pmem-shuffle) to configure and validate RDMA in advance.
 
 ### Building
 
+#### Building OAP 
+
 OAP is built with [Apache Maven](http://maven.apache.org/) and Oracle Java 8.
 
-To build OAP package, run command below then you can find a tarball named `oap-$VERSION-bin-spark-$VERSION.tar.gz` under directory `$OAP_TOOLS_HOME/dev/release-package `.
+To build OAP package, run command below then you can find a tarball named `oap-$VERSION-bin-spark-$VERSION.tar.gz` under directory `$OAP_TOOLS_HOME/dev/release-package `, which contains all OAP module jars.
+Change to `root` user, run
+
 ```
-$ sh $OAP_TOOLS_HOME/dev/compile-oap.sh
+# cd oap-tools
+# sh dev/compile-oap.sh
 ```
 
-Building specified OAP Module, such as `sql-ds-cache`, run:
+#### Building OAP specific module 
+
+If you just want to build a specific OAP Module, such as `sql-ds-cache`, change to `root` user, then run:
+
 ```
-$ sh $OAP_TOOLS_HOME/dev/compile-oap.sh --sql-ds-cache
+# cd oap-tools
+# sh dev/compile-oap.sh --sql-ds-cache
 ```
