@@ -1,11 +1,11 @@
 # HCFS User Guide
 
 * [Prerequisites](#prerequisites)
-* [Configurations](#configuration)
+* [Configurations](#configurations)
 
 ## Prerequisites
 
-HCFS based Data Source Cache on Spark 3.0.0 requires a working Hadoop cluster with YARN and Spark. Running Spark on YARN requires a binary distribution of Spark, which is built with YARN support. The HCFS based Data Source Cache also need to install plasma and redis, please follow [OAP-Installation-Guide](OAP-Installation-Guide.md) for how to install plasma and redis.
+HCFS based Data Source Cache on Spark 3.1.1 requires a working Hadoop cluster with YARN and Spark. Running Spark on YARN requires a binary distribution of Spark, which is built with YARN support. The HCFS based Data Source Cache also need to install plasma and redis, please follow [OAP-Installation-Guide](OAP-Installation-Guide.md) for how to install plasma and redis.
 
 ## Configurations
 
@@ -35,7 +35,7 @@ spark.hadoop.fs.cachedFs.redis.port $PORT
 ### Configuration for HCFS cache location policy
 
 We provide three HCFS cache location policies, you can choose the best one for you workload
-* defalut policy
+* default policy
 This policy the file block locations consist of cached blocks and hdfs blocks (if cached blocks are incomplete)
 * cache_over_hdfs
 This policy use cached block location only if all requested content is cached, otherwise use HDFS block locations

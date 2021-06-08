@@ -21,6 +21,6 @@ theme: readthedocs
 plugins:
   - search
   - mkdocs-versioning:
-      version: master
+      version: 1.1.1
       exclude_from_nav: ["image", "js", "css", "fonts", "img"]
 

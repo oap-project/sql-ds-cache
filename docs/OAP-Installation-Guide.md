@@ -29,17 +29,17 @@ Create a Conda environment and install OAP Conda package.
 ```bash
 $ conda create -n oapenv -y python=3.7
 $ conda activate oapenv
-$ conda install -c conda-forge -c intel -y oap=1.1.0
+$ conda install -c conda-forge -c intel -y oap=1.1.1
 ```
 
 Once finished steps above, you have completed OAP dependencies installation and OAP building, and will find built OAP jars under `$HOME/miniconda2/envs/oapenv/oap_jars`
 
 Dependencies below are required by OAP and all of them are included in OAP Conda package, they will be automatically installed in your cluster when you Conda install OAP. Ensure you have activated environment which you created in the previous steps.
 
-- [Arrow](https://github.com/Intel-bigdata/arrow)
+- [Arrow](https://github.com/oap-project/arrow/tree/arrow-4.0.0-oap-1.1.1)
 - [Plasma](http://arrow.apache.org/blog/2017/08/08/plasma-in-memory-object-store/)
-- [Memkind](https://anaconda.org/intel/memkind)
-- [Vmemcache](https://anaconda.org/intel/vmemcache)
+- [Memkind](https://github.com/memkind/memkind/tree/v1.10.1)
+- [Vmemcache](https://github.com/pmem/vmemcache.git)
 - [HPNL](https://anaconda.org/intel/hpnl)
 - [PMDK](https://github.com/pmem/pmdk)  
 - [OneAPI](https://software.intel.com/content/www/us/en/develop/tools/oneapi.html)
