@@ -206,7 +206,8 @@ public class ParquetDataRequestClient {
                         if (!future.isSuccess()) {
                             SocketAddress remoteAddr = future.channel().remoteAddress();
 
-                            LOG.error("Sending request to '{}' failed.", remoteAddr);
+                            LOG.error("Sending request to '{}' failed, cause: {}",
+                                    remoteAddr, future.cause().toString());
                         }
 
                         future.channel().close();

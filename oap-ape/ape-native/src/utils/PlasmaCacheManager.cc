@@ -18,13 +18,30 @@
 #include <unistd.h>
 #include <chrono>
 
-#include <openssl/sha.h>
-
 #include <arrow/util/logging.h>
 
 #include "src/utils/PlasmaCacheManager.h"
 
 namespace ape {
+
+std::string CacheKeyGenerator::cacheKeyofFileRange(std::string file_path,
+                                                   ::arrow::io::ReadRange range) {
+  char buff[1024];
+  snprintf(buff, sizeof(buff), "plasma_cache:parquet_chunk:%s:%d_%d", file_path.c_str(),
+           range.offset, range.length);
+  std::string ret = buff;
+  return ret;
+}
+
+plasma::ObjectID CacheKeyGenerator::objectIdOfFileRange(std::string file_path,
+                                                        ::arrow::io::ReadRange range) {
+  std::string cache_key = cacheKeyofFileRange(file_path, range);
+
+  unsigned char hash[SHA_DIGEST_LENGTH];
+  SHA1((const unsigned char*)cache_key.c_str(), cache_key.length(), hash);
+
+  return plasma::ObjectID::from_binary(std::string(hash, hash + sizeof(hash)));
+}
 
 void AsyncCacheWriter::startCacheWriting() {
   // start a new thread
@@ -211,23 +228,6 @@ void PlasmaCacheManager::setCacheInfoToRedis() {
   }
 }
 
-std::string PlasmaCacheManager::cacheKeyofFileRange(::arrow::io::ReadRange range) {
-  char buff[1024];
-  snprintf(buff, sizeof(buff), "plasma_cache:parquet_chunk:%s:%d_%d", file_path_.c_str(),
-           range.offset, range.length);
-  std::string ret = buff;
-  return ret;
-}
-
-plasma::ObjectID PlasmaCacheManager::objectIdOfFileRange(::arrow::io::ReadRange range) {
-  std::string cache_key = cacheKeyofFileRange(range);
-
-  unsigned char hash[SHA_DIGEST_LENGTH];
-  SHA1((const unsigned char*)cache_key.c_str(), cache_key.length(), hash);
-
-  return plasma::ObjectID::from_binary(std::string(hash, hash + sizeof(hash)));
-}
-
 void PlasmaCacheManager::setCacheRedis(
     std::shared_ptr<sw::redis::ConnectionOptions> options) {
   if (cache_writer_) {
@@ -261,7 +261,8 @@ void PlasmaCacheManager::setCacheWriter(
 bool PlasmaCacheManager::containsFileRange(::arrow::io::ReadRange range) {
   bool has_object;
 
-  arrow::Status status = client_->Contains(objectIdOfFileRange(range), &has_object);
+  arrow::Status status = client_->Contains(
+      CacheKeyGenerator::objectIdOfFileRange(file_path_, range), &has_object);
   if (!status.ok()) {
     ARROW_LOG(WARNING) << "plasma, Contains failed: " << status.message();
     return false;
@@ -278,7 +279,7 @@ bool PlasmaCacheManager::containsFileRange(::arrow::io::ReadRange range) {
 
 std::shared_ptr<Buffer> PlasmaCacheManager::getFileRange(::arrow::io::ReadRange range) {
   std::vector<plasma::ObjectID> oids;
-  plasma::ObjectID oid = objectIdOfFileRange(range);
+  plasma::ObjectID oid = CacheKeyGenerator::objectIdOfFileRange(file_path_, range);
   oids.push_back(oid);
 
   std::vector<plasma::ObjectBuffer> obufs(1);
@@ -315,7 +316,7 @@ bool PlasmaCacheManager::cacheFileRange(::arrow::io::ReadRange range,
 bool PlasmaCacheManager::cacheFileRangeInternal(::arrow::io::ReadRange range,
                                                 std::shared_ptr<Buffer> data) {
   std::vector<plasma::ObjectID> oids;
-  plasma::ObjectID oid = objectIdOfFileRange(range);
+  plasma::ObjectID oid = CacheKeyGenerator::objectIdOfFileRange(file_path_, range);
 
   // create new object
   std::shared_ptr<Buffer> saved_data;
@@ -374,7 +375,8 @@ bool PlasmaCacheManager::cacheFileRangeInternal(::arrow::io::ReadRange range,
 }
 
 bool PlasmaCacheManager::deleteFileRange(::arrow::io::ReadRange range) {
-  arrow::Status status = client_->Delete(objectIdOfFileRange(range));
+  arrow::Status status =
+      client_->Delete(CacheKeyGenerator::objectIdOfFileRange(file_path_, range));
   if (!status.ok()) {
     ARROW_LOG(WARNING) << "plasma, Delete failed: " << status.message();
     return false;
@@ -388,6 +390,11 @@ bool PlasmaCacheManager::deleteFileRange(::arrow::io::ReadRange range) {
 bool PlasmaCacheManager::writeCacheObject(::arrow::io::ReadRange range,
                                           std::shared_ptr<Buffer> data) {
   return cacheFileRangeInternal(range, data);
+}
+
+void RedisBackedCacheManagerProvider::setCacheRedis(
+    std::shared_ptr<sw::redis::ConnectionOptions> options) {
+  redis_options_ = options;
 }
 
 PlasmaCacheManagerProvider::PlasmaCacheManagerProvider(std::string file_path,
@@ -433,6 +440,371 @@ std::shared_ptr<parquet::CacheManager> PlasmaCacheManagerProvider::newCacheManag
     auto cache_writer = std::make_shared<PlasmaCacheManager>(file_path_);
     new_manager->setCacheWriter(cache_writer);
   }
+
+  managers_.push_back(new_manager);
+
+  if (redis_options_) {
+    new_manager->setCacheRedis(redis_options_);
+  }
+
+  return new_manager;
+}
+
+PlasmaClientPool::PlasmaClientPool(int capacity) : capacity_(capacity) {
+  ARROW_LOG(INFO) << "PlasmaClientPool, initializing plasma client pool, capacity: "
+                  << capacity;
+
+  // initialize plasma clients
+  for (int i = 0; i < capacity; i++) {
+    std::shared_ptr<plasma::PlasmaClient> client =
+        std::make_shared<plasma::PlasmaClient>();
+    arrow::Status status = client->Connect("/tmp/plasmaStore", "", 0);
+
+    if (status.ok()) {
+      free_clients_.push(client);
+      allocated_clients_.push_back(client);
+    } else {
+      ARROW_LOG(WARNING) << "plasma, Connect failed: " << status.message();
+    }
+  }
+
+  ARROW_LOG(INFO) << "PlasmaClientPool, initialized plasma client pool, size: "
+                  << free_clients_.size();
+}
+
+PlasmaClientPool::~PlasmaClientPool() { close(); }
+
+void PlasmaClientPool::close() {
+  if (allocated_clients_.empty()) {
+    return;
+  }
+
+  for (int i = 0; i < allocated_clients_.size(); i++) {
+    // disconnct
+    arrow::Status status = allocated_clients_[i]->Disconnect();
+    if (!status.ok()) {
+      ARROW_LOG(WARNING) << "plasma, Disconnect failed: " << status.message();
+    }
+  }
+
+  allocated_clients_.clear();
+
+  ARROW_LOG(INFO) << "PlasmaClientPool, closed";
+}
+
+int PlasmaClientPool::capacity() { return capacity_; }
+
+std::shared_ptr<plasma::PlasmaClient> PlasmaClientPool::take() {
+  while (true) {
+    std::unique_lock<std::mutex> lck(queue_mutex_);
+
+    if (!free_clients_.empty()) {
+      std::shared_ptr<plasma::PlasmaClient> client = free_clients_.front();
+      free_clients_.pop();
+
+      ARROW_LOG(DEBUG) << "PlasmaClientPool, take free client";
+
+      return client;
+    }
+
+    ARROW_LOG(DEBUG) << "PlasmaClientPool, wait for free client";
+
+    waiting_count_ += 1;
+    queue_cv_.wait(lck);
+    waiting_count_ -= 1;
+
+    ARROW_LOG(DEBUG) << "PlasmaClientPool, wake up";
+  }
+}
+
+void PlasmaClientPool::put(std::shared_ptr<plasma::PlasmaClient> client) {
+  std::unique_lock<std::mutex> lck(queue_mutex_);
+
+  free_clients_.push(client);
+
+  lck.unlock();
+
+  if (waiting_count_ > 0) {
+    ARROW_LOG(DEBUG) << "PlasmaClientPool, notification of free client";
+    queue_cv_.notify_one();
+  }
+}
+
+ShareClientPlasmaCacheManager::ShareClientPlasmaCacheManager(
+    std::string file_path, PlasmaClientPool* client_pool)
+    : file_path_(file_path), client_pool_(client_pool) {
+  ARROW_LOG(INFO) << "plasma, init cache manager (sharing client) with path: "
+                  << file_path;
+
+  char buff[1024];
+  gethostname(buff, sizeof(buff));
+  hostname = buff;
+}
+
+ShareClientPlasmaCacheManager::~ShareClientPlasmaCacheManager() {}
+
+bool ShareClientPlasmaCacheManager::connected() {
+  if (client_pool_ != NULL) {
+    auto client = client_pool_->take();
+    client_pool_->put(client);
+    return true;
+  }
+
+  return false;
+}
+
+void ShareClientPlasmaCacheManager::release() {
+  ARROW_LOG(INFO) << "plasma, release objects";
+
+  for (auto oid : object_ids) {
+    preferred_client_->Release(oid);
+  }
+
+  object_ids.clear();
+}
+
+void ShareClientPlasmaCacheManager::close() {
+  ARROW_LOG(INFO) << "plasma, close cache manager";
+
+  auto start = std::chrono::steady_clock::now();
+
+  // release objects
+  release();
+
+  // save cache info to redis
+  setCacheInfoToRedis();
+
+  auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+      std::chrono::steady_clock::now() - start);
+  ARROW_LOG(INFO) << "cache manager, closing takes " << duration.count() << " ms.";
+}
+
+void ShareClientPlasmaCacheManager::setCacheInfoToRedis() {
+  if (redis_) {
+    try {
+      redis_->incrby("pmem_cache_global_cache_hit", cache_hit_count_);
+      redis_->incrby("pmem_cache_global_cache_missed", cache_miss_count_);
+
+      // save locations of cached data
+      std::unordered_map<std::string, double> scores;
+      char buff[1024];
+      for (auto range : cached_ranges_) {
+        snprintf(buff, sizeof(buff), "%d_%d_%s", range.offset, range.length,
+                 hostname.c_str());
+        std::string member = buff;
+        scores.insert({member, range.offset});
+      }
+
+      if (scores.size() > 0) {
+        redis_->zadd(file_path_, scores.begin(), scores.end());
+      }
+
+      cache_hit_count_ = 0;
+      cache_miss_count_ = 0;
+      cached_ranges_.clear();
+
+      ARROW_LOG(INFO) << "plasma, saved cache info to redis";
+    } catch (const sw::redis::Error& e) {
+      ARROW_LOG(WARNING) << "plasma, save cache info to redis failed: " << e.what();
+    }
+  }
+}
+
+void ShareClientPlasmaCacheManager::setCacheRedis(
+    std::shared_ptr<sw::redis::ConnectionOptions> options) {
+  try {
+    sw::redis::ConnectionOptions connection_options;
+    connection_options.host = options->host;
+    connection_options.port = options->port;
+    connection_options.password = options->password;
+
+    auto redis = std::make_shared<sw::redis::Redis>(connection_options);
+    redis_ = redis;
+    ARROW_LOG(DEBUG) << "plasma, set cache redis: " << options->host;
+  } catch (const sw::redis::Error& e) {
+    ARROW_LOG(WARNING) << "plasma, set redis failed: " << e.what();
+  }
+}
+
+bool ShareClientPlasmaCacheManager::containsFileRange(::arrow::io::ReadRange range) {
+  bool has_object;
+
+  auto client = client_pool_->take();
+  arrow::Status status = client->Contains(
+      CacheKeyGenerator::objectIdOfFileRange(file_path_, range), &has_object);
+  client_pool_->put(client);
+  if (!status.ok()) {
+    ARROW_LOG(WARNING) << "plasma, Contains failed: " << status.message();
+    return false;
+  }
+
+  // we don't increase cache_hit_count_ here when has_object == true.
+  // cache_hit_count_ will be updated in `get()`.
+  if (!has_object) {
+    cache_miss_count_ += 1;
+  }
+
+  return has_object;
+}
+
+std::shared_ptr<Buffer> ShareClientPlasmaCacheManager::getFileRange(
+    ::arrow::io::ReadRange range) {
+  std::vector<plasma::ObjectID> oids;
+  plasma::ObjectID oid = CacheKeyGenerator::objectIdOfFileRange(file_path_, range);
+  oids.push_back(oid);
+
+  std::vector<plasma::ObjectBuffer> obufs(1);
+
+  if (preferred_client_ == nullptr) {
+    auto client = client_pool_->take();
+    client_pool_->put(client);
+    preferred_client_ = client;
+  }
+
+  arrow::Status status = preferred_client_->Get(oids.data(), 1, 1000, obufs.data());
+  if (!status.ok() || obufs[0].data == nullptr) {
+    ARROW_LOG(WARNING) << "plasma, Get failed: " << status.message();
+    cache_miss_count_ += 1;
+    return nullptr;
+  }
+
+  // save object id for future release()
+  object_ids.push_back(oid);
+
+  cache_hit_count_ += 1;
+  cached_ranges_.push_back(range);
+
+  ARROW_LOG(DEBUG) << "plasma, get object from cache: " << file_path_ << ", "
+                   << range.offset << ", " << range.length;
+
+  return obufs[0].data;
+}
+
+bool ShareClientPlasmaCacheManager::cacheFileRange(::arrow::io::ReadRange range,
+                                                   std::shared_ptr<Buffer> data) {
+  auto client = client_pool_->take();
+  bool ret = cacheFileRangeInternal(range, data, client);
+  client_pool_->put(client);
+
+  return ret;
+}
+
+bool ShareClientPlasmaCacheManager::cacheFileRangeInternal(
+    ::arrow::io::ReadRange range, std::shared_ptr<Buffer> data,
+    std::shared_ptr<plasma::PlasmaClient> client) {
+  std::vector<plasma::ObjectID> oids;
+  plasma::ObjectID oid = CacheKeyGenerator::objectIdOfFileRange(file_path_, range);
+
+  // create new object
+  std::shared_ptr<Buffer> saved_data;
+  Status status = client->Create(oid, data->size(), nullptr, 0, &saved_data);
+  if (plasma::IsPlasmaObjectExists(status)) {
+    ARROW_LOG(WARNING) << "plasma, Create failed, PlasmaObjectExists: "
+                       << status.message();
+    return false;
+  }
+  if (plasma::IsPlasmaStoreFull(status)) {
+    ARROW_LOG(WARNING) << "plasma, Create failed, PlasmaStoreFull: " << status.message();
+    return false;
+  }
+  if (!status.ok()) {
+    ARROW_LOG(WARNING) << "plasma, Create failed: " << status.message();
+    return false;
+  }
+
+  // copy data
+  memcpy(saved_data->mutable_data(), data->data(), data->size());
+
+  // seal object
+  status = client->Seal(oid);
+  if (!status.ok()) {
+    ARROW_LOG(WARNING) << "plasma, Seal failed: " << status.message();
+
+    // abort object
+    status = client->Abort(oid);
+    if (!status.ok()) {
+      ARROW_LOG(WARNING) << "plasma, Abort failed: " << status.message();
+    }
+
+    // release object
+    status = client->Release(oid);
+    if (!status.ok()) {
+      ARROW_LOG(WARNING) << "plasma, Release failed: " << status.message();
+      return false;
+    }
+
+    return false;
+  }
+
+  // release object
+  status = client->Release(oid);
+  if (!status.ok()) {
+    ARROW_LOG(WARNING) << "plasma, Release failed: " << status.message();
+    return false;
+  }
+
+  cached_ranges_.push_back(range);
+
+  ARROW_LOG(DEBUG) << "plasma, object cached: " << file_path_ << ", " << range.offset
+                   << ", " << range.length;
+
+  return true;
+}
+
+bool ShareClientPlasmaCacheManager::deleteFileRange(::arrow::io::ReadRange range) {
+  auto client = client_pool_->take();
+  arrow::Status status =
+      client->Delete(CacheKeyGenerator::objectIdOfFileRange(file_path_, range));
+  client_pool_->put(client);
+  if (!status.ok()) {
+    ARROW_LOG(WARNING) << "plasma, Delete failed: " << status.message();
+    return false;
+  }
+
+  ARROW_LOG(INFO) << "plasma, delete object from cache: " << file_path_ << ", "
+                  << range.offset << ", " << range.length;
+  return true;
+}
+
+ShareClientPlasmaCacheManagerProvider::ShareClientPlasmaCacheManagerProvider(
+    std::string file_path, PlasmaClientPool* client_pool)
+    : file_path_(file_path), client_pool_(client_pool) {
+  auto default_manager =
+      std::make_shared<ShareClientPlasmaCacheManager>(file_path, client_pool);
+
+  managers_.push_back(default_manager);
+}
+
+ShareClientPlasmaCacheManagerProvider::~ShareClientPlasmaCacheManagerProvider() {}
+
+void ShareClientPlasmaCacheManagerProvider::close() {
+  for (auto manager : managers_) {
+    manager->close();
+  }
+}
+
+bool ShareClientPlasmaCacheManagerProvider::connected() {
+  return managers_[0]->connected();
+}
+
+void ShareClientPlasmaCacheManagerProvider::setCacheRedis(
+    std::shared_ptr<sw::redis::ConnectionOptions> options) {
+  redis_options_ = options;
+
+  for (auto manager : managers_) {
+    manager->setCacheRedis(options);
+  }
+}
+
+std::shared_ptr<parquet::CacheManager>
+ShareClientPlasmaCacheManagerProvider::defaultCacheManager() {
+  return managers_[0];
+}
+
+std::shared_ptr<parquet::CacheManager>
+ShareClientPlasmaCacheManagerProvider::newCacheManager() {
+  auto new_manager =
+      std::make_shared<ShareClientPlasmaCacheManager>(file_path_, client_pool_);
 
   managers_.push_back(new_manager);
 

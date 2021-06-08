@@ -1,7 +1,7 @@
-From 95a8215a29060230bdce8fd3c6c20c8dd428d0a3 Mon Sep 17 00:00:00 2001
+From 0ea8a39527eca5b9dd534487ce3c8b31e8279025 Mon Sep 17 00:00:00 2001
 From: iyupeng <peng.yu@intel.com>
-Date: Wed, 19 May 2021 10:52:21 +0800
-Subject: [PATCH] merge flink changes (#8)
+Date: Fri, 4 Jun 2021 14:05:02 +0800
+Subject: [PATCH] merge flink changes (#10)
 
 * squashed internal dev changes
 ---
@@ -32,10 +32,10 @@ Subject: [PATCH] merge flink changes (#8)
  .../flink/table/utils/ape/AggregateExprs.java |  55 ++
  .../plan/rules/FlinkBatchRuleSets.scala       |   4 +-
  .../physical/batch/BatchExecAggRuleBase.scala |  67 +-
- ...alHashAggCalcIntoTableSourceScanRule.scala | 233 ++++++
+ ...alHashAggCalcIntoTableSourceScanRule.scala | 245 ++++++
  ...hLocalHashAggIntoTableSourceScanRule.scala | 160 ++++
  .../table/filesystem/LimitableBulkFormat.java |  10 +-
- 30 files changed, 3401 insertions(+), 13 deletions(-)
+ 30 files changed, 3413 insertions(+), 13 deletions(-)
  create mode 100644 flink-connectors/flink-connector-hive/src/main/java/org/apache/flink/connectors/hive/ExpressionToPredicateConverter.java
  create mode 100644 flink-connectors/flink-connector-hive/src/main/java/org/apache/flink/connectors/hive/PredicateOptimizers.java
  create mode 100644 flink-filesystems/flink-cached-fs-hadoop/pom.xml
@@ -3366,10 +3366,10 @@ index 49747b4525..0e89d279c5 100644
  }
 diff --git a/flink-table/flink-table-planner-blink/src/main/scala/org/apache/flink/table/planner/plan/rules/physical/batch/PushLocalHashAggCalcIntoTableSourceScanRule.scala b/flink-table/flink-table-planner-blink/src/main/scala/org/apache/flink/table/planner/plan/rules/physical/batch/PushLocalHashAggCalcIntoTableSourceScanRule.scala
 new file mode 100644
-index 0000000000..c6e3ae2df8
+index 0000000000..10f944d06d
 --- /dev/null
 +++ b/flink-table/flink-table-planner-blink/src/main/scala/org/apache/flink/table/planner/plan/rules/physical/batch/PushLocalHashAggCalcIntoTableSourceScanRule.scala
-@@ -0,0 +1,233 @@
+@@ -0,0 +1,245 @@
 +/*
 + * Licensed to the Apache Software Foundation (ASF) under one
 + * or more contributor license agreements.  See the NOTICE file
@@ -3393,6 +3393,7 @@ index 0000000000..c6e3ae2df8
 +import org.apache.calcite.plan.{RelOptRule, RelOptRuleCall}
 +import org.apache.calcite.rex.{RexCall, RexInputRef, RexLiteral, RexLocalRef}
 +import org.apache.calcite.sql.SqlBinaryOperator
++import org.apache.calcite.sql.`type`.{SqlTypeFamily, SqlTypeName}
 +import org.apache.flink.table.connector.source.abilities.SupportsAggregationPushDown
 +import org.apache.flink.table.planner.calcite.FlinkTypeFactory
 +import org.apache.flink.table.planner.plan.nodes.FlinkConventions
@@ -3556,9 +3557,20 @@ index 0000000000..c6e3ae2df8
 +        calcExprColumns.add(inputColumns.get(input.getIndex))
 +
 +      case literal: RexLiteral =>
-+        calcExprColumns.add(
-+          new AggregateExprLiteral(literal.getType.toString, literal.getValue.toString)
-+        )
++        if (literal.getTypeName.getFamily == SqlTypeFamily.NUMERIC) {
++          // convert all numeric types to decimal, making it easier to compute in c++ layer
++          val decimalValue = new java.math.BigDecimal(literal.getValue.toString)
++          calcExprColumns.add(
++            new AggregateExprLiteral(
++              "%s(%d,%d)".format(
++                SqlTypeName.DECIMAL.toString, decimalValue.precision(), decimalValue.scale()),
++              literal.getValue.toString)
++          )
++        } else {
++          calcExprColumns.add(
++            new AggregateExprLiteral(literal.getType.toString, literal.getValue.toString)
++          )
++        }
 +
 +      case call: RexCall =>
 +        call.getOperator match {

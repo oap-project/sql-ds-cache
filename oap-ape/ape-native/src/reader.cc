@@ -93,16 +93,22 @@ void Reader::initCacheManager(std::string fileName, std::string hdfsHost, int hd
            fileName.c_str());
   std::string path = buff;
 
-  std::shared_ptr<PlasmaCacheManagerProvider> cacheManagerProvider =
-      std::make_shared<PlasmaCacheManagerProvider>(path, plasmaCacheAsync);
-  if (cacheManagerProvider->connected()) {
-    plasmaCacheManagerProvider = cacheManagerProvider;
+  std::shared_ptr<RedisBackedCacheManagerProvider> provider = nullptr;
+  if (plasmaClientPool == NULL) {
+    provider = std::make_shared<PlasmaCacheManagerProvider>(path, plasmaCacheAsync);
+  } else {
+    provider =
+        std::make_shared<ShareClientPlasmaCacheManagerProvider>(path, plasmaClientPool);
+  }
+
+  if (provider->connected()) {
+    cacheManagerProvider = provider;
 
     if (redisConnectionOptions != nullptr) {
-      plasmaCacheManagerProvider->setCacheRedis(redisConnectionOptions);
+      cacheManagerProvider->setCacheRedis(redisConnectionOptions);
     }
 
-    parquetReader->setCacheManagerProvider(plasmaCacheManagerProvider);
+    parquetReader->setCacheManagerProvider(cacheManagerProvider);
     ARROW_LOG(INFO) << "set cache manager in parquet reader";
   }
 }
@@ -477,9 +483,9 @@ void Reader::close() {
   freeFilterBuffers();
   freeAggBuffers();
 
-  if (plasmaCacheManagerProvider) {
-    plasmaCacheManagerProvider->close();
-    plasmaCacheManagerProvider = nullptr;
+  if (cacheManagerProvider) {
+    cacheManagerProvider->close();
+    cacheManagerProvider = nullptr;
   }
 
   // delete options;
@@ -816,9 +822,11 @@ void Reader::setAgg(std::string aggStr) {
   aggReset = true;
 }
 
-void Reader::setPlasmaCacheEnabled(bool isEnabled, bool asyncCaching) {
+void Reader::setPlasmaCacheEnabled(bool isEnabled, bool asyncCaching,
+                                   PlasmaClientPool* clientPool) {
   plasmaCacheEnabled = isEnabled;
   plasmaCacheAsync = asyncCaching;
+  plasmaClientPool = clientPool;
 }
 
 void Reader::setPlasmaCacheRedis(std::string host, int port, std::string password) {
@@ -830,8 +838,8 @@ void Reader::setPlasmaCacheRedis(std::string host, int port, std::string passwor
   }
   redisConnectionOptions = options;
 
-  if (plasmaCacheManagerProvider != nullptr) {
-    plasmaCacheManagerProvider->setCacheRedis(options);
+  if (cacheManagerProvider != nullptr) {
+    cacheManagerProvider->setCacheRedis(options);
   }
 }
 

@@ -38,7 +38,7 @@ TEST(PlasmaCacheTest, cacheTest) {
 
     // create new object
     std::shared_ptr<Buffer> cache_data;
-    plasma::ObjectID oid = cacheManager.objectIdOfFileRange(range);
+    plasma::ObjectID oid = ape::CacheKeyGenerator::objectIdOfFileRange(file, range);
     client->Create(oid, range.length, nullptr, 0, &cache_data);
 
     // print buffer addresses
