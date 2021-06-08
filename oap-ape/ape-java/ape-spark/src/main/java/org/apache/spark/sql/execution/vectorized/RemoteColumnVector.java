@@ -31,7 +31,7 @@ import org.apache.spark.unsafe.types.UTF8String;
 
 public class RemoteColumnVector extends ColumnVector {
 
-  private int trackingId = 0; // tracking batch ID for resource recycling.
+  private int trackingId = -1; // tracking batch ID for resource recycling.
   private final int capacity;
   protected ByteBuf dataBuf;
   protected ByteBuf nullBuf;

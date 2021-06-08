@@ -52,6 +52,7 @@ public class RequestHandler extends SimpleChannelInboundHandler<NettyMessage> {
     private List<Boolean> variableTypeFlags; // to indicate types having variable data lengths.
     private long[] nativeDataBuffers;
     private long[] nativeNullBuffers;
+    private boolean compressEnabled;
 
     private boolean hasNextBatch = true;
     private int pendingBatchCount = 0;
@@ -146,6 +147,7 @@ public class RequestHandler extends SimpleChannelInboundHandler<NettyMessage> {
     private void handleParquetReaderInitRequest(NettyMessage.ParquetReaderInitRequest request) {
         ParquetReaderInitParams params = request.getParams();
         rowGroupsToRead = params.getTotalGroupsToRead();
+        compressEnabled = params.isCompressEnabled();
 
         long plasmaClientPoolPtr = 0L;
         if (params.isPlasmaCacheEnabled()) {
@@ -299,7 +301,8 @@ public class RequestHandler extends SimpleChannelInboundHandler<NettyMessage> {
                 compositedElementCount,
                 compositedElementLengths,
                 dataBuffers,
-                nullBuffers
+                nullBuffers,
+                compressEnabled
         );
 
     }

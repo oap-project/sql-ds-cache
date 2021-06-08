@@ -26,10 +26,12 @@ import java.util.Arrays;
 import java.util.function.Consumer;
 
 import com.intel.ape.service.params.ParquetReaderInitParams;
+import com.intel.ape.util.ZStdUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.buffer.ByteBufOutputStream;
+import io.netty.buffer.CompositeByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
@@ -531,11 +533,13 @@ public abstract class NettyMessage {
         private final ByteBuf compositedElementLengths;
         private final ByteBuf[] dataBuffers;
         private final ByteBuf[] nullBuffers;
+        private final boolean compressEnabled;
 
         public ReadBatchResponse(int sequenceId, boolean hasNextBatch, int columnCount,
                                  int rowCount, int[] dataBufferLengths, boolean[] compositeFlags,
                                  int compositedElementCount, ByteBuf compositedElementLengths,
-                                 ByteBuf[] dataBuffers, ByteBuf[] nullBuffers) {
+                                 ByteBuf[] dataBuffers, ByteBuf[] nullBuffers,
+                                 boolean compressEnabled) {
             this.sequenceId = sequenceId;
             this.hasNextBatch = hasNextBatch;
             this.columnCount = columnCount;
@@ -546,6 +550,7 @@ public abstract class NettyMessage {
             this.compositedElementLengths = compositedElementLengths;
             this.dataBuffers = dataBuffers;
             this.nullBuffers = nullBuffers;
+            this.compressEnabled = compressEnabled;
 
             if (dataBuffers == null || dataBuffers.length != columnCount) {
                 throw new InvalidParameterException("Mismatch of column count and buffer count");
@@ -610,18 +615,87 @@ public abstract class NettyMessage {
 
             // compute lengths of header and content: sequenceId(4), hasNextBatch(1),
             // columnCount(4), rowCount(4), dataBufferLengths(columnCount * 4),
-            // compositeFlags(columnCount), compositedElementCount(4)
-            int headerLength = 4 + 1 + 4 + 4 + columnCount * 4 + columnCount + 4;
-            int contentLength = 0;
-            contentLength += compositedElementLengths.readableBytes();
+            // compositeFlags(columnCount), compositedElementCount(4), compressEnabled(1),
+            // contentLength(4)
+            int headerLength = 4 + 1 + 4 + 4 + columnCount * 4 + columnCount + 4 + 1 + 4;
+            int originLength = getContentLength();
+            if (!compressEnabled) {
+                writeDataToChannel(out, promise, allocator, headerLength, originLength);
+            } else {
+                if (columnCount == 0) {
+                    // just write headerBuf into channel
+                    writeHeaderBufToChannel(out, promise, allocator, headerLength,
+                            0, originLength, true);
+                } else {
+                    writeCompressedDataToChannel(out, promise,
+                            allocator, headerLength, originLength);
+                }
+            }
+        }
+
+        private int getContentLength() {
+            int originLength = 0;
+            originLength += compositedElementLengths.readableBytes();
 
             for (int buffLength : dataBufferLengths) {
-                contentLength += buffLength;
+                originLength += buffLength;
             }
-            contentLength += (columnCount * rowCount); // for null buffers
+            originLength += (columnCount * rowCount); // for null buffers
+            return originLength;
+        }
 
-            // set header
-            ByteBuf headerBuf = allocateBuffer(allocator, ID, headerLength, contentLength, false);
+        private void writeDataToChannel(ChannelOutboundInvoker out, ChannelPromise promise,
+                                        ByteBufAllocator allocator, int headerLength,
+                                        int originLength) {
+            writeHeaderBufToChannel(out, promise, allocator, headerLength,
+                    originLength, originLength, false);
+            // write content to channel if columnCount > 0
+            if (columnCount > 0) {
+                out.write(compositedElementLengths);
+                for (int i = 0; i < columnCount; i++) {
+                    out.write(dataBuffers[i]);
+                }
+                int columnIndex = 0;
+                for (; columnIndex < columnCount - 1; columnIndex++) {
+                    out.write(nullBuffers[columnIndex]);
+                }
+                out.write(nullBuffers[columnIndex], promise);
+            }
+        }
+
+        private void writeCompressedDataToChannel(ChannelOutboundInvoker out,
+                                                  ChannelPromise promise,
+                                                  ByteBufAllocator allocator,
+                                                  int headerLength, int originLength) {
+            // compress data first to calculate contentLength
+            CompositeByteBuf compositeByteBuf = Unpooled.compositeBuffer(2 * columnCount + 1);
+            compositeByteBuf.addComponent(compositedElementLengths);
+            for (int i = 0; i < columnCount; i++) {
+                compositeByteBuf.addComponent(dataBuffers[i]);
+            }
+            for (int i = 0; i < columnCount; i++) {
+                compositeByteBuf.addComponent(nullBuffers[i]);
+            }
+            try {
+                ByteBuf compressedData = ZStdUtils.compress(compositeByteBuf);
+                // release CompositeByteBuf
+                compositeByteBuf.release();
+                int compressedLength = compressedData.readableBytes();
+                writeHeaderBufToChannel(out, promise, allocator,
+                        headerLength, compressedLength, originLength, true);
+                out.write(compressedData, promise);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        private void writeHeaderBufToChannel(ChannelOutboundInvoker out,
+                                             ChannelPromise promise,
+                                             ByteBufAllocator allocator,
+                                             int headerLength, int compressedLength,
+                                             int originLength, boolean compressEnabled) {
+            ByteBuf headerBuf = allocateBuffer(allocator, ID, headerLength,
+                    compressedLength, false);
             headerBuf.writeInt(sequenceId);
             headerBuf.writeBoolean(hasNextBatch);
             headerBuf.writeInt(columnCount);
@@ -633,19 +707,13 @@ public abstract class NettyMessage {
                 headerBuf.writeBoolean(isComposited);
             }
             headerBuf.writeInt(compositedElementCount);
-
-            // write to channel
-            out.write(headerBuf);
-            out.write(compositedElementLengths);
-            for (int i = 0; i < columnCount; i++) {
-                out.write(dataBuffers[i]);
-            }
+            // track content length which will be used for decompress
+            headerBuf.writeBoolean(compressEnabled);
+            headerBuf.writeInt(originLength);
             if (columnCount > 0) {
-                int columnIndex = 0;
-                for (; columnIndex < columnCount - 1; columnIndex++) {
-                    out.write(nullBuffers[columnIndex]);
-                }
-                out.write(nullBuffers[columnIndex], promise);
+                out.write(headerBuf);
+            } else {
+                out.write(headerBuf, promise);
             }
         }
 
@@ -666,19 +734,30 @@ public abstract class NettyMessage {
             }
 
             int compositedElementCount = buffer.readInt();
-            ByteBuf compositedElementLengths =
-                    buffer.readRetainedSlice(Integer.BYTES * compositedElementCount);
-
+            boolean compressEnabled = buffer.readBoolean();
+            int contentLength = buffer.readInt();
+            ByteBuf compositedElementLengths = null;
             ByteBuf[] dataBuffers = new ByteBuf[columnCount];
-            for (int i = 0; i < columnCount; i++) {
-                dataBuffers[i] = buffer.readRetainedSlice(dataBufferLengths[i]);
-            }
-
             ByteBuf[] nullBuffers = new ByteBuf[columnCount];
-            for (int i = 0; i < columnCount; i++) {
-                nullBuffers[i] = buffer.readRetainedSlice(rowCount);
+            if (columnCount > 0) {
+                try {
+                    ByteBuf content = compressEnabled ?
+                            ZStdUtils.decompress(buffer.retainedSlice(), contentLength)
+                            : buffer.retainedSlice();
+                    compositedElementLengths =
+                            content.readRetainedSlice(Integer.BYTES * compositedElementCount);
+                    for (int i = 0; i < columnCount; i++) {
+                        dataBuffers[i] = content.readRetainedSlice(dataBufferLengths[i]);
+                    }
+                    for (int i = 0; i < columnCount; i++) {
+                        nullBuffers[i] = content.readRetainedSlice(rowCount);
+                    }
+                    // release ByteBuf content
+                    content.release();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
-
             return new ReadBatchResponse(
                     sequenceId,
                     hasNextBatch,
@@ -689,7 +768,8 @@ public abstract class NettyMessage {
                     compositedElementCount,
                     compositedElementLengths,
                     dataBuffers,
-                    nullBuffers);
+                    nullBuffers,
+                    compressEnabled);
         }
 
         /**
@@ -715,7 +795,8 @@ public abstract class NettyMessage {
                     0,
                     Unpooled.buffer(0),
                     new ByteBuf[0],
-                    new ByteBuf[0]
+                    new ByteBuf[0],
+                    false
             );
         }
 

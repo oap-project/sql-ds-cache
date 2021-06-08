@@ -42,6 +42,7 @@ public class ParquetReaderInitParams implements Serializable {
     private boolean plasmaCacheEnabled;
     private boolean preBufferEnabled;
     private boolean plasmaCacheAsync;
+    private boolean compressEnabled;
 
     private CacheLocalityStorage cacheLocalityStorage;
 
@@ -63,6 +64,7 @@ public class ParquetReaderInitParams implements Serializable {
                 ", plasmaCacheEnabled=" + plasmaCacheEnabled +
                 ", preBufferEnabled=" + preBufferEnabled +
                 ", plasmaCacheAsync=" + plasmaCacheAsync +
+                ", compressEnabled=" + compressEnabled +
                 ", cacheLocalityStorage=" + cacheLocalityStorage +
                 ", filterPredicate='" + filterPredicate + '\'' +
                 ", aggregateExpression='" + aggregateExpression + '\'' +
@@ -73,7 +75,8 @@ public class ParquetReaderInitParams implements Serializable {
                                    String jsonSchema, int firstRowGroupIndex, int totalGroupsToRead,
                                    List<Integer> typeSizes, List<Boolean> variableTypeFlags,
                                    int batchSize, boolean plasmaCacheEnabled,
-                                   boolean preBufferEnabled, boolean plasmaCacheAsync) {
+                                   boolean preBufferEnabled, boolean plasmaCacheAsync,
+                                   boolean compressEnabled) {
         this.fileName = fileName;
         this.hdfsHost = hdfsHost;
         this.hdfsPort = hdfsPort;
@@ -86,6 +89,7 @@ public class ParquetReaderInitParams implements Serializable {
         this.plasmaCacheEnabled = plasmaCacheEnabled;
         this.preBufferEnabled = preBufferEnabled;
         this.plasmaCacheAsync = plasmaCacheAsync;
+        this.compressEnabled = compressEnabled;
     }
 
     public String getFileName() {
@@ -182,6 +186,12 @@ public class ParquetReaderInitParams implements Serializable {
 
     public void setPlasmaCacheAsync(boolean plasmaCacheAsync) {
         this.plasmaCacheAsync = plasmaCacheAsync;
+    }
+
+    public boolean isCompressEnabled() { return compressEnabled; }
+
+    public void setCompressEnabled(boolean compressEnabled) {
+        this.compressEnabled = compressEnabled;
     }
 
     public CacheLocalityStorage getCacheLocalityStorage() {
