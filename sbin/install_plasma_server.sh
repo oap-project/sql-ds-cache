@@ -14,7 +14,7 @@ sudo make install
 
 cd ..
 git config --global http.sslVerify false
-git clone https://github.com/Intel-bigdata/arrow.gi://github.com/oap-project/arrow.git arrow
+git clone https://github.com/oap-project/arrow.git arrow
 cd arrow
 git checkout arrow-4.0.0-oap-1.1.1
 
