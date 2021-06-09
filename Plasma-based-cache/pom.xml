@@ -281,6 +281,10 @@
     <dependency>
       <groupId>com.intel.arrow</groupId>
       <artifactId>arrow-plasma</artifactId>
+      <!--
+        We still use 0.17.0 here just for easy build
+        Please follow develop guid to install intel arrow-plasma-4.0.0.jar at runtime
+      -->
       <version>0.17.0</version>
     </dependency>
     <dependency>
