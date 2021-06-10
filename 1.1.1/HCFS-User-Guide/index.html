@@ -9,7 +9,7 @@
   
   
   <link rel="shortcut icon" href="../img/favicon.ico">
-  <title>HCFS User Guide - SQL DS Cache - master</title>
+  <title>HCFS User Guide - SQL DS Cache - 1.1.1</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700" />
 
   <link rel="stylesheet" href="../css/theme.css" />
@@ -38,7 +38,7 @@
     <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
     <div class="wy-side-scroll">
       <div class="wy-side-nav-search">
-        <a href=".." class="icon icon-home"> SQL DS Cache - master</a>
+        <a href=".." class="icon icon-home"> SQL DS Cache - 1.1.1</a>
         <div role="search">
   <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" title="Type search term here" />
@@ -80,7 +80,7 @@
       
       <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
         <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-        <a href="..">SQL DS Cache - master</a>
+        <a href="..">SQL DS Cache - 1.1.1</a>
       </nav>
 
       
@@ -106,10 +106,10 @@
                 <h1 id="hcfs-user-guide">HCFS User Guide</h1>
 <ul>
 <li><a href="#prerequisites">Prerequisites</a></li>
-<li><a href="#configuration">Configurations</a></li>
+<li><a href="#configurations">Configurations</a></li>
 </ul>
 <h2 id="prerequisites">Prerequisites</h2>
-<p>HCFS based Data Source Cache on Spark 3.0.0 requires a working Hadoop cluster with YARN and Spark. Running Spark on YARN requires a binary distribution of Spark, which is built with YARN support. The HCFS based Data Source Cache also need to install plasma and redis, please follow <a href="../OAP-Installation-Guide/">OAP-Installation-Guide</a> for how to install plasma and redis.</p>
+<p>HCFS based Data Source Cache on Spark 3.1.1 requires a working Hadoop cluster with YARN and Spark. Running Spark on YARN requires a binary distribution of Spark, which is built with YARN support. The HCFS based Data Source Cache also need to install plasma and redis, please follow <a href="../OAP-Installation-Guide/">OAP-Installation-Guide</a> for how to install plasma and redis.</p>
 <h2 id="configurations">Configurations</h2>
 <h3 id="spark-configurations">Spark Configurations</h3>
 <p>Before you run <code>$SPARK_HOME/bin/spark-shell</code>, you need to configure Spark for integration. You need to add or update the following configurations in the Spark configuration file <code>$SPARK_HOME/conf/spark-defaults.conf</code> on your working node.</p>
@@ -130,7 +130,7 @@ spark.hadoop.fs.cachedFs.redis.port $PORT
 
 <h3 id="configuration-for-hcfs-cache-location-policy">Configuration for HCFS cache location policy</h3>
 <p>We provide three HCFS cache location policies, you can choose the best one for you workload
-* defalut policy
+* default policy
 This policy the file block locations consist of cached blocks and hdfs blocks (if cached blocks are incomplete)
 * cache_over_hdfs
 This policy use cached block location only if all requested content is cached, otherwise use HDFS block locations

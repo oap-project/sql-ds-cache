@@ -9,7 +9,7 @@
   
   
   <link rel="shortcut icon" href="../img/favicon.ico">
-  <title>User Guide - SQL DS Cache - master</title>
+  <title>User Guide - SQL DS Cache - 1.1.1</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700" />
 
   <link rel="stylesheet" href="../css/theme.css" />
@@ -38,7 +38,7 @@
     <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
     <div class="wy-side-scroll">
       <div class="wy-side-nav-search">
-        <a href=".." class="icon icon-home"> SQL DS Cache - master</a>
+        <a href=".." class="icon icon-home"> SQL DS Cache - 1.1.1</a>
         <div role="search">
   <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" title="Type search term here" />
@@ -83,8 +83,6 @@
     <li class="toctree-l3"><a class="reference internal" href="#use-pmem-cache">Use PMem Cache</a>
         <ul>
     <li class="toctree-l4"><a class="reference internal" href="#prerequisites_1">Prerequisites</a>
-    </li>
-    <li class="toctree-l4"><a class="reference internal" href="#configuration-for-numa">Configuration for NUMA</a>
     </li>
     <li class="toctree-l4"><a class="reference internal" href="#configuration-for-enabling-pmem-cache">Configuration for enabling PMem cache</a>
     </li>
@@ -148,7 +146,7 @@
       
       <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
         <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-        <a href="..">SQL DS Cache - master</a>
+        <a href="..">SQL DS Cache - 1.1.1</a>
       </nav>
 
       
@@ -183,7 +181,7 @@
 <li><a href="#advanced-configuration">Advanced Configuration</a></li>
 </ul>
 <h2 id="prerequisites">Prerequisites</h2>
-<p>SQL Index and Data Source Cache on Spark 3.0.0 requires a working Hadoop cluster with YARN and Spark. Running Spark on YARN requires a binary distribution of Spark, which is built with YARN support.</p>
+<p>SQL Index and Data Source Cache on Spark 3.1.1 requires a working Hadoop cluster with YARN and Spark. Running Spark on YARN requires a binary distribution of Spark, which is built with YARN support.</p>
 <h2 id="getting-started">Getting Started</h2>
 <h3 id="building">Building</h3>
 <p>We have provided a Conda package which will automatically install dependencies and build OAP jars, please follow <a href="../OAP-Installation-Guide/">OAP-Installation-Guide</a> and you can find compiled OAP jars under
@@ -394,23 +392,16 @@ Socket Configuration -&gt; Intel UPI General Configuration -&gt; Stale AtoS :  D
 <p>For more information you can refer to <a href="https://software.intel.com/content/www/us/en/develop/articles/quick-start-guide-configure-intel-optane-dc-persistent-memory-on-linux.html">Quick Start Guide: Provision Intel® Optane™ DC Persistent Memory</a></p>
 <ul>
 <li>
-<p>SQL Data Source Cache uses Plasma as a node-level external cache service, the benefit of using external cache is data could be shared across process boundaries.  <a href="http://arrow.apache.org/blog/2017/08/08/plasma-in-memory-object-store/">Plasma</a> is a high-performance shared-memory object store and a component of <a href="https://github.com/apache/arrow">Apache Arrow</a>. We have modified Plasma to support PMem, and make it open source on <a href="https://github.com/oap-project/arrow/tree/arrow-3.0.0-oap">oap-project-Arrow</a> repo. If you have finished <a href="../OAP-Installation-Guide/">OAP Installation Guide</a>, Plasma will be automatically installed and then you just need copy <code>arrow-plasma-3.0.0.jar</code> to <code>$SPARK_HOME/jars</code>. For manual building and installation steps you can refer to <a href="../Developer-Guide/#Plasma-installation">Plasma installation</a>.</p>
+<p>SQL Data Source Cache uses Plasma as a node-level external cache service, the benefit of using external cache is data could be shared across process boundaries.  <a href="http://arrow.apache.org/blog/2017/08/08/plasma-in-memory-object-store/">Plasma</a> is a high-performance shared-memory object store and a component of <a href="https://github.com/apache/arrow">Apache Arrow</a>. We have modified Plasma to support PMem, and make it open source on <a href="https://github.com/oap-project/arrow/tree/arrow-4.0.0-oap-1.1.1">oap-project-Arrow</a> repo. If you have finished <a href="../OAP-Installation-Guide/">OAP Installation Guide</a>, Plasma will be automatically installed and then you just need copy <code>arrow-plasma-4.0.0.jar</code> to <code>$SPARK_HOME/jars</code>. For manual building and installation steps you can refer to <a href="../Developer-Guide/#Plasma-installation">Plasma installation</a>.</p>
 </li>
 <li>
 <p>Refer to configuration below to apply external cache strategy and start Plasma service on each node and start your workload.</p>
 </li>
 </ul>
-<h4 id="configuration-for-numa">Configuration for NUMA</h4>
-<p>Install <code>numactl</code> to bind the executor to the PMem device on the same NUMA node. </p>
-<p><code>yum install numactl -y</code></p>
-<p>We recommend you use NUMA-patched Spark to achieve better performance gain for the <code>external</code> strategy compared with Community Spark.<br />
-Build Spark from source to enable NUMA-binding support, refer to <a href="../Developer-Guide/#Enabling-NUMA-binding-for-PMem-in-Spark">Enabling-NUMA-binding-for-PMem-in-Spark</a>. </p>
 <h4 id="configuration-for-enabling-pmem-cache">Configuration for enabling PMem cache</h4>
 <p>Add the following configuration to <code>$SPARK_HOME/conf/spark-defaults.conf</code>.</p>
 <pre><code># 2x number of your worker nodes
 spark.executor.instances          6
-# enable numa
-spark.yarn.numa.enabled           true
 # enable SQL Index and Data Source Cache extension in Spark
 spark.sql.extensions              org.apache.spark.sql.OapExtensions
 
@@ -481,14 +472,14 @@ Run <code>yarn app -destroy plasma-store-service</code>to destroy it.</p>
 </ul>
 <h2 id="run-tpc-ds-benchmark">Run TPC-DS Benchmark</h2>
 <p>This section provides instructions and tools for running TPC-DS queries to evaluate the cache performance of various configurations. The TPC-DS suite has many queries and we select 9 I/O intensive queries to simplify performance evaluation.</p>
-<p>We created some tool scripts <a href="https://github.com/oap-project/oap-tools/releases/download/v1.1.0-spark-3.0.0/oap-benchmark-tool.zip">oap-benchmark-tool.zip</a> to simplify running the workload. If you are already familiar with TPC-DS data generation and running a TPC-DS tool suite, skip our tool and use the TPC-DS tool suite directly.</p>
+<p>We created some tool scripts <a href="https://github.com/oap-project/oap-tools/releases/download/v1.1.1-spark-3.1.1/oap-benchmark-tool.zip">oap-benchmark-tool.zip</a> to simplify running the workload. If you are already familiar with TPC-DS data generation and running a TPC-DS tool suite, skip our tool and use the TPC-DS tool suite directly.</p>
 <h3 id="prerequisites_2">Prerequisites</h3>
 <ul>
 <li>Python 2.7+ is required on the working node. </li>
 </ul>
 <h3 id="prepare-the-tool">Prepare the Tool</h3>
 <ol>
-<li>Download <a href="https://github.com/oap-project/oap-tools/releases/download/v1.1.0-spark-3.0.0/oap-benchmark-tool.zip">oap-benchmark-tool.zip</a> and unzip to a folder (for example, <code>oap-benchmark-tool</code> folder) on your working node. </li>
+<li>Download <a href="https://github.com/oap-project/oap-tools/releases/download/v1.1.1-spark-3.1.1/oap-benchmark-tool.zip">oap-benchmark-tool.zip</a> and unzip to a folder (for example, <code>oap-benchmark-tool</code> folder) on your working node. </li>
 <li>Copy <code>oap-benchmark-tool/tools/tpcds-kits</code> to <strong><em>ALL</em></strong> worker nodes under the same folder (for example, <code>/home/oap/tpcds-kits</code>).</li>
 </ol>
 <h3 id="generate-tpc-ds-data">Generate TPC-DS Data</h3>
@@ -506,7 +497,7 @@ Run <code>yarn app -destroy plasma-store-service</code>to destroy it.</p>
 <li>DATA_FORMAT: The data file format. You can specify parquet or orc</li>
 </ol>
 <p>For example:</p>
-<pre><code>export SPARK_HOME=/home/oap/spark-3.0.0
+<pre><code>export SPARK_HOME=/home/oap/spark-3.1.1
 export TPCDS_KITS_DIR=/home/oap/tpcds-kits
 export NAMENODE_ADDRESS=mynamenode:9000
 export THRIFT_SERVER_ADDRESS=mythriftserver
@@ -567,14 +558,6 @@ sh ./scripts/run_tpcds.sh
 <p>When all the queries are done, you will see the <code>result.json</code> file in the current directory. You will find in the 2nd and 3rd round, cache feature takes effect and query time becomes less.
 And the Spark webUI OAP tab has more specific OAP cache metrics just as <a href="#use-dram-cache">section</a> step 5.</p>
 <h2 id="advanced-configuration">Advanced Configuration</h2>
-<ul>
-<li><a href="../Advanced-Configuration/#Additional-Cache-Strategies">Additional Cache Strategies</a>  </li>
-</ul>
-<p>In addition to <strong>external</strong> cache strategy, SQL Data Source Cache also supports 3 other cache strategies: <strong>guava</strong>, <strong>noevict</strong>  and <strong>vmemcache</strong>.</p>
-<ul>
-<li><a href="../Advanced-Configuration/#Index-and-Data-Cache-Separation">Index and Data Cache Separation</a> </li>
-</ul>
-<p>To optimize the cache media utilization, SQL Data Source Cache supports cache separation of data and index, by using same or different cache media with DRAM and PMem.</p>
 <ul>
 <li><a href="../Advanced-Configuration/#Cache-Hot-Tables">Cache Hot Tables</a> </li>
 </ul>
