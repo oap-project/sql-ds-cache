@@ -250,8 +250,10 @@ public class ParquetRemoteRecordReaderWrapper extends ParquetRecordReaderWrapper
       int batchSequenceId = response.getSequenceId();
       responses.put(batchSequenceId, response);
       rowsRead = response.getRowCount();
+      // update necessary info even when rowsRead == 0
+      columnarBatch.setNumRows(rowsRead);
+      ((RemoteColumnVector) columnVectors[0]).setTrackingId(batchSequenceId);
       if (rowsRead > 0) {
-        columnarBatch.setNumRows(rowsRead);
         // parse response data
         for (int i = 0; i < columnVectors.length; i++) {
           // check if column elements have variable lengths
