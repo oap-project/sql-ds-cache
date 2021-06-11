@@ -5,26 +5,26 @@
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="None">
   
   
-  
-  <link rel="shortcut icon" href="../img/favicon.ico">
-  <title>Architecture Overview - SQL DS Cache - master</title>
+  <link rel="shortcut icon" href="img/favicon.ico">
+  <title>SQL DS Cache - 1.1.1</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700" />
 
-  <link rel="stylesheet" href="../css/theme.css" />
-  <link rel="stylesheet" href="../css/theme_extra.css" />
+  <link rel="stylesheet" href="css/theme.css" />
+  <link rel="stylesheet" href="css/theme_extra.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" />
   
   <script>
     // Current page data
     var mkdocs_page_name = "Architecture Overview";
-    var mkdocs_page_input_path = "Architect-Overview.md";
+    var mkdocs_page_input_path = "index.md";
     var mkdocs_page_url = null;
   </script>
   
-  <script src="../js/jquery-2.1.1.min.js" defer></script>
-  <script src="../js/modernizr-2.8.3.min.js" defer></script>
+  <script src="js/jquery-2.1.1.min.js" defer></script>
+  <script src="js/modernizr-2.8.3.min.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
   <script>hljs.initHighlightingOnLoad();</script> 
   
@@ -38,9 +38,9 @@
     <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
     <div class="wy-side-scroll">
       <div class="wy-side-nav-search">
-        <a href=".." class="icon icon-home"> SQL DS Cache - master</a>
+        <a href="." class="icon icon-home"> SQL DS Cache - 1.1.1</a>
         <div role="search">
-  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+  <form id ="rtd-search-form" class="wy-form" action="./search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" title="Type search term here" />
   </form>
 </div>
@@ -48,27 +48,27 @@
 
       <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
                 <ul>
-                    <li class="toctree-l1"><a class="reference internal" href="../User-Guide/">User Guide</a>
+                    <li class="toctree-l1"><a class="reference internal" href="User-Guide/">User Guide</a>
                     </li>
                 </ul>
                 <ul>
-                    <li class="toctree-l1"><a class="reference internal" href="../Advanced-Configuration/">Advanced Configuration</a>
+                    <li class="toctree-l1"><a class="reference internal" href="Advanced-Configuration/">Advanced Configuration</a>
                     </li>
                 </ul>
                 <ul>
-                    <li class="toctree-l1"><a class="reference internal" href="../OAP-Installation-Guide/">OAP Installation Guide</a>
+                    <li class="toctree-l1"><a class="reference internal" href="OAP-Installation-Guide/">OAP Installation Guide</a>
                     </li>
                 </ul>
                 <ul>
-                    <li class="toctree-l1"><a class="reference internal" href="../OAP-Developer-Guide/">OAP Developer Guide</a>
+                    <li class="toctree-l1"><a class="reference internal" href="OAP-Developer-Guide/">OAP Developer Guide</a>
                     </li>
                 </ul>
                 <ul>
-                    <li class="toctree-l1"><a class="reference internal" href="../Developer-Guide/">Developer Guide</a>
+                    <li class="toctree-l1"><a class="reference internal" href="Developer-Guide/">Developer Guide</a>
                     </li>
                 </ul>
                 <ul>
-                    <li class="toctree-l1"><a class="" href="../../">Version Selector</a>
+                    <li class="toctree-l1"><a class="" href="../">Version Selector</a>
                     </li>
                 </ul>
       </div>
@@ -80,7 +80,7 @@
       
       <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
         <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-        <a href="..">SQL DS Cache - master</a>
+        <a href=".">SQL DS Cache - 1.1.1</a>
       </nav>
 
       
@@ -88,7 +88,7 @@
         <div class="rst-content">
           <div role="navigation" aria-label="breadcrumbs navigation">
   <ul class="wy-breadcrumbs">
-    <li><a href="..">Docs</a> &raquo;</li>
+    <li><a href=".">Docs</a> &raquo;</li>
     
       
     
@@ -106,14 +106,14 @@
                 <h1 id="architecture-overview">Architecture Overview</h1>
 <ul>
 <li><a href="#introduction">Introduction</a></li>
-<li><a href="#Usage-Scenarios">Usage Scenarios</a></li>
+<li><a href="#usage-scenarios">Usage Scenarios</a></li>
 <li><a href="#architecture">Architecture</a></li>
-<li><a href="#Features">Features</a></li>
+<li><a href="#features">Features</a></li>
 </ul>
 <h2 id="introduction">Introduction</h2>
 <p>Apache Spark<em> is a unified analytics engine for large-scale data processing, and Spark SQL</em> is a Spark module widely used to process structured data in data center. However, Spark SQL still faces the challenge of stability and performance in a highly dynamic environment with ultra-large-scale data.</p>
 <p>SQL Index and Data Source Cache are designed to leverage users' defined indices and smart fine-grained in-memory data caching to boost Spark SQL performance, and can address the performance issues of some use cases.</p>
-<p><img alt="OAP-INTRODUCTION" src="../image/OAP-Introduction.PNG" /></p>
+<p><img alt="OAP-INTRODUCTION" src="image/OAP-Introduction.PNG" /></p>
 <h2 id="usage-scenarios">Usage Scenarios</h2>
 <h3 id="usage-scenario-1-interactive-queries">Usage Scenario 1 -- Interactive queries</h3>
 <p>Most customers adopt Spark SQL as a batch processing engine. Unfortunately, customers would find it hard to separate batch processing and interactive use cases. Interactive queries need to return the data in seconds or even sub-seconds instead of the minutes or hours of batch processing. This is a big challenge for the current Spark SQL implementation.</p>
@@ -135,7 +135,7 @@
 <p>Users can choose either strategy based on their need.</p>
 <h2 id="architecture">Architecture</h2>
 <p>The following diagram shows the design architecture.</p>
-<p><img alt="ARCHITECTURE" src="../image/OAP-Architecture.PNG" /></p>
+<p><img alt="ARCHITECTURE" src="image/OAP-Architecture.PNG" /></p>
 <p>SQL Index and Data Source Cache acts as a <code>.jar</code> plug-in for Spark SQL.</p>
 <ul>
 <li>
@@ -155,7 +155,7 @@
 <p>Data Source Cache can cache both decompressed and decoded vectorized data and binary raw data. Generally, the server's DRAM is used as the cache medium. <a href="https://www.intel.com/content/www/us/en/architecture-and-technology/optane-dc-persistent-memory.html">PMem</a> can also be used as the cache medium as it will provide a more cost effective solution for the requirements of a high performance environment.</p>
 </li>
 <li>
-<p>Both indexing and caching as <strong><em>Optimizer &amp; Execution</em></strong> are transparent for users. See the <a href="#Features">Features</a> section for details.</p>
+<p>Both indexing and caching as <strong><em>Optimizer &amp; Execution</em></strong> are transparent for users. See the <a href="#features">Features</a> section for details.</p>
 </li>
 <li>
 <p>Spark <strong><em>ThriftServer</em></strong>* is a good use case for OAP, because ThriftServer launches Spark Applications which can cache hot data for a long time in the background, and it also accepts query requests from different clients at the same time. <code>bin/spark-sql</code>, <code>bin/spark-shell</code> or <code>bin/pyspark</code> can certainly be used by SQL Index and Data Source Cache, but usually only for interactive test situations.</p>
@@ -213,9 +213,9 @@
       
     </span>
 </div>
-    <script>var base_url = '..';</script>
-    <script src="../js/theme.js" defer></script>
-      <script src="../search/main.js" defer></script>
+    <script>var base_url = '.';</script>
+    <script src="js/theme.js" defer></script>
+      <script src="search/main.js" defer></script>
     <script defer>
         window.onload = function () {
             SphinxRtdTheme.Navigation.enable(true);
@@ -224,3 +224,8 @@
 
 </body>
 </html>
+
+<!--
+MkDocs version : 1.1.2
+Build Date UTC : 2021-06-10 08:58:03.205388+00:00
+-->

@@ -9,7 +9,7 @@
   
   
   <link rel="shortcut icon" href="../img/favicon.ico">
-  <title>OAP Installation Guide - SQL DS Cache - master</title>
+  <title>OAP Installation Guide - SQL DS Cache - 1.1.1</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700" />
 
   <link rel="stylesheet" href="../css/theme.css" />
@@ -38,7 +38,7 @@
     <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
     <div class="wy-side-scroll">
       <div class="wy-side-nav-search">
-        <a href=".." class="icon icon-home"> SQL DS Cache - master</a>
+        <a href=".." class="icon icon-home"> SQL DS Cache - 1.1.1</a>
         <div role="search">
   <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" title="Type search term here" />
@@ -96,7 +96,7 @@
       
       <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
         <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-        <a href="..">SQL DS Cache - master</a>
+        <a href="..">SQL DS Cache - 1.1.1</a>
       </nav>
 
       
@@ -150,16 +150,16 @@ To test your installation,  run the command <code>conda list</code> in your term
 <p>Create a Conda environment and install OAP Conda package.</p>
 <pre><code class="bash">$ conda create -n oapenv -y python=3.7
 $ conda activate oapenv
-$ conda install -c conda-forge -c intel -y oap=1.1.0
+$ conda install -c conda-forge -c intel -y oap=1.1.1
 </code></pre>
 
 <p>Once finished steps above, you have completed OAP dependencies installation and OAP building, and will find built OAP jars under <code>$HOME/miniconda2/envs/oapenv/oap_jars</code></p>
 <p>Dependencies below are required by OAP and all of them are included in OAP Conda package, they will be automatically installed in your cluster when you Conda install OAP. Ensure you have activated environment which you created in the previous steps.</p>
 <ul>
-<li><a href="https://github.com/Intel-bigdata/arrow">Arrow</a></li>
+<li><a href="https://github.com/oap-project/arrow/tree/arrow-4.0.0-oap-1.1.1">Arrow</a></li>
 <li><a href="http://arrow.apache.org/blog/2017/08/08/plasma-in-memory-object-store/">Plasma</a></li>
-<li><a href="https://anaconda.org/intel/memkind">Memkind</a></li>
-<li><a href="https://anaconda.org/intel/vmemcache">Vmemcache</a></li>
+<li><a href="https://github.com/memkind/memkind/tree/v1.10.1">Memkind</a></li>
+<li><a href="https://github.com/pmem/vmemcache.git">Vmemcache</a></li>
 <li><a href="https://anaconda.org/intel/hpnl">HPNL</a></li>
 <li><a href="https://github.com/pmem/pmdk">PMDK</a>  </li>
 <li><a href="https://software.intel.com/content/www/us/en/develop/tools/oneapi.html">OneAPI</a></li>
