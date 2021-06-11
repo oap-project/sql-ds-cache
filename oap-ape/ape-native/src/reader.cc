@@ -419,6 +419,31 @@ int Reader::dumpBufferAfterAgg(int groupBySize, int aggExprsSize,
                                 results[i]);
   }
 
+  // mark some rows as null
+  // e.g. select avg(col_a) group by col_b, we may have a such row
+  // col_b_value | col_b_isNull | col_a_sum_value | col_a_isNull | ...
+  //  aaaaa      |  not Null    |   0             |  Null        |
+  // for this row, spark will do something beyond our expect,
+  // so we make a work around set such row as null row like below
+  //  aaaaa      |   Null       |   0             |  Null        |
+  // if you have any better solution, feel free to modify.
+  if (groupBySize > 0) {
+    int32_t totalRows = results[groupBySize].data.size();
+    for (int rowId = 0; rowId < totalRows; ++rowId) {
+      uint8_t nullValue = 1;
+      for (int i = groupBySize; i < aggExprs.size(); i++) {
+        nullValue &= *((uint8_t*)(oriNullsPtr[i]) + rowId);
+      }
+      // for this row, group by value is null, which means this row is invalid
+      if (!nullValue) {
+        ARROW_LOG(INFO) << "row ID " << rowId << "is null";
+        for (int j = 0; j < groupBySize; j++) {
+          *((uint8_t*)(oriNullsPtr[j]) + rowId) = nullValue;
+        }
+      }
+    }
+  }
+
   return 0;
 }
 
