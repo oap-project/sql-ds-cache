@@ -366,7 +366,7 @@ public class SkippableVectorizedColumnReader {
             for (int i = rowId; i < rowId + num; ++i) {
               if (!column.isNullAt(i)) {
                 long gregorianMillis = dictionary.decodeToLong(dictionaryIds.getDictId(i));
-                column.putLong(i, DateTimeUtils.fromMillis(gregorianMillis));
+                column.putLong(i, DateTimeUtils.millisToMicros(gregorianMillis));
               }
             }
           } else {
@@ -374,7 +374,7 @@ public class SkippableVectorizedColumnReader {
             for (int i = rowId; i < rowId + num; ++i) {
               if (!column.isNullAt(i)) {
                 long julianMillis = dictionary.decodeToLong(dictionaryIds.getDictId(i));
-                long julianMicros = DateTimeUtils.fromMillis(julianMillis);
+                long julianMicros = DateTimeUtils.millisToMicros(julianMillis);
                 column.putLong(i, rebaseMicros(julianMicros, failIfRebase));
               }
             }
@@ -536,7 +536,7 @@ public class SkippableVectorizedColumnReader {
       if ("CORRECTED".equals(datetimeRebaseMode)) {
         for (int i = 0; i < num; i++) {
           if (defColumnRef.readInteger() == maxDefLevel) {
-            column.putLong(rowId + i, DateTimeUtils.fromMillis(dataColumn.readLong()));
+            column.putLong(rowId + i, DateTimeUtils.millisToMicros(dataColumn.readLong()));
           } else {
             column.putNull(rowId + i);
           }
@@ -545,7 +545,7 @@ public class SkippableVectorizedColumnReader {
         final boolean failIfRebase = "EXCEPTION".equals(datetimeRebaseMode);
         for (int i = 0; i < num; i++) {
           if (defColumnRef.readInteger() == maxDefLevel) {
-            long julianMicros = DateTimeUtils.fromMillis(dataColumn.readLong());
+            long julianMicros = DateTimeUtils.millisToMicros(dataColumn.readLong());
             column.putLong(rowId + i, rebaseMicros(julianMicros, failIfRebase));
           } else {
             column.putNull(rowId + i);

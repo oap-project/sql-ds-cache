@@ -20,7 +20,9 @@
  */
 package org.apache.spark.sql
 
+import scala.language.postfixOps
 import sys.process._
+
 import org.apache.spark._
 import org.apache.spark.sql.oap.OapRuntime
 
@@ -44,7 +46,7 @@ trait OapPerfSuiteContext {
     */
   protected implicit def sqlContext: SQLContext = _spark.sqlContext
 
-  def isBootStrapping = false
+  def isBootStrapping: Boolean = false
   protected def createSparkSession(conf: Map[String, String] = Map.empty): SparkSession = {
     if (isBootStrapping) {
       val sparkConf = new SparkConf().set("spark.sql.testkey", "true")

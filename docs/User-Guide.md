@@ -12,7 +12,7 @@
 
 ## Prerequisites
 
-SQL Index and Data Source Cache on Spark 3.0.0 requires a working Hadoop cluster with YARN and Spark. Running Spark on YARN requires a binary distribution of Spark, which is built with YARN support.
+SQL Index and Data Source Cache on Spark 3.1.1 requires a working Hadoop cluster with YARN and Spark. Running Spark on YARN requires a binary distribution of Spark, which is built with YARN support.
 
 ## Getting Started
 
@@ -263,20 +263,11 @@ Socket Configuration -> Intel UPI General Configuration -> Stale AtoS :  Disable
    
    For more information you can refer to [Quick Start Guide: Provision Intel® Optane™ DC Persistent Memory](https://software.intel.com/content/www/us/en/develop/articles/quick-start-guide-configure-intel-optane-dc-persistent-memory-on-linux.html)
 
-- SQL Data Source Cache uses Plasma as a node-level external cache service, the benefit of using external cache is data could be shared across process boundaries.  [Plasma](http://arrow.apache.org/blog/2017/08/08/plasma-in-memory-object-store/) is a high-performance shared-memory object store and a component of [Apache Arrow](https://github.com/apache/arrow). We have modified Plasma to support PMem, and make it open source on [oap-project-Arrow](https://github.com/oap-project/arrow/tree/arrow-3.0.0-oap) repo. If you have finished [OAP Installation Guide](OAP-Installation-Guide.md), Plasma will be automatically installed and then you just need copy `arrow-plasma-3.0.0.jar` to `$SPARK_HOME/jars`. For manual building and installation steps you can refer to [Plasma installation](./Developer-Guide.md#Plasma-installation).
+- SQL Data Source Cache uses Plasma as a node-level external cache service, the benefit of using external cache is data could be shared across process boundaries.  [Plasma](http://arrow.apache.org/blog/2017/08/08/plasma-in-memory-object-store/) is a high-performance shared-memory object store and a component of [Apache Arrow](https://github.com/apache/arrow). We have modified Plasma to support PMem, and make it open source on [oap-project-Arrow](https://github.com/oap-project/arrow/tree/arrow-4.0.0-oap-1.1.1) repo. If you have finished [OAP Installation Guide](OAP-Installation-Guide.md), Plasma will be automatically installed and then you just need copy `arrow-plasma-4.0.0.jar` to `$SPARK_HOME/jars`. For manual building and installation steps you can refer to [Plasma installation](./Developer-Guide.md#Plasma-installation).
 
 
 - Refer to configuration below to apply external cache strategy and start Plasma service on each node and start your workload.
 
-
-#### Configuration for NUMA
-
-Install `numactl` to bind the executor to the PMem device on the same NUMA node. 
-
-```yum install numactl -y ```
-
-We recommend you use NUMA-patched Spark to achieve better performance gain for the `external` strategy compared with Community Spark.  
-Build Spark from source to enable NUMA-binding support, refer to [Enabling-NUMA-binding-for-PMem-in-Spark](./Developer-Guide.md#Enabling-NUMA-binding-for-PMem-in-Spark). 
 
 #### Configuration for enabling PMem cache
 
@@ -285,8 +276,6 @@ Add the following configuration to `$SPARK_HOME/conf/spark-defaults.conf`.
 ```
 # 2x number of your worker nodes
 spark.executor.instances          6
-# enable numa
-spark.yarn.numa.enabled           true
 # enable SQL Index and Data Source Cache extension in Spark
 spark.sql.extensions              org.apache.spark.sql.OapExtensions
 
@@ -364,7 +353,7 @@ Run ```yarn app -destroy plasma-store-service```to destroy it.
 
 This section provides instructions and tools for running TPC-DS queries to evaluate the cache performance of various configurations. The TPC-DS suite has many queries and we select 9 I/O intensive queries to simplify performance evaluation.
 
-We created some tool scripts [oap-benchmark-tool.zip](https://github.com/oap-project/oap-tools/releases/download/v1.1.0-spark-3.0.0/oap-benchmark-tool.zip) to simplify running the workload. If you are already familiar with TPC-DS data generation and running a TPC-DS tool suite, skip our tool and use the TPC-DS tool suite directly.
+We created some tool scripts [oap-benchmark-tool.zip](https://github.com/oap-project/oap-tools/releases/download/v1.1.1-spark-3.1.1/oap-benchmark-tool.zip) to simplify running the workload. If you are already familiar with TPC-DS data generation and running a TPC-DS tool suite, skip our tool and use the TPC-DS tool suite directly.
 
 ### Prerequisites
 
@@ -372,7 +361,7 @@ We created some tool scripts [oap-benchmark-tool.zip](https://github.com/oap-pro
 
 ### Prepare the Tool
 
-1. Download [oap-benchmark-tool.zip](https://github.com/oap-project/oap-tools/releases/download/v1.1.0-spark-3.0.0/oap-benchmark-tool.zip) and unzip to a folder (for example, `oap-benchmark-tool` folder) on your working node. 
+1. Download [oap-benchmark-tool.zip](https://github.com/oap-project/oap-tools/releases/download/v1.1.1-spark-3.1.1/oap-benchmark-tool.zip) and unzip to a folder (for example, `oap-benchmark-tool` folder) on your working node. 
 2. Copy `oap-benchmark-tool/tools/tpcds-kits` to ***ALL*** worker nodes under the same folder (for example, `/home/oap/tpcds-kits`).
 
 ### Generate TPC-DS Data
@@ -389,7 +378,7 @@ We created some tool scripts [oap-benchmark-tool.zip](https://github.com/oap-pro
    For example:
 
 ```
-export SPARK_HOME=/home/oap/spark-3.0.0
+export SPARK_HOME=/home/oap/spark-3.1.1
 export TPCDS_KITS_DIR=/home/oap/tpcds-kits
 export NAMENODE_ADDRESS=mynamenode:9000
 export THRIFT_SERVER_ADDRESS=mythriftserver
@@ -464,14 +453,6 @@ When all the queries are done, you will see the `result.json` file in the curren
 And the Spark webUI OAP tab has more specific OAP cache metrics just as [section](#use-dram-cache) step 5.
 
 ## Advanced Configuration
-
-- [Additional Cache Strategies](./Advanced-Configuration.md#Additional-Cache-Strategies)  
-
-  In addition to **external** cache strategy, SQL Data Source Cache also supports 3 other cache strategies: **guava**, **noevict**  and **vmemcache**.
-
-- [Index and Data Cache Separation](./Advanced-Configuration.md#Index-and-Data-Cache-Separation) 
-
-  To optimize the cache media utilization, SQL Data Source Cache supports cache separation of data and index, by using same or different cache media with DRAM and PMem.
 
 - [Cache Hot Tables](./Advanced-Configuration.md#Cache-Hot-Tables) 
 
