@@ -50,8 +50,9 @@ public class NettyServer {
     private static final Logger LOG = LoggerFactory.getLogger(NettyServer.class);
 
     // TODO make these configurable
-    public static final int DEFAULT_PLASMA_CLIENT_POOL_CAPACITY = 10;
+    public static final int DEFAULT_PLASMA_CLIENT_POOL_CAPACITY = 50;
     public static final int DEFAULT_CHANNEL_TIMEOUT_SECONDS = 300;
+    public static final int DEFAULT_MAX_ALIVE_NATIVE_READERS = 1000;
 
     private int port;
     private final String address;
@@ -86,6 +87,13 @@ public class NettyServer {
         EventLoopGroup workerGroup = new NioEventLoopGroup(availableProcessors);
         ChannelHandler encoder = new NettyMessage.NettyMessageEncoder();
 
+        // thread pool for reader operations those are time consuming
+        ReaderOperationRunner operationRunner =
+                new ReaderOperationRunner(
+                        DEFAULT_MAX_ALIVE_NATIVE_READERS,
+                        availableProcessors,
+                        availableProcessors);
+
         bootstrap = new ServerBootstrap();
         bootstrap.group(bossGroup, workerGroup)
                 .channel(NioServerSocketChannel.class)
@@ -96,7 +104,7 @@ public class NettyServer {
                                 encoder,
                                 new ReadTimeoutHandler(DEFAULT_CHANNEL_TIMEOUT_SECONDS),
                                 new NettyMessage.NettyMessageDecoder(),
-                                new RequestHandler());
+                                new RequestHandler(operationRunner));
                     }
                 })
                 .option(ChannelOption.SO_BACKLOG, 128)
