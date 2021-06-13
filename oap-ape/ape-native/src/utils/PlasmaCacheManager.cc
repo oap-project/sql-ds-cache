@@ -207,7 +207,7 @@ void PlasmaCacheManager::setCacheInfoToRedis() {
       std::unordered_map<std::string, double> scores;
       char buff[1024];
       for (auto range : cached_ranges_) {
-        snprintf(buff, sizeof(buff), "%d_%d_%s", range.offset, range.length,
+        snprintf(buff, sizeof(buff), "%ld_%ld_%s", range.offset, range.length,
                  hostname.c_str());
         std::string member = buff;
         scores.insert({member, range.offset});
@@ -563,7 +563,7 @@ void ShareClientPlasmaCacheManager::setCacheInfoToRedis() {
       std::unordered_map<std::string, double> scores;
       char buff[1024];
       for (auto range : cached_ranges_) {
-        snprintf(buff, sizeof(buff), "%d_%d_%s", range.offset, range.length,
+        snprintf(buff, sizeof(buff), "%ld_%ld_%s", range.offset, range.length,
                  hostname.c_str());
         std::string member = buff;
         scores.insert({member, range.offset});
