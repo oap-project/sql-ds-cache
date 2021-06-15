@@ -777,7 +777,9 @@ public abstract class NettyMessage {
          * no longer needed.
          */
         public void releaseBuffers() {
-            compositedElementLengths.release();
+            if (compositedElementLengths != null) {
+                compositedElementLengths.release();
+            }
             for (int i = 0; i < columnCount; i++) {
                 dataBuffers[i].release();
                 nullBuffers[i].release();
