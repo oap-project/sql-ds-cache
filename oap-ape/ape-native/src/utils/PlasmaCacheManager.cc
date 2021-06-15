@@ -651,6 +651,9 @@ std::shared_ptr<Buffer> ShareClientPlasmaCacheManager::getFileRange(
   ARROW_LOG(DEBUG) << "plasma, get object from cache: " << file_path_ << ", "
                    << range.offset << ", " << range.length;
 
+  // if want to copy cache before computing, comment out this line
+  return obufs[0].data;
+
   // allocate new buffer in main memory
   auto buffer_alloc_result = arrow::AllocateResizableBuffer(obufs[0].data->size());
   if (!buffer_alloc_result.ok()) {
