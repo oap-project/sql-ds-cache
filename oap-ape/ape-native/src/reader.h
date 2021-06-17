@@ -98,7 +98,7 @@ class Reader {
 
   int dumpBufferAfterAgg(int groupBySize, int aggExprsSize, const std::vector<Key>& keys,
                          const std::vector<DecimalVector>& results, int64_t* oriBufferPtr,
-                         int64_t* oriNullsPtr);
+                         int64_t* oriNullsPtr, int32_t offset, int32_t length);
 
   arrow::Result<std::shared_ptr<arrow::fs::HadoopFileSystem>> fsResult;
   arrow::fs::HdfsOptions* options;
@@ -162,5 +162,7 @@ class Reader {
   std::vector<DecimalVector> results = std::vector<DecimalVector>();
   std::vector<Key> keys = std::vector<Key>();
   ApeHashMap map;
+
+  int32_t dumpAggCursor = 0;
 };
 }  // namespace ape
