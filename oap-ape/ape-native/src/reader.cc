@@ -223,7 +223,6 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
       rowsRet = rowsDump;
     } else {  // this row group aggregation result is more than default batch size, we
       // will return them via mutilple call
-      ARROW_LOG(INFO) << " we should reach here " << dumpAggCursor;
       rowsRet = ((keys.size() - dumpAggCursor) > batchSize)
                     ? batchSize
                     : ((keys.size() - dumpAggCursor));
@@ -243,7 +242,7 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
     }
   }
 
-  ARROW_LOG(INFO) << "ret rows " << rowsRet;
+  ARROW_LOG(DEBUG) << "ret rows " << rowsRet;
   return rowsRet;
 }
 
