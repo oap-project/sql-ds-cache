@@ -54,11 +54,28 @@ public class RequestHandler extends SimpleChannelInboundHandler<NettyMessage> {
     private long[] nativeNullBuffers;
     private boolean compressEnabled;
 
+    private ParquetReaderInitParams readerInitParams = null;
     private boolean hasNextBatch = true;
     private int pendingBatchCount = 0;
     private boolean waitingReceipt = false;
 
     private int rowGroupsToRead = 0;
+
+    private ChannelHandlerContext ctx;
+    private final ReaderOperationRunner readerOperationRunner;
+
+    public RequestHandler(ReaderOperationRunner readerOperationRunner) {
+        this.readerOperationRunner = readerOperationRunner;
+    }
+
+    @Override
+    public void channelRegistered(final ChannelHandlerContext ctx) throws Exception {
+        if (this.ctx == null) {
+            this.ctx = ctx;
+        }
+
+        super.channelRegistered(ctx);
+    }
 
     @Override
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
@@ -80,26 +97,20 @@ public class RequestHandler extends SimpleChannelInboundHandler<NettyMessage> {
                 if (batchCount > 0) {
                     pendingBatchCount += batchCount;
 
-                    // start `sendNextBatch` when all before pending batches were sent.
-                    // otherwise, previous call of `sendNextBatch` will handle all pending batches.
+                    // start next batch when all before pending batches were sent.
+                    // otherwise, previous call of `startNextBatch` will handle all pending batches.
                     if (!waitingReceipt) {
-                        sendNextBatch(ctx.channel());
+                        startNextBatch();
                     }
                 }
             } else if (msgClazz == NettyMessage.BatchResponseReceipt.class) {
                 waitingReceipt = false;
-                sendNextBatch(ctx.channel());
+                startNextBatch();
             } else if (msgClazz == NettyMessage.ParquetReaderInitRequest.class) {
                 NettyMessage.ParquetReaderInitRequest request =
                         (NettyMessage.ParquetReaderInitRequest)msg;
 
                 handleParquetReaderInitRequest(request);
-
-                NettyMessage.BooleanResponse response =
-                        new NettyMessage.BooleanResponse(
-                                true, NettyMessage.ParquetReaderInitRequest.ID);
-                ctx.writeAndFlush(response);
-                LOG.debug("Sent reader init response: {}", response.toString());
             } else if (msgClazz == NettyMessage.CloseReaderRequest.class) {
                 handleCloseReader();
 
@@ -145,7 +156,24 @@ public class RequestHandler extends SimpleChannelInboundHandler<NettyMessage> {
     }
 
     private void handleParquetReaderInitRequest(NettyMessage.ParquetReaderInitRequest request) {
-        ParquetReaderInitParams params = request.getParams();
+        if (readerInitParams != null) {
+            throw new IllegalStateException("Request to init parquet reader again.");
+        }
+        readerInitParams = request.getParams();
+
+        // async init
+        readerOperationRunner.addInitReaderTask(() -> {
+            try {
+                initParquetReader();
+                notifyReaderOperationResult(reader);
+            } catch (Exception ex) {
+                notifyReaderOperationResult(ex);
+            }
+        });
+    }
+
+    private void initParquetReader() {
+        ParquetReaderInitParams params = readerInitParams;
         rowGroupsToRead = params.getTotalGroupsToRead();
         compressEnabled = params.isCompressEnabled();
 
@@ -210,30 +238,63 @@ public class RequestHandler extends SimpleChannelInboundHandler<NettyMessage> {
         }
     }
 
-    private NettyMessage.ReadBatchResponse readNextBatch(Channel channel) {
+    private void sendReaderInitResponse() {
+        NettyMessage.BooleanResponse response =
+                new NettyMessage.BooleanResponse(
+                        true, NettyMessage.ParquetReaderInitRequest.ID);
+        ctx.writeAndFlush(response);
+        LOG.debug("Sent reader init response: {}", response.toString());
+    }
+
+    private void startNextBatch() {
+        if (pendingBatchCount > 0) {
+            pendingBatchCount--;
+
+            // async reading
+            readerOperationRunner.addReadBatchTask(() -> {
+                try {
+                    NettyMessage.ReadBatchResponse response = readNextBatch();
+                    notifyReaderOperationResult(response);
+                } catch (Exception ex) {
+                    notifyReaderOperationResult(ex);
+                }
+
+            });
+
+            // a receipt is required before sending next batch.
+            // this is to avoid overwriting native buffers.
+            waitingReceipt = true;
+        }
+    }
+
+    NettyMessage.ReadBatchResponse readNextBatch() {
         final long start = System.nanoTime();
 
         int rowCount = 0;
         hasNextBatch = false;
 
         // read batch
-        if (rowGroupsToRead > 0) {
-            rowCount = ParquetReaderJNI.readBatch(
-                    reader, batchSize, nativeDataBuffers, nativeNullBuffers);
-
-            if (rowCount < 0) {
-                rowCount = 0;
+        if (rowGroupsToRead > 0) { // avoid error when no data to read
+            synchronized (this) {
+                if (reader != 0) { // avoid error when native reader has been closed
+                    rowCount = ParquetReaderJNI.readBatch(
+                            reader, batchSize, nativeDataBuffers, nativeNullBuffers);
+                    // check next batch
+                    hasNextBatch = ParquetReaderJNI.hasNext(reader);
+                }
             }
+        }
 
-            // check next batch
-            hasNextBatch = ParquetReaderJNI.hasNext(reader);
+        // adjust returned row count
+        if (rowCount < 0) {
+            rowCount = 0;
         }
 
         // header info
         boolean[] compositeFlags = new boolean[columnCount];
         int[] dataBufferLengths = new int[columnCount];
         int compositedElementCount = 0;
-        ByteBuf compositedElementLengths = channel.alloc().ioBuffer(Integer.BYTES * rowCount);
+        ByteBuf compositedElementLengths = ctx.alloc().ioBuffer(Integer.BYTES * rowCount);
         ByteBuf[] dataBuffers = new ByteBuf[columnCount];
         ByteBuf[] nullBuffers = new ByteBuf[columnCount];
 
@@ -254,7 +315,7 @@ public class RequestHandler extends SimpleChannelInboundHandler<NettyMessage> {
                 compositedElementCount += rowCount;
 
                 int dataBufferLength = 0;
-                ByteBuf compositedDataBuffer = channel.alloc().ioBuffer(Integer.BYTES * rowCount);
+                ByteBuf compositedDataBuffer = ctx.alloc().ioBuffer(Integer.BYTES * rowCount);
                 for (int j = 0; j < rowCount; j ++) {
                     // check null
                     boolean isNull = !(nullBuffers[i].getBoolean(j));
@@ -307,7 +368,19 @@ public class RequestHandler extends SimpleChannelInboundHandler<NettyMessage> {
 
     }
 
-    private void handleCloseReader() {
+    private void sendNextBatch(NettyMessage.ReadBatchResponse response) {
+        ctx.channel().writeAndFlush(response);
+
+        if (!hasNextBatch) {
+            pendingBatchCount = 0;
+        }
+    }
+
+    void notifyReaderOperationResult(Object result) {
+        ctx.executor().execute(() -> ctx.pipeline().fireUserEventTriggered(result));
+    }
+
+    private synchronized void handleCloseReader() {
         // close native reader
         if (reader != 0) {
             ParquetReaderJNI.close(reader);
@@ -327,26 +400,25 @@ public class RequestHandler extends SimpleChannelInboundHandler<NettyMessage> {
             }
             nativeNullBuffers = null;
         }
+
+        // notify runner
+        readerOperationRunner.notifyReaderClosed();
     }
 
     private boolean handleSkipNextRowGroup() {
         return ParquetReaderJNI.skipNextRowGroup(reader);
     }
 
-    private void sendNextBatch(final Channel channel) {
-        if (pendingBatchCount > 0) {
-            pendingBatchCount--;
-
-            NettyMessage.ReadBatchResponse response = readNextBatch(channel);
-            channel.writeAndFlush(response);
-
-            if (!hasNextBatch) {
-                pendingBatchCount = 0;
-            }
-
-            // a receipt is required before sending next batch.
-            // this is to avoid overwriting native buffers.
-            waitingReceipt = true;
+    @Override
+    public void userEventTriggered(ChannelHandlerContext ctx, Object msg) throws Exception {
+        if (msg instanceof NettyMessage.ReadBatchResponse) {
+            sendNextBatch((NettyMessage.ReadBatchResponse) msg);
+        } else if (msg instanceof Long) {
+            sendReaderInitResponse();
+        } else if (msg instanceof Throwable) {
+            respondWithError(ctx, (Throwable)msg);
+        } else {
+            super.userEventTriggered(ctx, msg);
         }
     }
 

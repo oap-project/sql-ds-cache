@@ -27,7 +27,7 @@ namespace ape {
 std::string CacheKeyGenerator::cacheKeyofFileRange(std::string file_path,
                                                    ::arrow::io::ReadRange range) {
   char buff[1024];
-  snprintf(buff, sizeof(buff), "plasma_cache:parquet_chunk:%s:%d_%d", file_path.c_str(),
+  snprintf(buff, sizeof(buff), "plasma_cache:parquet_chunk:%s:%ld_%ld", file_path.c_str(),
            range.offset, range.length);
   std::string ret = buff;
   return ret;
@@ -207,7 +207,7 @@ void PlasmaCacheManager::setCacheInfoToRedis() {
       std::unordered_map<std::string, double> scores;
       char buff[1024];
       for (auto range : cached_ranges_) {
-        snprintf(buff, sizeof(buff), "%d_%d_%s", range.offset, range.length,
+        snprintf(buff, sizeof(buff), "%ld_%ld_%s", range.offset, range.length,
                  hostname.c_str());
         std::string member = buff;
         scores.insert({member, range.offset});
@@ -461,7 +461,6 @@ PlasmaClientPool::PlasmaClientPool(int capacity) : capacity_(capacity) {
     arrow::Status status = client->Connect("/tmp/plasmaStore", "", 0);
 
     if (status.ok()) {
-      free_clients_.push(client);
       allocated_clients_.push_back(client);
     } else {
       ARROW_LOG(WARNING) << "plasma, Connect failed: " << status.message();
@@ -469,7 +468,7 @@ PlasmaClientPool::PlasmaClientPool(int capacity) : capacity_(capacity) {
   }
 
   ARROW_LOG(INFO) << "PlasmaClientPool, initialized plasma client pool, size: "
-                  << free_clients_.size();
+                  << allocated_clients_.size();
 }
 
 PlasmaClientPool::~PlasmaClientPool() { close(); }
@@ -495,39 +494,14 @@ void PlasmaClientPool::close() {
 int PlasmaClientPool::capacity() { return capacity_; }
 
 std::shared_ptr<plasma::PlasmaClient> PlasmaClientPool::take() {
-  while (true) {
-    std::unique_lock<std::mutex> lck(queue_mutex_);
-
-    if (!free_clients_.empty()) {
-      std::shared_ptr<plasma::PlasmaClient> client = free_clients_.front();
-      free_clients_.pop();
-
-      ARROW_LOG(DEBUG) << "PlasmaClientPool, take free client";
-
-      return client;
-    }
-
-    ARROW_LOG(DEBUG) << "PlasmaClientPool, wait for free client";
-
-    waiting_count_ += 1;
-    queue_cv_.wait(lck);
-    waiting_count_ -= 1;
-
-    ARROW_LOG(DEBUG) << "PlasmaClientPool, wake up";
-  }
+  int i = current_;
+  current_ = (current_ + 1) % allocated_clients_.size();
+  return allocated_clients_[i];
 }
 
 void PlasmaClientPool::put(std::shared_ptr<plasma::PlasmaClient> client) {
-  std::unique_lock<std::mutex> lck(queue_mutex_);
-
-  free_clients_.push(client);
-
-  lck.unlock();
-
-  if (waiting_count_ > 0) {
-    ARROW_LOG(DEBUG) << "PlasmaClientPool, notification of free client";
-    queue_cv_.notify_one();
-  }
+  // do nothing
+  return;
 }
 
 ShareClientPlasmaCacheManager::ShareClientPlasmaCacheManager(
@@ -589,7 +563,7 @@ void ShareClientPlasmaCacheManager::setCacheInfoToRedis() {
       std::unordered_map<std::string, double> scores;
       char buff[1024];
       for (auto range : cached_ranges_) {
-        snprintf(buff, sizeof(buff), "%d_%d_%s", range.offset, range.length,
+        snprintf(buff, sizeof(buff), "%ld_%ld_%s", range.offset, range.length,
                  hostname.c_str());
         std::string member = buff;
         scores.insert({member, range.offset});
@@ -677,7 +651,36 @@ std::shared_ptr<Buffer> ShareClientPlasmaCacheManager::getFileRange(
   ARROW_LOG(DEBUG) << "plasma, get object from cache: " << file_path_ << ", "
                    << range.offset << ", " << range.length;
 
+  // if want to copy cache before computing, comment out this line
   return obufs[0].data;
+
+  // allocate new buffer in main memory
+  auto buffer_alloc_result = arrow::AllocateResizableBuffer(obufs[0].data->size());
+  if (!buffer_alloc_result.ok()) {
+    ARROW_LOG(WARNING) << "plasma, failed to allocate new buffer";
+    return obufs[0].data;
+  }
+
+  // copy data from cache media to main memory
+  auto new_buffer = std::move(buffer_alloc_result).ValueUnsafe();
+  const uint8_t* src = obufs[0].data->data();
+  uint8_t* dest = new_buffer->mutable_data();
+  int length = obufs[0].data->size();
+
+  // memcpy(dest, src, length);
+
+  const int BLOCK_SIZE = 128 * 1024;  // 128 KB
+  int src_offset = 0;
+  int dest_offset = 0;
+  while (length > 0L) {
+    int size = std::min(length, BLOCK_SIZE);
+    memcpy(dest + dest_offset, src + src_offset, size);
+    length -= size;
+    src_offset += size;
+    dest_offset += size;
+  }
+
+  return std::move(new_buffer);
 }
 
 bool ShareClientPlasmaCacheManager::cacheFileRange(::arrow::io::ReadRange range,
