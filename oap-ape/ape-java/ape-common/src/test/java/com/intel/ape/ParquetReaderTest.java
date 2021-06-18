@@ -17,7 +17,7 @@
 
 package com.intel.ape;
 
-import com.intel.ape.util.Platform;
+import com.intel.compression.util.Platform;
 
 class ParquetReaderTest {
 

@@ -20,6 +20,7 @@ package com.intel.ape.util;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+import com.intel.compression.util.Platform;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.CompositeByteBuf;
 import io.netty.buffer.Unpooled;

@@ -19,7 +19,7 @@ package com.intel.ape;
 
 import java.nio.charset.StandardCharsets;
 
-import com.intel.ape.util.Platform;
+import com.intel.compression.util.Platform;
 
 class ParquetReaderByteArrayTest {
   public static void main(String[] args) {
