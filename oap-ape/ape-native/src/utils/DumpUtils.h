@@ -29,38 +29,37 @@ class DumpUtils {
  public:
   static void dumpGroupByKeyToJavaBuffer(const std::vector<Key>& keys,
                                          uint8_t* bufferAddr, uint8_t* nullAddr,
-                                         const int index,
-                                         const parquet::Type::type pType) {
+                                         const int index, const parquet::Type::type pType,
+                                         int32_t offset, int32_t len) {
     *(nullAddr + index) = 1;
-    int len = keys.size();
     switch (pType) {
       case parquet::Type::INT32: {
         for (int i = 0; i < len; i++) {
-          *((int32_t*)(bufferAddr) + i) = std::get<0>(keys[i][index]);
+          *((int32_t*)(bufferAddr) + i) = std::get<0>(keys[offset + i][index]);
         }
         break;
       }
       case parquet::Type::INT64: {
         for (int i = 0; i < len; i++) {
-          *((int64_t*)(bufferAddr) + i) = std::get<1>(keys[i][index]);
+          *((int64_t*)(bufferAddr) + i) = std::get<1>(keys[offset + i][index]);
         }
         break;
       }
       case parquet::Type::FLOAT: {
         for (int i = 0; i < len; i++) {
-          *((float*)(bufferAddr) + i) = std::get<2>(keys[i][index]);
+          *((float*)(bufferAddr) + i) = std::get<2>(keys[offset + i][index]);
         }
         break;
       }
       case parquet::Type::DOUBLE: {
         for (int i = 0; i < len; i++) {
-          *((double*)(bufferAddr) + i) = std::get<3>(keys[i][index]);
+          *((double*)(bufferAddr) + i) = std::get<3>(keys[offset + i][index]);
         }
         break;
       }
       case parquet::Type::BYTE_ARRAY: {
         for (int i = 0; i < len; i++) {
-          *((parquet::ByteArray*)(bufferAddr) + i) = std::get<4>(keys[i][index]);
+          *((parquet::ByteArray*)(bufferAddr) + i) = std::get<4>(keys[offset + i][index]);
         }
         break;
       }
@@ -72,16 +71,18 @@ class DumpUtils {
   }
 
   static void dumpToJavaBuffer(uint8_t* bufferAddr, uint8_t* nullAddr,
-                               const DecimalVector& result) {
-    for (int i = 0; i < result.data.size(); i++) {
+                               const DecimalVector& result, int32_t offset, int32_t len) {
+    for (int i = 0; i < len; i++) {
       *(nullAddr + i) = result.nullVector->at(i);
       switch (result.type) {
         case ResultType::IntType: {
-          *((int32_t*)bufferAddr + i) = static_cast<int32_t>(result.data[i].low_bits());
+          *((int32_t*)bufferAddr + i) =
+              static_cast<int32_t>(result.data[offset + i].low_bits());
           break;
         }
         case ResultType::LongType: {
-          *((int64_t*)bufferAddr + i) = static_cast<int64_t>(result.data[i].low_bits());
+          *((int64_t*)bufferAddr + i) =
+              static_cast<int64_t>(result.data[offset + i].low_bits());
           break;
         }
         case ResultType::FloatType: {
@@ -91,16 +92,17 @@ class DumpUtils {
         case ResultType::DoubleType: {
           // TODO: this is just for UnscaledValue case, if the data type is Double, this
           // will not work
-          arrow::Decimal128 tmp(result.data[i]);
+          arrow::Decimal128 tmp(result.data[offset + i]);
           *((double*)bufferAddr + i) = tmp.ToDouble(0);
           break;
         }
         case ResultType::Decimal64Type: {
-          *((int64_t*)bufferAddr + i) = static_cast<int64_t>(result.data[i].low_bits());
+          *((int64_t*)bufferAddr + i) =
+              static_cast<int64_t>(result.data[offset + i].low_bits());
           break;
         }
         case ResultType::Decimal128Type: {
-          decimalToBytes(result.data[i], result.precision,
+          decimalToBytes(result.data[offset + i], result.precision,
                          (uint8_t*)(bufferAddr + i * 16));
           break;
         }

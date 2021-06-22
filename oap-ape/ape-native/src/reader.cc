@@ -157,7 +157,7 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
   initRowGroupReaders();
 
   // this reader have read all rows
-  if (totalRowsRead >= totalRows) {
+  if (totalRowsRead >= totalRows && dumpAggCursor == 0) {
     return -1;
   }
   checkEndOfRowGroup();
@@ -184,34 +184,62 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
     ARROW_LOG(DEBUG) << "total rows read yet: " << totalRowsRead;
     rowsRet = doFilter(rowsToRead, buffersPtr, nullsPtr);
   } else {
-    results.resize(aggExprs.size());
-    for (int i = 0; i < aggExprs.size(); i++) {
-      std::vector<uint8_t> nullVector(1);
-      results[i].nullVector = std::make_shared<std::vector<uint8_t>>(nullVector);
-    }
-    while (totalRowsRead < totalRows && !checkEndOfRowGroup() &&
-           // TODO: refactor. A quick work around to avoid group num exceed batch size.
-           map.size() < (batchSize / 4)) {
-      int rowsToRead = doReadBatch(batchSize, buffersPtr, nullsPtr);
-      totalRowsRead += rowsToRead;
-      ARROW_LOG(DEBUG) << "total rows read yet: " << totalRowsRead;
+    if (dumpAggCursor == 0) {  // will read a whole RowGroup and do agg
+      results.resize(aggExprs.size());
+      for (int i = 0; i < aggExprs.size(); i++) {
+        std::vector<uint8_t> nullVector(1);
+        results[i].nullVector = std::make_shared<std::vector<uint8_t>>(nullVector);
+      }
+      while (totalRowsRead < totalRows && !checkEndOfRowGroup()) {
+        int rowsToRead = doReadBatch(batchSize, buffersPtr, nullsPtr);
+        totalRowsRead += rowsToRead;
+        ARROW_LOG(DEBUG) << "total rows read yet: " << totalRowsRead;
 
-      int rowsAfterFilter = doFilter(rowsToRead, buffersPtr, nullsPtr);
-      ARROW_LOG(DEBUG) << "after filter " << rowsAfterFilter;
+        int rowsAfterFilter = doFilter(rowsToRead, buffersPtr, nullsPtr);
+        ARROW_LOG(DEBUG) << "after filter " << rowsAfterFilter;
 
-      int tmp = doAggregation(rowsAfterFilter, map, keys, results, buffersPtr, nullsPtr);
-      // if the last batch are empty after filter, it will return 0 regard less of the
-      // group num
-      if (tmp != 0) rowsRet = tmp;
-    }
+        int tmp =
+            doAggregation(rowsAfterFilter, map, keys, results, buffersPtr, nullsPtr);
+        // if the last batch are empty after filter, it will return 0 regard less of the
+        // group num
+        if (tmp != 0) rowsRet = tmp;
+      }
+      int rowsDump = rowsRet;
+      if (rowsRet > batchSize) {
+        rowsDump = batchSize;
+        dumpAggCursor = batchSize;
+      }
 
-    if (aggExprs.size()) {
-      dumpBufferAfterAgg(groupByExprs.size(), aggExprs.size(), keys, results, buffersPtr_,
-                         nullsPtr_);
+      if (aggExprs.size()) {
+        dumpBufferAfterAgg(groupByExprs.size(), aggExprs.size(), keys, results,
+                           buffersPtr_, nullsPtr_, 0, rowsDump);
+      }
+      if (rowsRet <=
+          batchSize) {  // return all result in one call, so clear buffers here.
+        map.clear();
+        keys.clear();
+        results.clear();
+      }
+      rowsRet = rowsDump;
+    } else {  // this row group aggregation result is more than default batch size, we
+      // will return them via mutilple call
+      rowsRet = ((keys.size() - dumpAggCursor) > batchSize)
+                    ? batchSize
+                    : ((keys.size() - dumpAggCursor));
+      if (aggExprs.size()) {
+        dumpBufferAfterAgg(groupByExprs.size(), aggExprs.size(), keys, results,
+                           buffersPtr_, nullsPtr_, dumpAggCursor, rowsRet);
+      }
+      if ((keys.size() - dumpAggCursor) <=
+          batchSize) {  // the last batch, let's clear buffers
+        map.clear();
+        keys.clear();
+        results.clear();
+        dumpAggCursor = 0;
+      } else {
+        dumpAggCursor += batchSize;
+      }
     }
-    map.clear();
-    keys.clear();
-    results.clear();
   }
 
   ARROW_LOG(DEBUG) << "ret rows " << rowsRet;
@@ -403,7 +431,8 @@ int Reader::doAggregation(int batchSize, ApeHashMap& map, std::vector<Key>& keys
 int Reader::dumpBufferAfterAgg(int groupBySize, int aggExprsSize,
                                const std::vector<Key>& keys,
                                const std::vector<DecimalVector>& results,
-                               int64_t* oriBufferPtr, int64_t* oriNullsPtr) {
+                               int64_t* oriBufferPtr, int64_t* oriNullsPtr,
+                               int32_t offset, int32_t length) {
   // dump buffers
   for (int i = 0; i < groupBySize; i++) {
     std::shared_ptr<AttributeReferenceExpression> groupByExpr =
@@ -411,12 +440,12 @@ int Reader::dumpBufferAfterAgg(int groupBySize, int aggExprsSize,
     int typeIndex = groupByExpr->columnIndex;
     DumpUtils::dumpGroupByKeyToJavaBuffer(keys, (uint8_t*)(oriBufferPtr[i]),
                                           (uint8_t*)(oriNullsPtr[i]), i,
-                                          typeVector[typeIndex]);
+                                          typeVector[typeIndex], offset, length);
   }
 
   for (int i = groupBySize; i < aggExprs.size(); i++) {
     DumpUtils::dumpToJavaBuffer((uint8_t*)(oriBufferPtr[i]), (uint8_t*)(oriNullsPtr[i]),
-                                results[i]);
+                                results[i], offset, length);
   }
 
   return 0;
@@ -457,7 +486,7 @@ int Reader::allocateExtraBuffers(int batchSize, std::vector<int64_t>& buffersPtr
   return initRequiredColumnCount + filterBufferCount + aggBufferCount;
 }
 
-bool Reader::hasNext() { return columnReaders[0]->HasNext(); }
+bool Reader::hasNext() { return dumpAggCursor > 0 || columnReaders[0]->HasNext(); }
 
 bool Reader::skipNextRowGroup() {
   if (totalRowGroupsRead == totalRowGroups) {
@@ -531,7 +560,7 @@ void Reader::initRowGroupReaders() {
 }
 
 bool Reader::checkEndOfRowGroup() {
-  if (totalRowsRead != totalRowsLoadedSoFar) return false;
+  if (totalRowsRead != totalRowsLoadedSoFar || dumpAggCursor != 0) return false;
   // if a splitFile contains rowGroup [2,5], currentRowGroup is 2
   // rowGroupReaders index starts from 0
   ARROW_LOG(DEBUG) << "totalRowsLoadedSoFar: " << totalRowsLoadedSoFar;
