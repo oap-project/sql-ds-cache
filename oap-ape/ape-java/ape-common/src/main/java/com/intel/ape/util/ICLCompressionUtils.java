@@ -42,6 +42,7 @@ public final class ICLCompressionUtils {
       if (byteBuf.hasMemoryAddress()) {
         zstdOutputStream.write(byteBuf, 0, byteBuf.readableBytes());
       }
+      byteBuf.release();
     }
     zstdOutputStream.close();
     byte[] data = outputStream.toByteArray();
@@ -54,6 +55,7 @@ public final class ICLCompressionUtils {
             new IntelCompressionCodecBlockInputStream(inputStream, 4 * 1024 * 1024, false);
     byte[] originData = new byte[originLength];
     zstdInputStream.read(originData);
+    byteBuf.release();
     return Unpooled.wrappedBuffer(originData);
   }
 }

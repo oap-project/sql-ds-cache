@@ -219,6 +219,23 @@ public class ParquetRemoteRecordReaderWrapper extends ParquetRecordReaderWrapper
 
   @Override
   public void close() throws IOException {
+
+    try {
+      if (requestClient != null) {
+        requestClient.close();
+      }
+    } catch (Exception ex) {
+      throw new RuntimeException(ex);
+    } finally {
+      if (parquetRequestHelper != null) {
+        parquetRequestHelper.shutdownNettyClient();
+      }
+    }
+
+    for (NettyMessage.ReadBatchResponse response: responses.values()) {
+      response.releaseBuffers();
+    }
+    responses.clear();
     // close columnBatch
     if (columnarBatch != null) {
       columnarBatch.close();
