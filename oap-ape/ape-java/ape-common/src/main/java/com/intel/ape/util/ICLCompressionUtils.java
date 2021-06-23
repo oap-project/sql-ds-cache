@@ -42,7 +42,6 @@ public final class ICLCompressionUtils {
       if (byteBuf.hasMemoryAddress()) {
         zstdOutputStream.write(byteBuf, 0, byteBuf.readableBytes());
       }
-      byteBuf.release();
     }
     zstdOutputStream.close();
     byte[] data = outputStream.toByteArray();
