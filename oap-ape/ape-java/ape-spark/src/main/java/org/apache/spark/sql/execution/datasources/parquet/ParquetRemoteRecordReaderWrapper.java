@@ -219,6 +219,23 @@ public class ParquetRemoteRecordReaderWrapper extends ParquetRecordReaderWrapper
 
   @Override
   public void close() throws IOException {
+
+    try {
+      if (requestClient != null) {
+        requestClient.close();
+      }
+    } catch (Exception ex) {
+      throw new RuntimeException(ex);
+    } finally {
+      if (parquetRequestHelper != null) {
+        parquetRequestHelper.shutdownNettyClient();
+      }
+    }
+
+    for (NettyMessage.ReadBatchResponse response: responses.values()) {
+      response.releaseBuffers();
+    }
+    responses.clear();
     // close columnBatch
     if (columnarBatch != null) {
       columnarBatch.close();
@@ -252,7 +269,9 @@ public class ParquetRemoteRecordReaderWrapper extends ParquetRecordReaderWrapper
       rowsRead = response.getRowCount();
       // update necessary info even when rowsRead == 0
       columnarBatch.setNumRows(rowsRead);
-      ((RemoteColumnVector) columnVectors[0]).setTrackingId(batchSequenceId);
+      if (columnVectors.length > 0) {
+        ((RemoteColumnVector) columnVectors[0]).setTrackingId(batchSequenceId);
+      }
       if (rowsRead > 0) {
         // parse response data
         for (int i = 0; i < columnVectors.length; i++) {

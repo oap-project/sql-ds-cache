@@ -26,7 +26,7 @@ import java.util.Arrays;
 import java.util.function.Consumer;
 
 import com.intel.ape.service.params.ParquetReaderInitParams;
-import com.intel.ape.util.ZStdUtils;
+import com.intel.ape.util.ICLCompressionUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufInputStream;
@@ -677,7 +677,7 @@ public abstract class NettyMessage {
                 compositeByteBuf.addComponent(nullBuffers[i]);
             }
             try {
-                ByteBuf compressedData = ZStdUtils.compress(compositeByteBuf);
+                ByteBuf compressedData = ICLCompressionUtils.compress(compositeByteBuf, "zstd");
                 // release CompositeByteBuf
                 compositeByteBuf.release();
                 int compressedLength = compressedData.readableBytes();
@@ -742,7 +742,7 @@ public abstract class NettyMessage {
             if (columnCount > 0) {
                 try {
                     ByteBuf content = compressEnabled ?
-                            ZStdUtils.decompress(buffer.retainedSlice(), contentLength)
+                            ICLCompressionUtils.decompress(buffer.retainedSlice(), contentLength)
                             : buffer.retainedSlice();
                     compositedElementLengths =
                             content.readRetainedSlice(Integer.BYTES * compositedElementCount);

@@ -24,7 +24,7 @@ import java.util.List;
 import com.intel.ape.ParquetReaderJNI;
 import com.intel.ape.service.netty.NettyMessage;
 import com.intel.ape.service.params.ParquetReaderInitParams;
-import com.intel.ape.util.Platform;
+import com.intel.compression.util.Platform;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;

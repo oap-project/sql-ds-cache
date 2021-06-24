@@ -17,48 +17,44 @@
 
 package com.intel.ape.util;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
-import com.github.luben.zstd.ZstdInputStream;
-import com.github.luben.zstd.ZstdOutputStream;
+import com.intel.compression.spark.IntelCompressionCodecBlockInputStream;
+import com.intel.compression.spark.IntelCompressionCodecBlockOutputStream;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufInputStream;
 import io.netty.buffer.CompositeByteBuf;
 import io.netty.buffer.Unpooled;
-import io.netty.util.internal.PlatformDependent;
 
-public class ZStdUtils {
+public final class ICLCompressionUtils {
 
-  public static ByteBuf compress(CompositeByteBuf compositeByteBuf) throws IOException {
+  public static ByteBuf compress(CompositeByteBuf compositeByteBuf, String codec)
+          throws IOException {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    ZstdOutputStream zstdOutputStream = new ZstdOutputStream(outputStream);
+    IntelCompressionCodecBlockOutputStream zstdOutputStream = new
+            IntelCompressionCodecBlockOutputStream(outputStream, codec, 1,
+            4 * 1024 * 1024, false);
     for (ByteBuf byteBuf : compositeByteBuf) {
       if (byteBuf.hasArray()) {
         zstdOutputStream.write(byteBuf.array());
       }
       if (byteBuf.hasMemoryAddress()) {
-        byte[] data = new byte[byteBuf.readableBytes()];
-        PlatformDependent.copyMemory(byteBuf.memoryAddress(), data, 0, byteBuf.readableBytes());
-        zstdOutputStream.write(data);
+        zstdOutputStream.write(byteBuf, 0, byteBuf.readableBytes());
       }
     }
     zstdOutputStream.close();
     byte[] data = outputStream.toByteArray();
     return Unpooled.wrappedBuffer(data);
-
   }
 
   public static ByteBuf decompress(ByteBuf byteBuf, int originLength) throws IOException {
-    byte[] compressedData = new byte[byteBuf.readableBytes()];
-    byteBuf.readBytes(compressedData);
-    // release ByteBuf compressed from buffer.retainedSlice()
-    byteBuf.release();
-    ByteArrayInputStream inputStream = new ByteArrayInputStream(compressedData);
-    ZstdInputStream zstdInputStream = new ZstdInputStream(inputStream);
+    ByteBufInputStream inputStream = new ByteBufInputStream(byteBuf);
+    IntelCompressionCodecBlockInputStream zstdInputStream =
+            new IntelCompressionCodecBlockInputStream(inputStream, 4 * 1024 * 1024, false);
     byte[] originData = new byte[originLength];
     zstdInputStream.read(originData);
+    byteBuf.release();
     return Unpooled.wrappedBuffer(originData);
-
   }
 }
