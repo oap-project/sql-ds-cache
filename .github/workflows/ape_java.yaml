@@ -27,6 +27,6 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }} # todo: which pom.xml?
           restore-keys: ${{ runner.os }}-m2
       - name: pmem-common dependency
-        run: cd /tmp; git clone https://github.com/oap-project/pmem-common.git; cd pmem-common/; mvn install -am -q -DskipTests
+        run: cd /tmp; git clone https://github.com/oap-project/pmem-common.git; cd pmem-common/; git checkout branch-1.1-spark-3.x; mvn install -am -q -DskipTests
       - name: Build with Maven
         run: cd oap-ape/ape-java; mvn clean package -am --batch-mode -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
