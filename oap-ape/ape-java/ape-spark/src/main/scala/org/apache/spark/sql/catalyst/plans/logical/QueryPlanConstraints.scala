@@ -30,7 +30,7 @@ trait QueryPlanConstraints extends ConstraintHelper { self: LogicalPlan =>
   lazy val constraints: ExpressionSet = {
     if (conf.constraintPropagationEnabled) {
       ExpressionSet(
-        validConstraints
+        constructOrConstraints(validConstraints)
           .union(inferAdditionalConstraints(validConstraints))
           .union(constructIsNotNullConstraints(validConstraints, output))
           .filter { c =>
@@ -78,6 +78,30 @@ trait ConstraintHelper {
       destination: Attribute): Set[Expression] = constraints.map(_ transform {
     case e: Expression if e.semanticEquals(source) => destination
   })
+
+  def constructOrConstraints(constraints: Set[Expression]) : Set[Expression] = {
+    var inferredConstraints = Set.empty[Expression]
+    constraints.foreach {
+      case or @ Or(l, r) =>
+        inferredConstraints += Or(constructOrConstraintshelper(l), constructOrConstraintshelper(r))
+      case expr: Expression => inferredConstraints += expr // No inference
+    }
+    inferredConstraints -- constraints
+  }
+
+  def constructOrConstraintshelper(constraints: Expression) : Expression = {
+    constraints match {
+      case And(l, r) => And(constructOrConstraintshelper(l), constructOrConstraintshelper(r))
+      case Or(l, r) => Or(constructOrConstraintshelper(l), constructOrConstraintshelper(r))
+      case others: Expression =>
+        val isNotNullExpr = scanNullIntolerantAttribute(others)
+        if (isNotNullExpr.size > 0) {
+          And(others, IsNotNull(isNotNullExpr(0)))
+        } else {
+          others
+        }
+    }
+  }
 
   /**
    * Infers a set of `isNotNull` constraints from null intolerant expressions as well as
