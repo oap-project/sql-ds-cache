@@ -96,7 +96,27 @@ Extra configuration to enable ape features:
 | `spark.sql.parquet.filterPushdown ` | whether enable filter push down to Parquet native | true |
 | `spark.sql.ape.aggregation.pushdown.enabled` | (Experimental) whether enable aggregation push down to Parquet native | false | 
 |`spark.sql.ape.parquet.cache.enabled` | whether enable parquet cache, you need to start plasma service on worker nodes if you enable this | false |
-|
+|`spark.sql.ape.reader.location` | use local or remote reader in spark | local |
+|`spark.sql.ape.remote.reader.compressed `| enable compression when use remote reader | false |
+
+For disaggrated mode, cp `$OAP_ROOT_DIR/oap-ape/ape-java/ape-server/target/ape-server-1.1.0-SNAPSHOT.jar` to APE server and launch it using script like:
+```
+export HADOOP_CLASSPATH=`hadoop classpath --glob`
+// take 40911 as example for the port number
+java -cp ape-server-1.1.0-SNAPSHOT.jar:$HADOOP_CLASSPATH com.intel.oap.ape.service.netty.server.NettyServer 40911
+```
+To enable plasma cache, you also need to start plasma server on APE server node:
+```
+nohup plasma-store-server -m 1200000000000 -d /mnt/pmem -s /tmp/plasmaStore >> plasma.log 2>&1 &
+```
+Then at compute cluster side, cp jars of ape-server/ape-client to $spark_home/jars. Update hdfs-site.xml with following setting:
+```
+    <property>
+        <name>fs.ape.client.remote.servers</name>
+        <value>host1:port1,host2:port2</value>
+    </property>
+```
+To enable compression, make sure native libraries for compression codecs should exist in both APE server and compute nodes, such as libparquet.so. 
 
 ## Run Flink with APE
 [https://github.com/oap-project/sql-ds-cache/tree/ape/oap-ape/ape-java/ape-flink/README.md](https://github.com/oap-project/sql-ds-cache/tree/ape/oap-ape/ape-java/ape-flink/README.md)
@@ -129,3 +149,4 @@ For developers, before you commit cpp code, please run this command to keep code
 cd oap-ape/ape-native/ 
 python3 ./build-support/run_clang_format.py --clang_format_binary clang-format --source_dir ./src/  --fix
 ```
+
