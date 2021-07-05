@@ -55,6 +55,7 @@ public final class ICLCompressionUtils {
     byte[] originData = new byte[originLength];
     zstdInputStream.read(originData);
     byteBuf.release();
+    zstdInputStream.close();
     return Unpooled.wrappedBuffer(originData);
   }
 }

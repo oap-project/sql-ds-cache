@@ -84,7 +84,7 @@ public class NettyServer {
 
         int availableProcessors = Runtime.getRuntime().availableProcessors();
         EventLoopGroup bossGroup = new NioEventLoopGroup(availableProcessors);
-        EventLoopGroup workerGroup = new NioEventLoopGroup(availableProcessors);
+        EventLoopGroup workerGroup = new NioEventLoopGroup(availableProcessors * 4);
         ChannelHandler encoder = new NettyMessage.NettyMessageEncoder();
 
         // thread pool for reader operations those are time consuming
@@ -107,7 +107,7 @@ public class NettyServer {
                                 new RequestHandler(operationRunner));
                     }
                 })
-                .option(ChannelOption.SO_BACKLOG, 128)
+                .option(ChannelOption.SO_BACKLOG, 128 * 4)
                 .childOption(ChannelOption.SO_KEEPALIVE, true);
 
         // Bind and start to accept incoming connections.
