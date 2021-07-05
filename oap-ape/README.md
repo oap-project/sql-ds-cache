@@ -61,6 +61,14 @@ export LIBHDFS3_CONF=/path/to/your/hdfs-site.xml
 
 ## APE Build
 
+ICL jar build
+```
+cd /tmp;
+git clone https://github.com/Intel-bigdata/IntelCodecLibrary;
+cd IntelCodecLibrary/;
+mvn clean install
+```
+
 Java build, we will use `$OAP_ROOT_DIR/oap-ape/ape-java/ape-common/target/ape-common-1.1.0-SNAPSHOT.jar`, `$OAP_ROOT_DIR/oap-ape/ape-java/ape-spark/target/ape-spark-1.1.0-SNAPSHOT.jar`, `$OAP_ROOT_DIR/oap-ape/ape-java/ape-flink/target/ape-flink-1.1.0-SNAPSHOT.jar` later.
 
 ```
