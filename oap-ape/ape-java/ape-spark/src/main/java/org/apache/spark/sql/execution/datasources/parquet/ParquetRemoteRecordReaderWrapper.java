@@ -98,7 +98,8 @@ public class ParquetRemoteRecordReaderWrapper extends ParquetRecordReaderWrapper
             cacheEnabled,
             preBufferEnabled,
             false,
-            remoteReaderCompressEnabled
+            remoteReaderCompressEnabled,
+            remoteReaderCompressCodec
     );
     // set cache locality
     ParquetReaderInitParams.CacheLocalityStorage cacheLocalityStorage;

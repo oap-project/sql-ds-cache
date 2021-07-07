@@ -278,6 +278,7 @@ class ParquetFileFormat
     val redisEnabled = sqlConf.apeRedisEnabled
     val preBufferEnabled = sqlConf.apePreBufferEnabled
     val apeRemoteReaderCompressed = sqlConf.apeRemoteReaderCompressed
+    val apeRemoteReaderCompressCodec = sqlConf.apeRemoteReaderCompressCodec
     val (redisHost: String, redisPort: Int, redisPasswd: String) = if (redisEnabled) {
       (sqlConf.apeRedisHostName, sqlConf.apeRedisPort, sqlConf.apeRedisPasswd)
     } else {
@@ -361,6 +362,7 @@ class ParquetFileFormat
           reader.setPreBufferEnabled(preBufferEnabled)
           reader.setRedisEnabled(redisEnabled)
           reader.setRemoteReaderCompressEnabled(apeRemoteReaderCompressed)
+          reader.setRemoteReaderCompressCodec(apeRemoteReaderCompressCodec)
           if(cacheEnabled && redisEnabled) {
             reader.setPlasmaCacheRedis(redisHost, redisPort, redisPasswd)
           }

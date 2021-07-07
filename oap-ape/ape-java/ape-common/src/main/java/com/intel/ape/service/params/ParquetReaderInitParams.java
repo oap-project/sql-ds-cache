@@ -43,6 +43,7 @@ public class ParquetReaderInitParams implements Serializable {
     private boolean preBufferEnabled;
     private boolean plasmaCacheAsync;
     private boolean compressEnabled;
+    private String compressCodec;
 
     private CacheLocalityStorage cacheLocalityStorage;
 
@@ -65,6 +66,7 @@ public class ParquetReaderInitParams implements Serializable {
                 ", preBufferEnabled=" + preBufferEnabled +
                 ", plasmaCacheAsync=" + plasmaCacheAsync +
                 ", compressEnabled=" + compressEnabled +
+                ", compressCodec=" + compressCodec +
                 ", cacheLocalityStorage=" + cacheLocalityStorage +
                 ", filterPredicate='" + filterPredicate + '\'' +
                 ", aggregateExpression='" + aggregateExpression + '\'' +
@@ -76,7 +78,7 @@ public class ParquetReaderInitParams implements Serializable {
                                    List<Integer> typeSizes, List<Boolean> variableTypeFlags,
                                    int batchSize, boolean plasmaCacheEnabled,
                                    boolean preBufferEnabled, boolean plasmaCacheAsync,
-                                   boolean compressEnabled) {
+                                   boolean compressEnabled, String compressCodec) {
         this.fileName = fileName;
         this.hdfsHost = hdfsHost;
         this.hdfsPort = hdfsPort;
@@ -90,6 +92,7 @@ public class ParquetReaderInitParams implements Serializable {
         this.preBufferEnabled = preBufferEnabled;
         this.plasmaCacheAsync = plasmaCacheAsync;
         this.compressEnabled = compressEnabled;
+        this.compressCodec = compressCodec;
     }
 
     public String getFileName() {
@@ -193,6 +196,10 @@ public class ParquetReaderInitParams implements Serializable {
     public void setCompressEnabled(boolean compressEnabled) {
         this.compressEnabled = compressEnabled;
     }
+
+    public void setCompressCodec(String compressCodec) { this.compressCodec = compressCodec; }
+
+    public String getCompressCodec() { return compressCodec; }
 
     public CacheLocalityStorage getCacheLocalityStorage() {
         return cacheLocalityStorage;
