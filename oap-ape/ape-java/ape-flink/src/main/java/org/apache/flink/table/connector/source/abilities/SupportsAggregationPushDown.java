@@ -18,10 +18,10 @@
 
 package org.apache.flink.table.connector.source.abilities;
 
+import java.util.List;
+
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.table.utils.ape.AggregateExprs;
-
-import java.util.List;
 
 /**
  * For particular agg functions (eg. SUM, MAX, MIN, AVG, COUNT), the workload can be pushed down
@@ -38,14 +38,16 @@ import java.util.List;
  * +- Exchange(distribution=[single])
  *    +- LocalHashAggregate(select=[Partial_SUM(d_date_sk) AS sum$0])
  *       +- Calc(select=[d_date_sk], where=[=(d_year, 2000)])
- *          +- TableSourceScan(table=[[myhive, tpcds_1g_snappy, date_dim, filter=[], project=[d_date_sk, d_year]]], fields=[d_date_sk, d_year])
+ *          +- TableSourceScan(table=[[myhive, tpcds_1g_snappy, date_dim, filter=[],
+ *              project=[d_date_sk, d_year]]], fields=[d_date_sk, d_year])
  *
  * The plan after filters are pushed down:
  *== Optimized Logical Plan ==
  * HashAggregate(isMerge=[true], select=[Final_SUM(sum$0) AS EXPR$0])
  * +- Exchange(distribution=[single])
  *    +- LocalHashAggregate(select=[Partial_SUM(d_date_sk) AS sum$0])
- *       +- TableSourceScan(table=[[myhive, tpcds_1g_snappy, date_dim, filter=[equals(d_year, 2000)], project=[d_date_sk]]], fields=[d_date_sk])
+ *       +- TableSourceScan(table=[[myhive, tpcds_1g_snappy, date_dim,
+ *          filter=[equals(d_year, 2000)], project=[d_date_sk]]], fields=[d_date_sk])
  *</p>
  *
  * <p>
@@ -53,7 +55,9 @@ import java.util.List;
  * == Optimized Logical Plan ==
  * HashAggregate(isMerge=[true], select=[Final_SUM(sum$0) AS EXPR$0])
  * +- Exchange(distribution=[single])
- *    +- TableSourceScan(table=[[myhive, tpcds_1g_snappy, date_dim, filter=[equals(d_year, 2000)], project=[d_date_sk], aggregation=[sum$0]]], fields=[sum$0])
+ *    +- TableSourceScan(table=[[myhive, tpcds_1g_snappy, date_dim,
+ *          filter=[equals(d_year, 2000)], project=[d_date_sk], aggregation=[sum$0]]],
+ *          fields=[sum$0])
  *</p>
  */
 public interface SupportsAggregationPushDown {

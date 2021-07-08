@@ -18,6 +18,8 @@
 
 package org.apache.flink.connectors.hive;
 
+import javax.annotation.Nullable;
+
 import org.apache.flink.api.java.tuple.Tuple2;
 
 import org.apache.parquet.filter2.predicate.FilterApi;
@@ -26,9 +28,6 @@ import org.apache.parquet.filter2.predicate.Operators;
 import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.io.api.Binary;
-
-import javax.annotation.Nullable;
-
 /**
  * Optimizers to improve predicate tree.
  */

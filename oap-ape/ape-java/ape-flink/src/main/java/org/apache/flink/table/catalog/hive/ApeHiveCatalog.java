@@ -18,6 +18,13 @@
 
 package org.apache.flink.table.catalog.hive;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Optional;
+
+import javax.annotation.Nullable;
+
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.java.hadoop.mapred.utils.HadoopUtils;
 import org.apache.flink.connectors.hive.ApeHiveDynamicTableFactory;
@@ -25,19 +32,11 @@ import org.apache.flink.table.catalog.exceptions.CatalogException;
 import org.apache.flink.table.catalog.hive.client.HiveMetastoreClientWrapper;
 import org.apache.flink.table.catalog.hive.client.HiveShimLoader;
 import org.apache.flink.table.factories.Factory;
-import org.apache.flink.table.planner.calcite.CalciteConfig;
-import org.apache.flink.table.planner.calcite.CalciteConfig$;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.annotation.Nullable;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.Optional;
 
 import static org.apache.flink.table.catalog.hive.util.HiveTableUtil.getHadoopConfiguration;
 import static org.apache.flink.util.StringUtils.isNullOrWhitespaceOnly;
@@ -54,29 +53,35 @@ public class ApeHiveCatalog extends HiveCatalog {
     @VisibleForTesting
     HiveMetastoreClientWrapper client;
 
-    public ApeHiveCatalog(String catalogName, @Nullable String defaultDatabase, @Nullable String hiveConfDir) {
+    public ApeHiveCatalog(String catalogName, @Nullable String defaultDatabase,
+                          @Nullable String hiveConfDir) {
         this(catalogName, defaultDatabase, hiveConfDir, null);
     }
 
-    public ApeHiveCatalog(String catalogName, @Nullable String defaultDatabase, @Nullable String hiveConfDir, String hiveVersion) {
+    public ApeHiveCatalog(String catalogName, @Nullable String defaultDatabase,
+                          @Nullable String hiveConfDir, String hiveVersion) {
         this(catalogName, defaultDatabase, hiveConfDir, null, hiveVersion);
     }
 
-    public ApeHiveCatalog(String catalogName, @Nullable String defaultDatabase, @Nullable String hiveConfDir, @Nullable String hadoopConfDir, @Nullable String hiveVersion) {
+    public ApeHiveCatalog(String catalogName, @Nullable String defaultDatabase,
+                          @Nullable String hiveConfDir, @Nullable String hadoopConfDir,
+                          @Nullable String hiveVersion) {
         this(catalogName, defaultDatabase, createHiveConf(hiveConfDir, hadoopConfDir), hiveVersion);
     }
 
-    public ApeHiveCatalog(String catalogName, @Nullable String defaultDatabase, @Nullable HiveConf hiveConf, @Nullable String hiveVersion) {
+    public ApeHiveCatalog(String catalogName, @Nullable String defaultDatabase,
+                          @Nullable HiveConf hiveConf, @Nullable String hiveVersion) {
         this(catalogName,
-            defaultDatabase == null ? DEFAULT_DB : defaultDatabase,
-            hiveConf,
-            isNullOrWhitespaceOnly(hiveVersion) ? HiveShimLoader.getHiveVersion() : hiveVersion,
-            false);
+                defaultDatabase == null ? DEFAULT_DB : defaultDatabase,
+                hiveConf,
+                isNullOrWhitespaceOnly(hiveVersion) ? HiveShimLoader.getHiveVersion() : hiveVersion,
+                false);
     }
 
     @VisibleForTesting
-    protected ApeHiveCatalog(String catalogName, String defaultDatabase, @Nullable HiveConf hiveConf, String hiveVersion,
-            boolean allowEmbedded) {
+    protected ApeHiveCatalog(String catalogName, String defaultDatabase,
+                             @Nullable HiveConf hiveConf, String hiveVersion,
+                             boolean allowEmbedded) {
         super(catalogName, defaultDatabase, hiveConf, hiveVersion);
 
         this.hiveConf = hiveConf == null ? createHiveConf(null, null) : hiveConf;
@@ -87,11 +92,14 @@ public class ApeHiveCatalog extends HiveCatalog {
         return Optional.of(new ApeHiveDynamicTableFactory(hiveConf));
     }
 
-    private static HiveConf createHiveConf(@Nullable String hiveConfDir, @Nullable String hadoopConfDir) {
+    private static HiveConf createHiveConf(@Nullable String hiveConfDir,
+                                           @Nullable String hadoopConfDir) {
         // create HiveConf from hadoop configuration with hadoop conf directory configured.
         Configuration hadoopConf = null;
         if (isNullOrWhitespaceOnly(hadoopConfDir)) {
-            for (String possibleHadoopConfPath : HadoopUtils.possibleHadoopConfPaths(new org.apache.flink.configuration.Configuration())) {
+            for (String possibleHadoopConfPath :
+                    HadoopUtils.possibleHadoopConfPaths(
+                            new org.apache.flink.configuration.Configuration())) {
                 hadoopConf = getHadoopConfiguration(possibleHadoopConfPath);
                 if (hadoopConf != null) {
                     break;
@@ -118,7 +126,8 @@ public class ApeHiveCatalog extends HiveCatalog {
                 // trigger a read from the conf so that the input stream is read
                 isEmbeddedMetastore(hiveConf);
             } catch (IOException e) {
-                throw new CatalogException("Failed to load hive-site.xml from specified path:" + hiveSite, e);
+                throw new CatalogException(
+                        "Failed to load hive-site.xml from specified path:" + hiveSite, e);
             }
         }
         return hiveConf;

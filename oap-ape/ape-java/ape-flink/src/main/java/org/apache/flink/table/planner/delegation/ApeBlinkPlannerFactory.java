@@ -18,6 +18,11 @@
 
 package org.apache.flink.table.planner.delegation;
 
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.table.api.ApeEnvironmentSettings;
 import org.apache.flink.table.api.TableConfig;
@@ -27,11 +32,6 @@ import org.apache.flink.table.delegation.Executor;
 import org.apache.flink.table.delegation.Planner;
 import org.apache.flink.table.delegation.PlannerFactory;
 import org.apache.flink.table.descriptors.DescriptorProperties;
-
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 /**
  * Factory to construct a {@link BatchPlanner} or {@link StreamPlanner}.
@@ -46,7 +46,8 @@ public final class ApeBlinkPlannerFactory implements PlannerFactory {
         TableConfig tableConfig,
         FunctionCatalog functionCatalog,
         CatalogManager catalogManager) {
-        if (Boolean.valueOf(properties.getOrDefault(ApeEnvironmentSettings.STREAMING_MODE, "true"))) {
+        if (Boolean.valueOf(properties.getOrDefault(
+                ApeEnvironmentSettings.STREAMING_MODE, "true"))) {
             return new StreamPlanner(executor, tableConfig, functionCatalog, catalogManager);
         } else {
             return new ApeBatchPlanner(executor, tableConfig, functionCatalog, catalogManager);
@@ -68,6 +69,7 @@ public final class ApeBlinkPlannerFactory implements PlannerFactory {
 
     @Override
     public List<String> supportedProperties() {
-        return Arrays.asList(ApeEnvironmentSettings.STREAMING_MODE, ApeEnvironmentSettings.CLASS_NAME);
+        return Arrays.asList(
+                ApeEnvironmentSettings.STREAMING_MODE, ApeEnvironmentSettings.CLASS_NAME);
     }
 }

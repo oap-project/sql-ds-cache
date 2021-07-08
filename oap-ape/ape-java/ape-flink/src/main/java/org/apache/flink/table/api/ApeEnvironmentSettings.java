@@ -18,17 +18,17 @@
 
 package org.apache.flink.table.api;
 
+import java.util.HashMap;
+import java.util.Map;
+
+import javax.annotation.Nullable;
+
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.annotation.PublicEvolving;
 import org.apache.flink.table.delegation.Executor;
 import org.apache.flink.table.delegation.Planner;
 import org.apache.flink.table.functions.ScalarFunction;
 import org.apache.flink.table.sinks.TableSink;
-
-import javax.annotation.Nullable;
-
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * Defines all parameters that initialize a table environment. Those parameters are used only
@@ -112,7 +112,8 @@ public class ApeEnvironmentSettings {
     }
 
     /**
-     * Gets the specified name of the default database in the initial catalog to be created when instantiating
+     * Gets the specified name of the default database in the initial catalog to be created when
+     * instantiating
      * a {@link TableEnvironment}.
      */
     public String getBuiltInDatabaseName() {
@@ -154,10 +155,14 @@ public class ApeEnvironmentSettings {
      * A builder for {@link ApeEnvironmentSettings}.
      */
     public static class Builder {
-        private static final String OLD_PLANNER_FACTORY = "org.apache.flink.table.planner.StreamPlannerFactory";
-        private static final String OLD_EXECUTOR_FACTORY = "org.apache.flink.table.executor.StreamExecutorFactory";
-        private static final String BLINK_PLANNER_FACTORY = "org.apache.flink.table.planner.delegation.ApeBlinkPlannerFactory";
-        private static final String BLINK_EXECUTOR_FACTORY = "org.apache.flink.table.planner.delegation.BlinkExecutorFactory";
+        private static final String OLD_PLANNER_FACTORY =
+                "org.apache.flink.table.planner.StreamPlannerFactory";
+        private static final String OLD_EXECUTOR_FACTORY =
+                "org.apache.flink.table.executor.StreamExecutorFactory";
+        private static final String BLINK_PLANNER_FACTORY =
+                "org.apache.flink.table.planner.delegation.ApeBlinkPlannerFactory";
+        private static final String BLINK_EXECUTOR_FACTORY =
+                "org.apache.flink.table.planner.delegation.BlinkExecutorFactory";
 
         private String plannerClass = BLINK_PLANNER_FACTORY;
         private String executorClass = BLINK_EXECUTOR_FACTORY;

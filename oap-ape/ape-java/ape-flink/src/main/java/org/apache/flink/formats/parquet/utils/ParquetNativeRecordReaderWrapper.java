@@ -112,7 +112,8 @@ public class ParquetNativeRecordReaderWrapper implements ParquetRecordReaderWrap
         }
 
         // schema
-        RequestedSchemaJsonConvertor message = new RequestedSchemaJsonConvertor(fieldTypeList, projectedFields);
+        RequestedSchemaJsonConvertor message = new RequestedSchemaJsonConvertor(fieldTypeList,
+                projectedFields);
 
         // cache configuration
         boolean plasmaCacheEnabled =

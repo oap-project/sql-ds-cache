@@ -18,6 +18,13 @@
 
 package org.apache.flink.connectors.hive;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+
+import javax.annotation.Nullable;
+
 import org.apache.flink.api.connector.source.Boundedness;
 import org.apache.flink.api.connector.source.SplitEnumerator;
 import org.apache.flink.api.connector.source.SplitEnumeratorContext;
@@ -44,20 +51,14 @@ import org.apache.flink.util.Preconditions;
 import org.apache.hadoop.hive.metastore.api.Partition;
 import org.apache.hadoop.mapred.JobConf;
 
-import javax.annotation.Nullable;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-
 import static org.apache.flink.connector.file.src.FileSource.DEFAULT_SPLIT_ASSIGNER;
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
 /**
  * A unified data source that reads a hive table.
  */
-public class ApeHiveSource extends AbstractFileSource<RowData, HiveSourceSplit> implements ResultTypeQueryable<RowData> {
+public class ApeHiveSource extends AbstractFileSource<RowData, HiveSourceSplit>
+        implements ResultTypeQueryable<RowData> {
 
     private static final long serialVersionUID = 1L;
 
@@ -97,7 +98,9 @@ public class ApeHiveSource extends AbstractFileSource<RowData, HiveSourceSplit> 
     }
 
     @Override
-    public SimpleVersionedSerializer<PendingSplitsCheckpoint<HiveSourceSplit>> getEnumeratorCheckpointSerializer() {
+    public SimpleVersionedSerializer<PendingSplitsCheckpoint<HiveSourceSplit>>
+        getEnumeratorCheckpointSerializer() {
+
         if (continuousPartitionedEnumerator()) {
             return new ContinuousHivePendingSplitsCheckpointSerializer(getSplitSerializer());
         } else {
@@ -106,25 +109,32 @@ public class ApeHiveSource extends AbstractFileSource<RowData, HiveSourceSplit> 
     }
 
     @Override
-    public SplitEnumerator<HiveSourceSplit, PendingSplitsCheckpoint<HiveSourceSplit>> createEnumerator(
-            SplitEnumeratorContext<HiveSourceSplit> enumContext) {
+    public SplitEnumerator<HiveSourceSplit, PendingSplitsCheckpoint<HiveSourceSplit>>
+        createEnumerator(SplitEnumeratorContext<HiveSourceSplit> enumContext) {
+
         if (continuousPartitionedEnumerator()) {
             return createContinuousSplitEnumerator(
-                    enumContext, fetcherContext.getConsumeStartOffset(), Collections.emptyList(), Collections.emptyList());
+                    enumContext, fetcherContext.getConsumeStartOffset(), Collections.emptyList(),
+                    Collections.emptyList());
         } else {
             return super.createEnumerator(enumContext);
         }
     }
 
     @Override
-    public SplitEnumerator<HiveSourceSplit, PendingSplitsCheckpoint<HiveSourceSplit>> restoreEnumerator(
-            SplitEnumeratorContext<HiveSourceSplit> enumContext, PendingSplitsCheckpoint<HiveSourceSplit> checkpoint) {
+    public SplitEnumerator<HiveSourceSplit, PendingSplitsCheckpoint<HiveSourceSplit>>
+        restoreEnumerator(
+            SplitEnumeratorContext<HiveSourceSplit> enumContext,
+            PendingSplitsCheckpoint<HiveSourceSplit> checkpoint) {
         if (continuousPartitionedEnumerator()) {
             Preconditions.checkState(checkpoint instanceof ContinuousHivePendingSplitsCheckpoint,
-                    "Illegal type of splits checkpoint %s for streaming read partitioned table", checkpoint.getClass().getName());
-            ContinuousHivePendingSplitsCheckpoint hiveCheckpoint = (ContinuousHivePendingSplitsCheckpoint) checkpoint;
+                    "Illegal type of splits checkpoint %s for streaming read partitioned table",
+                    checkpoint.getClass().getName());
+            ContinuousHivePendingSplitsCheckpoint hiveCheckpoint =
+                    (ContinuousHivePendingSplitsCheckpoint) checkpoint;
             return createContinuousSplitEnumerator(
-                    enumContext, hiveCheckpoint.getCurrentReadOffset(), hiveCheckpoint.getSeenPartitionsSinceOffset(), hiveCheckpoint.getSplits());
+                    enumContext, hiveCheckpoint.getCurrentReadOffset(),
+                    hiveCheckpoint.getSeenPartitionsSinceOffset(), hiveCheckpoint.getSplits());
         } else {
             return super.restoreEnumerator(enumContext, checkpoint);
         }
@@ -134,7 +144,8 @@ public class ApeHiveSource extends AbstractFileSource<RowData, HiveSourceSplit> 
         return getBoundedness() == Boundedness.CONTINUOUS_UNBOUNDED && !partitionKeys.isEmpty();
     }
 
-    private SplitEnumerator<HiveSourceSplit, PendingSplitsCheckpoint<HiveSourceSplit>> createContinuousSplitEnumerator(
+    private SplitEnumerator<HiveSourceSplit, PendingSplitsCheckpoint<HiveSourceSplit>>
+        createContinuousSplitEnumerator(
             SplitEnumeratorContext<HiveSourceSplit> enumContext,
             Comparable<?> currentReadOffset,
             Collection<List<String>> seenPartitions,
@@ -155,7 +166,8 @@ public class ApeHiveSource extends AbstractFileSource<RowData, HiveSourceSplit> 
     /**
      * Builder to build HiveSource instances.
      */
-    public static class HiveSourceBuilder extends AbstractFileSourceBuilder<RowData, HiveSourceSplit, HiveSourceBuilder> {
+    public static class HiveSourceBuilder extends
+            AbstractFileSourceBuilder<RowData, HiveSourceSplit, HiveSourceBuilder> {
 
         private final JobConf jobConf;
         private final ObjectPath tablePath;
@@ -175,7 +187,8 @@ public class ApeHiveSource extends AbstractFileSource<RowData, HiveSourceSplit> 
                 RowType producedRowType) {
             super(
                     new Path[1],
-                    createBulkFormat(new JobConf(jobConf), catalogTable, hiveVersion, producedRowType, useMapRedReader, limit),
+                    createBulkFormat(new JobConf(jobConf), catalogTable, hiveVersion,
+                            producedRowType, useMapRedReader, limit),
                     new HiveSourceFileEnumerator.Provider(partitions, new JobConfWrapper(jobConf)),
                     null);
             this.jobConf = jobConf;
@@ -185,8 +198,9 @@ public class ApeHiveSource extends AbstractFileSource<RowData, HiveSourceSplit> 
 
         @Override
         public ApeHiveSource build() {
-            FileSplitAssigner.Provider splitAssigner = continuousSourceSettings == null || partitionKeys.isEmpty() ?
-                    DEFAULT_SPLIT_ASSIGNER : SimpleSplitAssigner::new;
+            FileSplitAssigner.Provider splitAssigner =
+                    continuousSourceSettings == null || partitionKeys.isEmpty() ?
+                        DEFAULT_SPLIT_ASSIGNER : SimpleSplitAssigner::new;
             return new ApeHiveSource(
                     inputPaths,
                     fileEnumerator,
@@ -206,7 +220,8 @@ public class ApeHiveSource extends AbstractFileSource<RowData, HiveSourceSplit> 
             return this;
         }
 
-        public HiveSourceBuilder setFetcherContext(HiveTableSource.HiveContinuousPartitionFetcherContext<?> fetcherContext) {
+        public HiveSourceBuilder setFetcherContext(
+                HiveTableSource.HiveContinuousPartitionFetcherContext<?> fetcherContext) {
             this.fetcherContext = fetcherContext;
             return this;
         }

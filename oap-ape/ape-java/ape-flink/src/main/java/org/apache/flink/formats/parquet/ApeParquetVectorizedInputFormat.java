@@ -18,6 +18,19 @@
 
 package org.apache.flink.formats.parquet;
 
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+
+import javax.annotation.Nullable;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.connector.base.source.reader.SourceReaderOptions;
 import org.apache.flink.connector.file.src.FileSourceSplit;
@@ -43,9 +56,6 @@ import org.apache.flink.table.utils.ape.AggregateExprs;
 import org.apache.flink.util.FlinkRuntimeException;
 import org.apache.flink.util.Preconditions;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.filter2.compat.FilterCompat;
@@ -61,17 +71,9 @@ import org.apache.parquet.schema.Types;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nullable;
-
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-
 import static org.apache.flink.formats.parquet.vector.ParquetSplitReaderUtil.createColumnReader;
-import static org.apache.flink.formats.parquet.vector.ParquetSplitReaderUtil.createWritableColumnVector;
+import static org.apache.flink.formats.parquet.vector.ParquetSplitReaderUtil
+        .createWritableColumnVector;
 import static org.apache.parquet.filter2.compat.RowGroupFilter.filterRowGroups;
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.range;
 import static org.apache.parquet.hadoop.ParquetFileReader.readFooter;
@@ -100,7 +102,8 @@ public abstract class ApeParquetVectorizedInputFormat<T, SplitT extends FileSour
     private boolean aggregatePushedDown = false;
     private ParquetRecordReaderWrapper nativeReaderWrapper;
 
-    private static final Logger LOG = LoggerFactory.getLogger(ApeParquetVectorizedInputFormat.class);
+    private static final Logger LOG =
+            LoggerFactory.getLogger(ApeParquetVectorizedInputFormat.class);
 
     public ApeParquetVectorizedInputFormat(
         SerializableConfiguration hadoopConfig,
@@ -184,20 +187,23 @@ public abstract class ApeParquetVectorizedInputFormat<T, SplitT extends FileSour
 
         // native parquet reader is optional
         if (useNativeParquetReader) {
-            String readerMode = hadoopConfig.conf().get(ApeParquetConfKeys.NATIVE_PARQUET_READER_MODE, "");
+            String readerMode =
+                    hadoopConfig.conf().get(ApeParquetConfKeys.NATIVE_PARQUET_READER_MODE, "");
             if (!readerMode.equals(APE_READER_REMOTE_MODE)) {
                 nativeReaderWrapper = new ParquetNativeRecordReaderWrapper(batchSize);
             } else {
                 nativeReaderWrapper = new ParquetRemoteRecordReaderWrapper(batchSize);
             }
 
-            nativeReaderWrapper.initialize(hadoopConfig.conf(), projectedType, split, predicate, aggStr);
+            nativeReaderWrapper.initialize(hadoopConfig.conf(), projectedType, split, predicate,
+                    aggStr);
             if (aggStr != null) {
                 aggregatePushedDown = true;
             }
         }
 
-        final int numBatchesToCirculate = config.getInteger(SourceReaderOptions.ELEMENT_QUEUE_CAPACITY);
+        final int numBatchesToCirculate =
+                config.getInteger(SourceReaderOptions.ELEMENT_QUEUE_CAPACITY);
         final Pool<ParquetReaderBatch<T>> poolOfBatches = createPoolOfBatches(split,
             requestedSchema,
             numBatchesToCirculate);
@@ -262,7 +268,8 @@ public abstract class ApeParquetVectorizedInputFormat<T, SplitT extends FileSour
                     });
             }
             for (int i = 0; i < projectedFields.length; ++i) {
-                Type type = caseInsensitiveFieldMap.get(projectedFields[i].toLowerCase(Locale.ROOT));
+                Type type =
+                        caseInsensitiveFieldMap.get(projectedFields[i].toLowerCase(Locale.ROOT));
                 if (type == null) {
                     throw new IllegalArgumentException(projectedFields[i] + " does not exist");
                 }
@@ -597,6 +604,7 @@ public abstract class ApeParquetVectorizedInputFormat<T, SplitT extends FileSour
          * @param rowsReturned The number of rows that have been returned before this
          *     batch.
          */
-        public abstract RecordIterator<T> convertAndGetIterator(long rowsReturned) throws IOException;
+        public abstract RecordIterator<T> convertAndGetIterator(long rowsReturned)
+                throws IOException;
     }
 }

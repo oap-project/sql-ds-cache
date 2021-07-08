@@ -18,6 +18,8 @@
 
 package org.apache.flink.table.api.internal;
 
+import java.util.Map;
+
 import org.apache.flink.table.api.ApeEnvironmentSettings;
 import org.apache.flink.table.api.TableConfig;
 import org.apache.flink.table.catalog.CatalogManager;
@@ -29,8 +31,6 @@ import org.apache.flink.table.delegation.Planner;
 import org.apache.flink.table.delegation.PlannerFactory;
 import org.apache.flink.table.factories.ComponentFactoryService;
 import org.apache.flink.table.module.ModuleManager;
-
-import java.util.Map;
 
 public class ApeTableEnvironmentImpl extends TableEnvironmentImpl {
 
@@ -66,7 +66,8 @@ public class ApeTableEnvironmentImpl extends TableEnvironmentImpl {
                                 settings.getBuiltInDatabaseName()))
                 .build();
 
-        FunctionCatalog functionCatalog = new FunctionCatalog(tableConfig, catalogManager, moduleManager);
+        FunctionCatalog functionCatalog = new FunctionCatalog(
+                tableConfig, catalogManager, moduleManager);
 
         Map<String, String> executorProperties = settings.toExecutorProperties();
         Executor executor = ComponentFactoryService.find(ExecutorFactory.class, executorProperties)

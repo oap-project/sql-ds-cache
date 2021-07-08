@@ -18,6 +18,16 @@
 
 package org.apache.flink.connectors.hive;
 
+import java.io.IOException;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+
+import javax.annotation.Nullable;
+
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.configuration.Configuration;
@@ -48,15 +58,6 @@ import org.apache.parquet.hadoop.util.SerializationUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nullable;
-import java.io.IOException;
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-
 import static org.apache.flink.connectors.hive.util.HivePartitionUtils.getAllPartitions;
 import static org.apache.flink.table.catalog.hive.util.HiveTableUtil.checkAcidTable;
 import static org.apache.flink.table.filesystem.FileSystemOptions.STREAMING_SOURCE_MONITOR_INTERVAL;
@@ -73,7 +74,8 @@ public class ApeHiveTableSource extends HiveTableSource implements
     private static final Logger LOG = LoggerFactory.getLogger(ApeHiveTableSource.class);
     private static final Duration DEFAULT_SCAN_MONITOR_INTERVAL = Duration.ofMinutes(1L);
 
-    // Remaining partition specs after partition pruning is performed. Null if pruning is not pushed down.
+    // Remaining partition specs after partition pruning is performed.
+    // Null if pruning is not pushed down.
     @Nullable
     private List<Map<String, String>> remainingPartitions = null;
     protected int[] projectedFields;
@@ -94,7 +96,8 @@ public class ApeHiveTableSource extends HiveTableSource implements
     protected AggregateExprs aggregateExprs;
 
     public ApeHiveTableSource(
-            JobConf jobConf, ReadableConfig flinkConf, ObjectPath tablePath, CatalogTable catalogTable) {
+            JobConf jobConf, ReadableConfig flinkConf, ObjectPath tablePath,
+            CatalogTable catalogTable) {
         super(jobConf, flinkConf, tablePath, catalogTable);
 
         jobConf.setBoolean(
@@ -149,7 +152,8 @@ public class ApeHiveTableSource extends HiveTableSource implements
                 ConsumeOrder consumeOrder = ConsumeOrder.getConsumeOrder(consumeOrderStr);
                 if (consumeOrder != ConsumeOrder.CREATE_TIME_ORDER) {
                     throw new UnsupportedOperationException(
-                            "Only " + ConsumeOrder.CREATE_TIME_ORDER + " is supported for non partition table.");
+                            "Only " + ConsumeOrder.CREATE_TIME_ORDER
+                                    + " is supported for non partition table.");
                 }
             }
 
@@ -160,24 +164,27 @@ public class ApeHiveTableSource extends HiveTableSource implements
 
             if (!catalogTable.getPartitionKeys().isEmpty()) {
                 sourceBuilder.setFetcher(new HiveContinuousPartitionFetcher());
-                final String defaultPartitionName = jobConf.get(HiveConf.ConfVars.DEFAULTPARTITIONNAME.varname,
+                final String defaultPartitionName = jobConf.get(
+                        HiveConf.ConfVars.DEFAULTPARTITIONNAME.varname,
                         HiveConf.ConfVars.DEFAULTPARTITIONNAME.defaultStrVal);
-                HiveContinuousPartitionFetcherContext<?> fetcherContext = new HiveContinuousPartitionFetcherContext(
-                        tablePath,
-                        hiveShim,
-                        new JobConfWrapper(jobConf),
-                        catalogTable.getPartitionKeys(),
-                        getProducedTableSchema().getFieldDataTypes(),
-                        getProducedTableSchema().getFieldNames(),
-                        configuration,
-                        defaultPartitionName);
+                HiveContinuousPartitionFetcherContext<?> fetcherContext =
+                        new HiveContinuousPartitionFetcherContext(
+                            tablePath,
+                            hiveShim,
+                            new JobConfWrapper(jobConf),
+                            catalogTable.getPartitionKeys(),
+                            getProducedTableSchema().getFieldDataTypes(),
+                            getProducedTableSchema().getFieldNames(),
+                            configuration,
+                            defaultPartitionName);
                 sourceBuilder.setFetcherContext(fetcherContext);
             }
         }
 
         ApeHiveSource hiveSource = sourceBuilder.build();
         DataStreamSource<RowData> source = execEnv.fromSource(
-                hiveSource, WatermarkStrategy.noWatermarks(), "HiveSource-" + tablePath.getFullName());
+                hiveSource, WatermarkStrategy.noWatermarks(),
+                "HiveSource-" + tablePath.getFullName());
 
         if (isStreamingSource()) {
             return source;
@@ -185,7 +192,8 @@ public class ApeHiveTableSource extends HiveTableSource implements
             int parallelism = new HiveParallelismInference(tablePath, flinkConf)
                     .infer(
                             () -> HiveSourceFileEnumerator.getNumFiles(allHivePartitions, jobConf),
-                            () -> HiveSourceFileEnumerator.createInputSplits(0, allHivePartitions, jobConf).size())
+                            () -> HiveSourceFileEnumerator.createInputSplits(
+                                    0, allHivePartitions, jobConf).size())
                     .limit(limit);
             return source.setParallelism(parallelism);
         }
@@ -219,7 +227,8 @@ public class ApeHiveTableSource extends HiveTableSource implements
             DataType[] fullTypes = fullSchema.getFieldDataTypes();
             return TableSchema.builder().fields(
                 Arrays.stream(projectedFields).mapToObj(i -> fullNames[i]).toArray(String[]::new),
-                Arrays.stream(projectedFields).mapToObj(i -> fullTypes[i]).toArray(DataType[]::new)).build();
+                Arrays.stream(projectedFields).mapToObj(i -> fullTypes[i]).toArray(DataType[]::new))
+                    .build();
         } else {
             return fullSchema;
         }
@@ -227,7 +236,8 @@ public class ApeHiveTableSource extends HiveTableSource implements
 
     @Override
     public DynamicTableSource copy() {
-        ApeHiveTableSource source = new ApeHiveTableSource(jobConf, flinkConf, tablePath, catalogTable);
+        ApeHiveTableSource source = new ApeHiveTableSource(
+                jobConf, flinkConf, tablePath, catalogTable);
         source.remainingPartitions = remainingPartitions;
         source.projectedFields = projectedFields;
         source.limit = limit;
@@ -252,7 +262,8 @@ public class ApeHiveTableSource extends HiveTableSource implements
         List<ResolvedExpression> remainingFilters = new ArrayList<>(filters.size());
 
         for (ResolvedExpression filter : filters) {
-            FilterPredicate convertedPredicate = filter.accept(new ExpressionToPredicateConverter());
+            FilterPredicate convertedPredicate =
+                    filter.accept(new ExpressionToPredicateConverter());
             if (convertedPredicate != null) {
                 convertedPredicates.add(convertedPredicate);
                 acceptedFilters.add(filter);
@@ -267,7 +278,8 @@ public class ApeHiveTableSource extends HiveTableSource implements
             // concat converted predicates with AND
             parquetPredicate = convertedPredicates.get(0);
 
-            for (FilterPredicate converted : convertedPredicates.subList(1, convertedPredicates.size())) {
+            for (FilterPredicate converted : convertedPredicates
+                    .subList(1, convertedPredicates.size())) {
                 parquetPredicate = FilterApi.and(parquetPredicate, converted);
             }
 
@@ -326,7 +338,8 @@ public class ApeHiveTableSource extends HiveTableSource implements
             remainingPartitions);
 
         for (HiveTablePartition partition : allHivePartitions) {
-            boolean isParquet = partition.getStorageDescriptor().getSerdeInfo().getSerializationLib()
+            boolean isParquet = partition.getStorageDescriptor().getSerdeInfo()
+                    .getSerializationLib()
                 .toLowerCase().contains("parquet");
 
             if (!isParquet) {
@@ -338,10 +351,12 @@ public class ApeHiveTableSource extends HiveTableSource implements
     }
 
     private boolean allColumnsSupportVectorization() {
-        RowType producedRowType = (RowType) getProducedTableSchema().toRowDataType().bridgedTo(RowData.class).getLogicalType();
+        RowType producedRowType = (RowType) getProducedTableSchema().toRowDataType()
+                .bridgedTo(RowData.class).getLogicalType();
         for (RowType.RowField field : producedRowType.getFields()) {
             if (isVectorizationUnsupported(field.getType())) {
-                LOG.info("Fallback to hadoop mapred reader, unsupported field type: " + field.getType());
+                LOG.info("Fallback to hadoop mapred reader, unsupported field type: "
+                        + field.getType());
                 return false;
             }
         }
@@ -419,13 +434,19 @@ public class ApeHiveTableSource extends HiveTableSource implements
     private boolean isAPENativeFilterApplicable() {
 
         boolean useMapRedReader = flinkConf.get(HiveOptions.TABLE_EXEC_HIVE_FALLBACK_MAPRED_READER);
-        boolean useNativeParquetReader = flinkConf.get(ApeHiveOptions.TABLE_EXEC_HIVE_PARQUET_USE_NATIVE_READER);
-        boolean filterPushingDownEnabled = flinkConf.get(ApeHiveOptions.TABLE_EXEC_HIVE_PARQUET_PUSH_DOWN_FILTERS);
+        boolean useNativeParquetReader =
+                flinkConf.get(ApeHiveOptions.TABLE_EXEC_HIVE_PARQUET_USE_NATIVE_READER);
+        boolean filterPushingDownEnabled =
+                flinkConf.get(ApeHiveOptions.TABLE_EXEC_HIVE_PARQUET_PUSH_DOWN_FILTERS);
         // join re-order does not know filters are pushed down.
-        // This may lead to worse efficiency when it moves backward tables with filters pushed down in joins.
-        boolean joinReorderEnabled = flinkConf.get(OptimizerConfigOptions.TABLE_OPTIMIZER_JOIN_REORDER_ENABLED);
-        // configuration that tells Flink whether push down filters or not when join re-order is enabled.
-        boolean evadingJoinReorder = flinkConf.get(ApeHiveOptions.TABLE_EXEC_HIVE_PARQUET_FILTERS_EVADING_JOIN_REORDER);
+        // This may lead to worse efficiency when it moves backward tables with filters pushed
+        // down in joins.
+        boolean joinReorderEnabled =
+                flinkConf.get(OptimizerConfigOptions.TABLE_OPTIMIZER_JOIN_REORDER_ENABLED);
+        // configuration that tells Flink whether push down filters or not when join re-order is
+        // enabled.
+        boolean evadingJoinReorder =
+                flinkConf.get(ApeHiveOptions.TABLE_EXEC_HIVE_PARQUET_FILTERS_EVADING_JOIN_REORDER);
 
         // check configurations
         if (useMapRedReader
@@ -440,7 +461,8 @@ public class ApeHiveTableSource extends HiveTableSource implements
     }
 
     private boolean isAPENativeAggApplicable() {
-        boolean aggPushingDownEnabled = flinkConf.get(ApeHiveOptions.TABLE_EXEC_HIVE_PARQUET_PUSH_DOWN_AGGREGATIONS);
+        boolean aggPushingDownEnabled =
+                flinkConf.get(ApeHiveOptions.TABLE_EXEC_HIVE_PARQUET_PUSH_DOWN_AGGREGATIONS);
         return isAPENativeFilterApplicable() && aggPushingDownEnabled;
     }
 }

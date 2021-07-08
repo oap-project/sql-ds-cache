@@ -18,6 +18,12 @@
 
 package org.apache.flink.connectors.hive.read;
 
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.connector.file.src.reader.BulkFormat;
@@ -46,17 +52,12 @@ import org.apache.hadoop.mapred.JobConf;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.stream.Collectors;
-
 import static org.apache.flink.connector.file.src.util.CheckpointedPosition.NO_OFFSET;
 import static org.apache.flink.table.data.vector.VectorizedColumnBatch.DEFAULT_SIZE;
 
 /**
- * A BulkFormat implementation for HiveSource. This implementation delegates reading to other BulkFormat instances,
+ * A BulkFormat implementation for HiveSource. This implementation delegates reading to other
+ * BulkFormat instances,
  * because different hive partitions may need different BulkFormat to do the reading.
  */
 public class ApeHiveBulkFormatAdapter implements BulkFormat<RowData, HiveSourceSplit> {
@@ -65,12 +66,14 @@ public class ApeHiveBulkFormatAdapter implements BulkFormat<RowData, HiveSourceS
 
     private static final Logger LOG = LoggerFactory.getLogger(ApeHiveBulkFormatAdapter.class);
 
-    // schema evolution configs are not available in older versions of IOConstants, let's define them ourselves
+    // schema evolution configs are not available in older versions of IOConstants, let's define
+    // them ourselves
     private static final String SCHEMA_EVOLUTION_COLUMNS = "schema.evolution.columns";
     private static final String SCHEMA_EVOLUTION_COLUMNS_TYPES = "schema.evolution.columns.types";
 
     private static final PartitionFieldExtractor<HiveSourceSplit> PARTITION_FIELD_EXTRACTOR =
-            (split, fieldName, fieldType) -> split.getHiveTablePartition().getPartitionSpec().get(fieldName);
+            (split, fieldName, fieldType) ->
+                    split.getHiveTablePartition().getPartitionSpec().get(fieldName);
 
     private final JobConfWrapper jobConfWrapper;
     private final List<String> partitionKeys;
@@ -81,8 +84,10 @@ public class ApeHiveBulkFormatAdapter implements BulkFormat<RowData, HiveSourceS
     private final RowType producedRowType;
     private final boolean useMapRedReader;
 
-    public ApeHiveBulkFormatAdapter(JobConfWrapper jobConfWrapper, List<String> partitionKeys, String[] fieldNames, DataType[] fieldTypes,
-                                    String hiveVersion, RowType producedRowType, boolean useMapRedReader) {
+    public ApeHiveBulkFormatAdapter(JobConfWrapper jobConfWrapper, List<String> partitionKeys,
+                                    String[] fieldNames, DataType[] fieldTypes,
+                                    String hiveVersion, RowType producedRowType,
+                                    boolean useMapRedReader) {
         this.jobConfWrapper = jobConfWrapper;
         this.partitionKeys = partitionKeys;
         this.fieldNames = fieldNames;
@@ -100,7 +105,8 @@ public class ApeHiveBulkFormatAdapter implements BulkFormat<RowData, HiveSourceS
     }
 
     @Override
-    public Reader<RowData> restoreReader(Configuration config, HiveSourceSplit split) throws IOException {
+    public Reader<RowData> restoreReader(Configuration config, HiveSourceSplit split)
+            throws IOException {
         return createBulkFormatForSplit(split).restoreReader(config, split);
     }
 
@@ -115,11 +121,13 @@ public class ApeHiveBulkFormatAdapter implements BulkFormat<RowData, HiveSourceS
     }
 
     private RowType tableRowType() {
-        LogicalType[] types = Arrays.stream(fieldTypes).map(DataType::getLogicalType).toArray(LogicalType[]::new);
+        LogicalType[] types = Arrays.stream(fieldTypes).map(DataType::getLogicalType)
+                .toArray(LogicalType[]::new);
         return RowType.of(types, fieldNames);
     }
 
-    private BulkFormat<RowData, ? super HiveSourceSplit> createBulkFormatForSplit(HiveSourceSplit split) {
+    private BulkFormat<RowData, ? super HiveSourceSplit> createBulkFormatForSplit(
+            HiveSourceSplit split) {
         if (!useMapRedReader && useParquetVectorizedRead(split.getHiveTablePartition())) {
             return ApeParquetColumnarRowInputFormat.createPartitionedFormat(
                     jobConfWrapper.conf(),
@@ -167,7 +175,8 @@ public class ApeHiveBulkFormatAdapter implements BulkFormat<RowData, HiveSourceS
 
         for (RowType.RowField field : producedRowType.getFields()) {
             if (isVectorizationUnsupported(field.getType())) {
-                LOG.info("Fallback to hadoop mapred reader, unsupported field type: " + field.getType());
+                LOG.info("Fallback to hadoop mapred reader, unsupported field type: "
+                        + field.getType());
                 return false;
             }
         }
@@ -185,7 +194,8 @@ public class ApeHiveBulkFormatAdapter implements BulkFormat<RowData, HiveSourceS
 
         for (RowType.RowField field : producedRowType.getFields()) {
             if (isVectorizationUnsupported(field.getType())) {
-                LOG.info("Fallback to hadoop mapred reader, unsupported field type: " + field.getType());
+                LOG.info("Fallback to hadoop mapred reader, unsupported field type: "
+                        + field.getType());
                 return false;
             }
         }
@@ -241,7 +251,8 @@ public class ApeHiveBulkFormatAdapter implements BulkFormat<RowData, HiveSourceS
         }
 
         @Override
-        public Reader<RowData> restoreReader(Configuration config, HiveSourceSplit split) throws IOException {
+        public Reader<RowData> restoreReader(Configuration config, HiveSourceSplit split)
+                throws IOException {
             assert split.getReaderPosition().isPresent();
             HiveReader hiveReader = new HiveReader(split);
             hiveReader.seek(split.getReaderPosition().get().getRecordsAfterOffset());
@@ -270,8 +281,10 @@ public class ApeHiveBulkFormatAdapter implements BulkFormat<RowData, HiveSourceS
             selectedFields = computeSelectedFields();
             JobConf clonedConf = new JobConf(jobConfWrapper.conf());
             addSchemaToConf(clonedConf);
-            HiveTableInputSplit oldSplit = new HiveTableInputSplit(-1, split.toMapRedSplit(), clonedConf, split.getHiveTablePartition());
-            hiveMapredSplitReader = new HiveMapredSplitReader(clonedConf, partitionKeys, fieldTypes, selectedFields, oldSplit, hiveShim);
+            HiveTableInputSplit oldSplit = new HiveTableInputSplit(
+                    -1, split.toMapRedSplit(), clonedConf, split.getHiveTablePartition());
+            hiveMapredSplitReader = new HiveMapredSplitReader(
+                    clonedConf, partitionKeys, fieldTypes, selectedFields, oldSplit, hiveShim);
             serializer = new RowDataSerializer(producedRowType);
         }
 
@@ -320,10 +333,13 @@ public class ApeHiveBulkFormatAdapter implements BulkFormat<RowData, HiveSourceS
             jobConf.set(IOConstants.COLUMNS_TYPES, String.join(",", typeStrs));
             // set schema evolution -- excluding partition cols
             int numNonPartCol = fieldNames.length - partitionKeys.size();
-            jobConf.set(SCHEMA_EVOLUTION_COLUMNS, String.join(",", Arrays.copyOfRange(fieldNames, 0, numNonPartCol)));
-            jobConf.set(SCHEMA_EVOLUTION_COLUMNS_TYPES, String.join(",", typeStrs.subList(0, numNonPartCol)));
+            jobConf.set(SCHEMA_EVOLUTION_COLUMNS, String.join(
+                    ",", Arrays.copyOfRange(fieldNames, 0, numNonPartCol)));
+            jobConf.set(SCHEMA_EVOLUTION_COLUMNS_TYPES, String.join(
+                    ",", typeStrs.subList(0, numNonPartCol)));
 
-            // in older versions, parquet reader also expects the selected col indices in conf, excluding part cols
+            // in older versions, parquet reader also expects the selected col indices in conf,
+            // excluding part cols
             String readColIDs = Arrays.stream(selectedFields)
                     .filter(i -> i < numNonPartCol)
                     .mapToObj(String::valueOf)
@@ -339,7 +355,8 @@ public class ApeHiveBulkFormatAdapter implements BulkFormat<RowData, HiveSourceS
             String name = producedRowType.getFieldNames().get(i);
             int index = Arrays.asList(fieldNames).indexOf(name);
             Preconditions.checkState(index >= 0,
-                    "Produced field name %s not found in table schema fields %s", name, Arrays.toString(fieldNames));
+                    "Produced field name %s not found in table schema fields %s",
+                    name, Arrays.toString(fieldNames));
             selectedFields[i] = index;
         }
         return selectedFields;

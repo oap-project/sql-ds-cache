@@ -18,6 +18,23 @@
 
 package org.apache.flink.connectors.hive;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.time.LocalDate;
+import java.time.temporal.ChronoField;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.List;
+import java.util.TimeZone;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import javax.annotation.Nullable;
+
+import com.intel.ape.parquet.ApeContainsFilter;
+import com.intel.ape.parquet.ApeEndWithFilter;
+import com.intel.ape.parquet.ApeStartWithFilter;
+
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.table.data.DecimalDataUtils;
 import org.apache.flink.table.expressions.CallExpression;
@@ -32,32 +49,11 @@ import org.apache.flink.table.types.DataType;
 import org.apache.flink.table.types.logical.DecimalType;
 import org.apache.flink.table.types.logical.LogicalTypeRoot;
 
-import com.intel.ape.parquet.ApeContainsFilter;
-import com.intel.ape.parquet.ApeEndWithFilter;
-import com.intel.ape.parquet.ApeStartWithFilter;
 import org.apache.parquet.filter2.predicate.FilterApi;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.filter2.predicate.Operators;
 import org.apache.parquet.io.api.Binary;
 
-import javax.annotation.Nullable;
-
-import java.math.BigDecimal;
-import java.math.BigInteger;
-import java.time.LocalDate;
-import java.time.temporal.ChronoField;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.List;
-import java.util.TimeZone;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import static java.math.BigDecimal.ROUND_UNNECESSARY;
-import static java.util.Calendar.DAY_OF_MONTH;
-import static java.util.Calendar.ERA;
-import static java.util.Calendar.MONTH;
-import static java.util.Calendar.YEAR;
 
 /**
  * Visit expression to generator {@link FilterPredicate}.
@@ -343,7 +339,7 @@ public class ExpressionToPredicateConverter implements ExpressionVisitor<FilterP
             return null;
         } else if (literalDecimal.scale() < columnScale) {
             // promote the scale of literal value
-            literalDecimal = literalDecimal.setScale(columnScale, ROUND_UNNECESSARY);
+            literalDecimal = literalDecimal.setScale(columnScale, BigDecimal.ROUND_UNNECESSARY);
         }
 
         Comparable value = null;
@@ -566,15 +562,15 @@ public class ExpressionToPredicateConverter implements ExpressionVisitor<FilterP
                 .setInstant(Math.multiplyExact(julianDays, MILLIS_PER_DAY))
                 .build();
             LocalDate localDate = LocalDate.of(
-                utcCal.get(YEAR),
-                utcCal.get(MONTH) + 1,
+                utcCal.get(Calendar.YEAR),
+                utcCal.get(Calendar.MONTH) + 1,
                 // The number of days will be added later to handle non-existing
                 // Julian dates in Proleptic Gregorian calendar.
                 // For example, 1000-02-29 exists in Julian calendar because 1000
                 // is a leap year but it is not a leap year in Gregorian calendar.
                 1)
-                .with(ChronoField.ERA, utcCal.get(ERA))
-                .plusDays(utcCal.get(DAY_OF_MONTH) - 1);
+                .with(ChronoField.ERA, utcCal.get(Calendar.ERA))
+                .plusDays(utcCal.get(Calendar.DAY_OF_MONTH) - 1);
 
             return Math.toIntExact(localDate.toEpochDay());
         } else if (obj instanceof LocalDate) {

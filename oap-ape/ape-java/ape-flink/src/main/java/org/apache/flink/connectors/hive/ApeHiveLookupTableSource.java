@@ -18,6 +18,11 @@
 
 package org.apache.flink.connectors.hive;
 
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.ReadableConfig;
@@ -43,11 +48,6 @@ import org.apache.hadoop.hive.metastore.api.NoSuchObjectException;
 import org.apache.hadoop.hive.metastore.api.Partition;
 import org.apache.hadoop.mapred.JobConf;
 
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-
 import static org.apache.flink.table.filesystem.FileSystemOptions.LOOKUP_JOIN_CACHE_TTL;
 import static org.apache.flink.table.filesystem.FileSystemOptions.STREAMING_SOURCE_CONSUME_START_OFFSET;
 import static org.apache.flink.table.filesystem.FileSystemOptions.STREAMING_SOURCE_MONITOR_INTERVAL;
@@ -56,13 +56,17 @@ import static org.apache.flink.table.filesystem.FileSystemOptions.STREAMING_SOUR
 /**
  * Hive Table Source that has lookup ability.
  *
- * <p>Hive Table source has both lookup and continuous read ability, when it acts as continuous read source
+ * <p>Hive Table source has both lookup and continuous read ability, when it acts as continuous
+ * read source
  * it does not have the lookup ability but can be a temporal table just like other stream sources.
  * When it acts as bounded table, it has the lookup ability.
  *
- * <p>A common user case is use hive table as dimension table and always lookup the latest partition data, in this
- * case, hive table source is a continuous read source but currently we implements it by LookupFunction. Because
- * currently TableSource can not tell the downstream when the latest partition has been read finished. This is a
+ * <p>A common user case is use hive table as dimension table and always lookup the latest
+ * partition data, in this
+ * case, hive table source is a continuous read source but currently we implements it by
+ * LookupFunction. Because
+ * currently TableSource can not tell the downstream when the latest partition has been read
+ * finished. This is a
  * temporarily workaround and will re-implement in the future.
  */
 public class ApeHiveLookupTableSource extends ApeHiveTableSource implements LookupTableSource {
@@ -93,7 +97,8 @@ public class ApeHiveLookupTableSource extends ApeHiveTableSource implements Look
         int i = 0;
         for (int[] key : keys) {
             if (key.length > 1) {
-                throw new UnsupportedOperationException("Hive lookup can not support nested key now.");
+                throw new UnsupportedOperationException("Hive lookup can not support nested key " +
+                        "now.");
             }
             keyIndices[i] = key[0];
             i++;
@@ -117,7 +122,8 @@ public class ApeHiveLookupTableSource extends ApeHiveTableSource implements Look
             Preconditions.checkArgument(
                     monitorInterval.toMillis() >= DEFAULT_LOOKUP_MONITOR_INTERVAL.toMillis(),
                     String.format(
-                            "Currently the value of '%s' is required bigger or equal to default value '%s' " +
+                            "Currently the value of '%s' is required bigger or equal to default " +
+                                    "value '%s' " +
                                     "when set '%s' to 'latest', but actual is '%s'",
                             STREAMING_SOURCE_MONITOR_INTERVAL.key(),
                             DEFAULT_LOOKUP_MONITOR_INTERVAL.toMillis(),
@@ -130,7 +136,8 @@ public class ApeHiveLookupTableSource extends ApeHiveTableSource implements Look
             Preconditions.checkArgument(
                     "all".equals(partitionInclude),
                     String.format("The only supported %s for lookup is '%s' in batch source," +
-                            " but actual is '%s'", STREAMING_SOURCE_PARTITION_INCLUDE.key(), "all", partitionInclude));
+                            " but actual is '%s'", STREAMING_SOURCE_PARTITION_INCLUDE.key(), "all",
+                            partitionInclude));
 
             hiveTableReloadInterval = configuration.get(LOOKUP_JOIN_CACHE_TTL);
         }
@@ -138,9 +145,11 @@ public class ApeHiveLookupTableSource extends ApeHiveTableSource implements Look
 
     private TableFunction<RowData> getLookupFunction(int[] keys) {
 
-        final String defaultPartitionName = jobConf.get(HiveConf.ConfVars.DEFAULTPARTITIONNAME.varname,
+        final String defaultPartitionName =
+                jobConf.get(HiveConf.ConfVars.DEFAULTPARTITIONNAME.varname,
                 HiveConf.ConfVars.DEFAULTPARTITIONNAME.defaultStrVal);
-        PartitionFetcher.Context<HiveTablePartition> fetcherContext = new HiveTablePartitionFetcherContext(
+        PartitionFetcher.Context<HiveTablePartition> fetcherContext =
+                new HiveTablePartitionFetcherContext(
                 tablePath,
                 hiveShim,
                 new JobConfWrapper(jobConf),
@@ -154,56 +163,72 @@ public class ApeHiveLookupTableSource extends ApeHiveTableSource implements Look
         // avoid lambda capture
         final ObjectPath tableFullPath = tablePath;
         if (catalogTable.getPartitionKeys().isEmpty()) {
-            // non-partitioned table, the fetcher fetches the partition which represents the given table.
+            // non-partitioned table, the fetcher fetches the partition which represents the
+            // given table.
             partitionFetcher = context -> {
                 List<HiveTablePartition> partValueList = new ArrayList<>();
                 partValueList.add(context
                         .getPartition(new ArrayList<>())
                         .orElseThrow(() -> new IllegalArgumentException(
-                                String.format("Fetch partition fail for hive table %s.", tableFullPath)))
+                                String.format("Fetch partition fail for hive table %s.",
+                                        tableFullPath)))
                 );
                 return partValueList;
             };
         } else if (isStreamingSource()) {
-            // streaming-read partitioned table, the fetcher fetches the latest partition of the given table.
+            // streaming-read partitioned table, the fetcher fetches the latest partition of the
+            // given table.
             partitionFetcher = context -> {
                 List<HiveTablePartition> partValueList = new ArrayList<>();
-                List<PartitionFetcher.Context.ComparablePartitionValue> comparablePartitionValues = context.getComparablePartitionValueList();
+                List<PartitionFetcher.Context.ComparablePartitionValue> comparablePartitionValues =
+                        context.getComparablePartitionValueList();
                 // fetch latest partitions for partitioned table
                 if (comparablePartitionValues.size() > 0) {
                     //sort in desc order
-                    comparablePartitionValues.sort((o1, o2) -> o2.getComparator().compareTo(o1.getComparator()));
-                    PartitionFetcher.Context.ComparablePartitionValue maxPartition = comparablePartitionValues.get(0);
+                    comparablePartitionValues.sort(
+                            (o1, o2) -> o2.getComparator().compareTo(o1.getComparator()));
+                    PartitionFetcher.Context.ComparablePartitionValue maxPartition =
+                            comparablePartitionValues.get(0);
                     partValueList.add(context
                             .getPartition((List<String>) maxPartition.getPartitionValue())
                             .orElseThrow(() -> new IllegalArgumentException(
-                                    String.format("Fetch partition fail for hive table %s.", tableFullPath)))
+                                    String.format("Fetch partition fail for hive table %s.",
+                                            tableFullPath)))
                     );
                 } else {
                     throw new IllegalArgumentException(
-                            String.format("At least one partition is required when set '%s' to 'latest' in temporal join," +
-                                            " but actual partition number is '%s' for hive table %s",
-                                    STREAMING_SOURCE_PARTITION_INCLUDE.key(), comparablePartitionValues.size(), tableFullPath));
+                            String.format("At least one partition is required when set '%s' to " +
+                                            "'latest' in temporal join," +
+                                            " but actual partition number is '%s' for hive table " +
+                                            "%s",
+                                    STREAMING_SOURCE_PARTITION_INCLUDE.key(),
+                                    comparablePartitionValues.size(), tableFullPath));
                 }
                 return partValueList;
             };
         } else {
-            // bounded-read partitioned table, the fetcher fetches all partitions of the given filesystem table.
+            // bounded-read partitioned table, the fetcher fetches all partitions of the given
+            // filesystem table.
             partitionFetcher = context -> {
                 List<HiveTablePartition> partValueList = new ArrayList<>();
-                List<PartitionFetcher.Context.ComparablePartitionValue> comparablePartitionValues = context.getComparablePartitionValueList();
-                for (PartitionFetcher.Context.ComparablePartitionValue comparablePartitionValue : comparablePartitionValues) {
+                List<PartitionFetcher.Context.ComparablePartitionValue> comparablePartitionValues =
+                        context.getComparablePartitionValueList();
+                for (PartitionFetcher.Context.ComparablePartitionValue comparablePartitionValue :
+                        comparablePartitionValues) {
                     partValueList.add(context
-                            .getPartition((List<String>) comparablePartitionValue.getPartitionValue())
+                            .getPartition(
+                                    (List<String>) comparablePartitionValue.getPartitionValue())
                             .orElseThrow(() -> new IllegalArgumentException(
-                                    String.format("Fetch partition fail for hive table %s.", tableFullPath)))
+                                    String.format("Fetch partition fail for hive table %s.",
+                                            tableFullPath)))
                     );
                 }
                 return partValueList;
             };
         }
 
-        PartitionReader<HiveTablePartition, RowData> partitionReader = new HiveInputFormatPartitionReader(
+        PartitionReader<HiveTablePartition, RowData> partitionReader =
+                new HiveInputFormatPartitionReader(
                 jobConf,
                 hiveVersion,
                 tablePath,
@@ -225,11 +250,12 @@ public class ApeHiveLookupTableSource extends ApeHiveTableSource implements Look
     /**
      * PartitionFetcher.Context for {@link HiveTablePartition}.
      */
-    static class HiveTablePartitionFetcherContext extends HivePartitionFetcherContextBase<HiveTablePartition> {
+    static class HiveTablePartitionFetcherContext
+            extends HivePartitionFetcherContextBase<HiveTablePartition> {
 
         private static final long serialVersionUID = 1L;
 
-        public HiveTablePartitionFetcherContext(
+        HiveTablePartitionFetcherContext(
                 ObjectPath tablePath,
                 HiveShim hiveShim,
                 JobConfWrapper confWrapper,
@@ -255,7 +281,8 @@ public class ApeHiveLookupTableSource extends ApeHiveTableSource implements Look
                     partitionKeys.size() == partValues.size(),
                     String.format(
                             "The partition keys length should equal to partition values length, " +
-                                    "but partition keys length is %s and partition values length is %s",
+                                    "but partition keys length is %s and partition values length " +
+                                    "is %s",
                             partitionKeys.size(),
                             partValues.size()));
             if (partitionKeys.isEmpty()) {

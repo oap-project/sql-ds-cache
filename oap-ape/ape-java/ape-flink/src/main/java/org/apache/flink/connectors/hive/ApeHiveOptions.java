@@ -45,7 +45,8 @@ public class ApeHiveOptions {
             .booleanType()
             .defaultValue(false)
             .withDescription("If it is true, enabling filters pushing down to source reader." +
-                "To enable pushing down, 'table.exec.hive.parquet-native-reader' is also needed to be set as true.");
+                "To enable pushing down, 'table.exec.hive.parquet-native-reader' is also needed " +
+                    "to be set as true.");
 
     public static final ConfigOption<Boolean> TABLE_EXEC_HIVE_PARQUET_FILTERS_EVADING_JOIN_REORDER =
             key("table.exec.hive.parquet-filters-evading-join-reorder")
@@ -53,8 +54,8 @@ public class ApeHiveOptions {
                     .defaultValue(false)
                     .withDescription("If it is true, Flink will not push down filters when " +
                             "OptimizerConfigOptions.TABLE_OPTIMIZER_JOIN_REORDER_ENABLED is true." +
-                            "Join-reorder may make worse performance when table scan get lower priority " +
-                            "than before in joins after filters are pushed down.");
+                            "Join-reorder may make worse performance when table scan get lower " +
+                            "priority than before in joins after filters are pushed down.");
 
     public static final ConfigOption<Boolean> TABLE_EXEC_HIVE_PARQUET_PUSH_DOWN_AGGREGATIONS =
         key("table.exec.hive.parquet-push-down-aggregations")

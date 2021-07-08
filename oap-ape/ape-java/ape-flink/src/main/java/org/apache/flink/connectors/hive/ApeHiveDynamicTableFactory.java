@@ -18,6 +18,9 @@
 
 package org.apache.flink.connectors.hive;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.apache.flink.table.api.ValidationException;
 import org.apache.flink.table.catalog.CatalogTable;
 import org.apache.flink.table.catalog.config.CatalogConfig;
@@ -26,10 +29,6 @@ import org.apache.flink.table.factories.FactoryUtil;
 import org.apache.flink.util.Preconditions;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.mapred.JobConf;
-
-import java.util.HashMap;
-import java.util.Map;
-
 import static org.apache.flink.table.catalog.config.CatalogConfig.IS_GENERIC;
 import static org.apache.flink.table.filesystem.FileSystemOptions.STREAMING_SOURCE_ENABLE;
 import static org.apache.flink.table.filesystem.FileSystemOptions.STREAMING_SOURCE_PARTITION_INCLUDE;
@@ -59,7 +58,8 @@ public class ApeHiveDynamicTableFactory extends HiveDynamicTableFactory {
 
     @Override
     public DynamicTableSource createDynamicTableSource(Context context) {
-        boolean isGeneric = Boolean.parseBoolean(context.getCatalogTable().getOptions().get(CatalogConfig.IS_GENERIC));
+        boolean isGeneric = Boolean.parseBoolean(
+                context.getCatalogTable().getOptions().get(CatalogConfig.IS_GENERIC));
 
         // temporary table doesn't have the IS_GENERIC flag but we still consider it generic
         if (!isGeneric && !context.isTemporary()) {
