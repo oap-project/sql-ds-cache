@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * <p>
- * http://www.apache.org/licenses/LICENSE-2.0
- * <p>
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,29 +16,27 @@
  * limitations under the License.
  */
 
-package org.apache.flink.formats.parquet.vector.nativevector;
+package org.apache.flink.table.utils.ape;
 
-import org.apache.flink.formats.parquet.utils.Platform;
-import org.apache.flink.table.data.vector.writable.WritableBooleanVector;
+/**
+ * Aggregate expression literal.
+ */
+public class AggregateExprLiteral extends AggregateExpr {
+	public static final String DEFAULT_NAME = "Literal";
 
-public class NativeBooleanVector extends AbstractNativeVector implements WritableBooleanVector {
+	private String value;
 
-    public NativeBooleanVector(int len, int typeSize) {
-        super(len, typeSize);
-    }
+	public AggregateExprLiteral(String dataType, String value) {
+		super(DEFAULT_NAME, dataType);
+		this.dataType = dataType;
+		this.value = value;
+	}
 
-    @Override
-    public boolean getBoolean(int i) {
-        return Platform.getBoolean(null, bufferPtr + i * typeSize);
-    }
+	public String getValue() {
+		return value;
+	}
 
-    @Override
-    public void setBoolean(int i, boolean b) {
-
-    }
-
-    @Override
-    public void fill(boolean b) {
-
-    }
+	public void setValue(String value) {
+		this.value = value;
+	}
 }

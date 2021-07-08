@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * <p>
- * http://www.apache.org/licenses/LICENSE-2.0
- * <p>
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,29 +16,15 @@
  * limitations under the License.
  */
 
-package org.apache.flink.formats.parquet.vector.nativevector;
+package org.apache.flink.formats.parquet;
 
-import org.apache.flink.formats.parquet.utils.Platform;
-import org.apache.flink.table.data.vector.writable.WritableBooleanVector;
+/**
+ * Config keys used in ape packages.
+ */
+public class ApeParquetConfKeys {
+	// use native parquet reader or not.
+	public static final String USE_NATIVE_PARQUET_READER = "table.exec.hive.parquet-native-reader";
 
-public class NativeBooleanVector extends AbstractNativeVector implements WritableBooleanVector {
-
-    public NativeBooleanVector(int len, int typeSize) {
-        super(len, typeSize);
-    }
-
-    @Override
-    public boolean getBoolean(int i) {
-        return Platform.getBoolean(null, bufferPtr + i * typeSize);
-    }
-
-    @Override
-    public void setBoolean(int i, boolean b) {
-
-    }
-
-    @Override
-    public void fill(boolean b) {
-
-    }
+	// mode of native parquet reader.
+	public static final String NATIVE_PARQUET_READER_MODE = "table.exec.hive.parquet-native-reader.mode";
 }

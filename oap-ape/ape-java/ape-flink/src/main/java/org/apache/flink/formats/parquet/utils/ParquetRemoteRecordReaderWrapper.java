@@ -115,7 +115,7 @@ public class ParquetRemoteRecordReaderWrapper implements ParquetRecordReaderWrap
         }
 
         // schema in json format
-        String jsonSchema = new ConvertToJson(fieldTypeList, projectedFields).toJson();
+        String jsonSchema = new RequestedSchemaJsonConvertor(fieldTypeList, projectedFields).toJson();
 
         // cache configuration
         boolean plasmaCacheEnabled =

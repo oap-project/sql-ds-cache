@@ -27,6 +27,7 @@ import com.intel.oap.fs.hadoop.ape.hcfs.Constants;
 
 import org.apache.flink.connector.file.src.FileSourceSplit;
 import org.apache.flink.core.fs.Path;
+import org.apache.flink.formats.parquet.vector.nativevector.AbstractNativeVector;
 import org.apache.flink.formats.parquet.vector.nativevector.NativeBooleanVector;
 import org.apache.flink.formats.parquet.vector.nativevector.NativeBytesVector;
 import org.apache.flink.formats.parquet.vector.nativevector.NativeDoubleVector;
@@ -34,7 +35,6 @@ import org.apache.flink.formats.parquet.vector.nativevector.NativeFixedBytesVect
 import org.apache.flink.formats.parquet.vector.nativevector.NativeFloatVector;
 import org.apache.flink.formats.parquet.vector.nativevector.NativeIntVector;
 import org.apache.flink.formats.parquet.vector.nativevector.NativeLongVector;
-import org.apache.flink.formats.parquet.vector.nativevector.NativeVector;
 import org.apache.flink.table.data.DecimalDataUtils;
 import org.apache.flink.table.data.vector.writable.WritableColumnVector;
 import org.apache.flink.table.types.logical.DecimalType;
@@ -112,7 +112,7 @@ public class ParquetNativeRecordReaderWrapper implements ParquetRecordReaderWrap
         }
 
         // schema
-        ConvertToJson message = new ConvertToJson(fieldTypeList, projectedFields);
+        RequestedSchemaJsonConvertor message = new RequestedSchemaJsonConvertor(fieldTypeList, projectedFields);
 
         // cache configuration
         boolean plasmaCacheEnabled =
@@ -325,9 +325,9 @@ public class ParquetNativeRecordReaderWrapper implements ParquetRecordReaderWrap
         int index = 0;
 
         for (WritableColumnVector column : columns) {
-            if (column instanceof NativeVector) {
-                bufferPtrs[index] = ((NativeVector) column).getBufferPtr();
-                nullPtrs[index] = ((NativeVector) column).getNullPtr();
+            if (column instanceof AbstractNativeVector) {
+                bufferPtrs[index] = ((AbstractNativeVector) column).getBufferPtr();
+                nullPtrs[index] = ((AbstractNativeVector) column).getNullPtr();
             } else {
                 throw new RuntimeException("Invalid invoke of nextBatch on non-native vectors.");
             }

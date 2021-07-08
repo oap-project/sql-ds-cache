@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * <p>
- * http://www.apache.org/licenses/LICENSE-2.0
- * <p>
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,29 +16,21 @@
  * limitations under the License.
  */
 
-package org.apache.flink.formats.parquet.vector.nativevector;
+package org.apache.flink.table.planner.delegation
 
-import org.apache.flink.formats.parquet.utils.Platform;
-import org.apache.flink.table.data.vector.writable.WritableBooleanVector;
+import org.apache.flink.table.api.TableConfig
+import org.apache.flink.table.catalog.{CatalogManager, FunctionCatalog}
+import org.apache.flink.table.delegation.Executor
+import org.apache.flink.table.planner.plan.optimize.{ApeBatchCommonSubGraphBasedOptimizer, Optimizer}
 
-public class NativeBooleanVector extends AbstractNativeVector implements WritableBooleanVector {
 
-    public NativeBooleanVector(int len, int typeSize) {
-        super(len, typeSize);
-    }
+class ApeBatchPlanner(
+    executor: Executor,
+    config: TableConfig,
+    functionCatalog: FunctionCatalog,
+    catalogManager: CatalogManager)
+  extends BatchPlanner(executor, config, functionCatalog, catalogManager) {
 
-    @Override
-    public boolean getBoolean(int i) {
-        return Platform.getBoolean(null, bufferPtr + i * typeSize);
-    }
+  override protected def getOptimizer: Optimizer = new ApeBatchCommonSubGraphBasedOptimizer(this)
 
-    @Override
-    public void setBoolean(int i, boolean b) {
-
-    }
-
-    @Override
-    public void fill(boolean b) {
-
-    }
 }

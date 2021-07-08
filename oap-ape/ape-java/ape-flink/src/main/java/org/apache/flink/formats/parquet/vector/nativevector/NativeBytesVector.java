@@ -19,41 +19,22 @@
 package org.apache.flink.formats.parquet.vector.nativevector;
 
 import org.apache.flink.formats.parquet.utils.Platform;
-import org.apache.flink.table.data.vector.heap.HeapBytesVector;
+import org.apache.flink.table.data.vector.writable.WritableBytesVector;
 
-public class NativeBytesVector extends HeapBytesVector implements NativeVector {
+public class NativeBytesVector extends AbstractNativeVector implements WritableBytesVector {
 
-    private static final long serialVersionUID = 7216045902943789034L;
-
-    private long bufferPtr = 0;
-    private long nullPtr = 0;
-    private int typeSize = 0;
-    private int capacity = 0;
-
-    public NativeBytesVector(int len, int typeLength) {
-        super(len);
-        this.typeSize = typeLength;
-    }
-
-    public void setPtr(long bufferPtr_, long nullPtr_, int size_) {
-        this.bufferPtr = bufferPtr_;
-        this.nullPtr = nullPtr_;
-        this.capacity = size_;
+    public NativeBytesVector(int len, int typeSize) {
+        super(len, typeSize);
     }
 
     @Override
-    public long getBufferPtr() {
-        return bufferPtr;
+    public void appendBytes(int i, byte[] bytes, int i1, int i2) {
+        // should not reach here in remote vectors
     }
 
     @Override
-    public long getNullPtr() {
-        return nullPtr;
-    }
-
-    @Override
-    public boolean isNullAt(int i) {
-        return !Platform.getBoolean(null, nullPtr + i);
+    public void fill(byte[] bytes) {
+        // should not reach here in remote vectors
     }
 
     @Override
