@@ -65,7 +65,7 @@ public class ApeHiveSource extends AbstractFileSource<RowData, HiveSourceSplit>
     private final JobConfWrapper jobConfWrapper;
     private final List<String> partitionKeys;
     private final ContinuousPartitionFetcher<Partition, ?> fetcher;
-    private final HiveTableSource.HiveContinuousPartitionFetcherContext<?> fetcherContext;
+    private final ApeHiveTableSource.HiveContinuousPartitionFetcherContext<?> fetcherContext;
     private final ObjectPath tablePath;
 
     ApeHiveSource(
@@ -78,7 +78,7 @@ public class ApeHiveSource extends AbstractFileSource<RowData, HiveSourceSplit>
             ObjectPath tablePath,
             List<String> partitionKeys,
             @Nullable ContinuousPartitionFetcher<Partition, ?> fetcher,
-            @Nullable HiveTableSource.HiveContinuousPartitionFetcherContext<?> fetcherContext) {
+            @Nullable ApeHiveTableSource.HiveContinuousPartitionFetcherContext<?> fetcherContext) {
         super(
                 inputPaths,
                 fileEnumerator,
@@ -150,7 +150,7 @@ public class ApeHiveSource extends AbstractFileSource<RowData, HiveSourceSplit>
             Comparable<?> currentReadOffset,
             Collection<List<String>> seenPartitions,
             Collection<HiveSourceSplit> splits) {
-        return new ContinuousHiveSplitEnumerator(
+        return new ApeContinuousHiveSplitEnumerator(
                 enumContext,
                 currentReadOffset,
                 seenPartitions,
@@ -174,7 +174,7 @@ public class ApeHiveSource extends AbstractFileSource<RowData, HiveSourceSplit>
         private final List<String> partitionKeys;
 
         private ContinuousPartitionFetcher<Partition, ?> fetcher = null;
-        private HiveTableSource.HiveContinuousPartitionFetcherContext<?> fetcherContext = null;
+        private ApeHiveTableSource.HiveContinuousPartitionFetcherContext<?> fetcherContext = null;
 
         HiveSourceBuilder(
                 JobConf jobConf,
@@ -221,7 +221,7 @@ public class ApeHiveSource extends AbstractFileSource<RowData, HiveSourceSplit>
         }
 
         public HiveSourceBuilder setFetcherContext(
-                HiveTableSource.HiveContinuousPartitionFetcherContext<?> fetcherContext) {
+                ApeHiveTableSource.HiveContinuousPartitionFetcherContext<?> fetcherContext) {
             this.fetcherContext = fetcherContext;
             return this;
         }

@@ -82,7 +82,7 @@ public class ApeTableEnvironmentImpl extends TableEnvironmentImpl {
                         functionCatalog,
                         catalogManager);
 
-        return new TableEnvironmentImpl(
+        return new ApeTableEnvironmentImpl(
                 catalogManager,
                 moduleManager,
                 tableConfig,
