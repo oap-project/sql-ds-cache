@@ -77,7 +77,8 @@ public class NettyClientTest extends NettyClientTestBase {
                 false,
                 false,
                 false,
-                false
+                false,
+                null
         );
     }
 
@@ -110,7 +111,8 @@ public class NettyClientTest extends NettyClientTestBase {
                 false,
                 false,
                 false,
-                false
+                false,
+                null
         );
     }
 

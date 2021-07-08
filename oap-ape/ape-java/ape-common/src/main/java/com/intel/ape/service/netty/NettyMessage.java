@@ -534,12 +534,13 @@ public abstract class NettyMessage {
         private final ByteBuf[] dataBuffers;
         private final ByteBuf[] nullBuffers;
         private final boolean compressEnabled;
+        private final String compressCodec;
 
         public ReadBatchResponse(int sequenceId, boolean hasNextBatch, int columnCount,
                                  int rowCount, int[] dataBufferLengths, boolean[] compositeFlags,
                                  int compositedElementCount, ByteBuf compositedElementLengths,
                                  ByteBuf[] dataBuffers, ByteBuf[] nullBuffers,
-                                 boolean compressEnabled) {
+                                 boolean compressEnabled, String compressCodec) {
             this.sequenceId = sequenceId;
             this.hasNextBatch = hasNextBatch;
             this.columnCount = columnCount;
@@ -551,6 +552,7 @@ public abstract class NettyMessage {
             this.dataBuffers = dataBuffers;
             this.nullBuffers = nullBuffers;
             this.compressEnabled = compressEnabled;
+            this.compressCodec = compressCodec;
 
             if (dataBuffers == null || dataBuffers.length != columnCount) {
                 throw new InvalidParameterException("Mismatch of column count and buffer count");
@@ -617,7 +619,8 @@ public abstract class NettyMessage {
             // columnCount(4), rowCount(4), dataBufferLengths(columnCount * 4),
             // compositeFlags(columnCount), compositedElementCount(4), compressEnabled(1),
             // contentLength(4)
-            int headerLength = 4 + 1 + 4 + 4 + columnCount * 4 + columnCount + 4 + 1 + 4;
+            int headerLength = 4 + 1 + 4 + 4 + columnCount * 4 +
+                    columnCount + 4 + 1 + 4;
             int originLength = getContentLength();
             if (!compressEnabled) {
                 writeDataToChannel(out, promise, allocator, headerLength, originLength);
@@ -625,10 +628,10 @@ public abstract class NettyMessage {
                 if (columnCount == 0) {
                     // just write headerBuf into channel
                     writeHeaderBufToChannel(out, promise, allocator, headerLength,
-                            0, originLength, true);
+                            0, originLength, true, compressCodec);
                 } else {
                     writeCompressedDataToChannel(out, promise,
-                            allocator, headerLength, originLength);
+                            allocator, headerLength, originLength, compressCodec);
                 }
             }
         }
@@ -648,7 +651,7 @@ public abstract class NettyMessage {
                                         ByteBufAllocator allocator, int headerLength,
                                         int originLength) {
             writeHeaderBufToChannel(out, promise, allocator, headerLength,
-                    originLength, originLength, false);
+                    originLength, originLength, false, null);
             // write content to channel if columnCount > 0
             if (columnCount > 0) {
                 out.write(compositedElementLengths);
@@ -666,7 +669,8 @@ public abstract class NettyMessage {
         private void writeCompressedDataToChannel(ChannelOutboundInvoker out,
                                                   ChannelPromise promise,
                                                   ByteBufAllocator allocator,
-                                                  int headerLength, int originLength) {
+                                                  int headerLength, int originLength,
+                                                  String compressCodec) {
             // compress data first to calculate contentLength
             CompositeByteBuf compositeByteBuf = Unpooled.compositeBuffer(2 * columnCount + 1);
             compositeByteBuf.addComponent(compositedElementLengths);
@@ -677,12 +681,13 @@ public abstract class NettyMessage {
                 compositeByteBuf.addComponent(nullBuffers[i]);
             }
             try {
-                ByteBuf compressedData = ICLCompressionUtils.compress(compositeByteBuf, "zstd");
+                ByteBuf compressedData =
+                        ICLCompressionUtils.compress(compositeByteBuf, compressCodec);
                 // release CompositeByteBuf
                 compositeByteBuf.release();
                 int compressedLength = compressedData.readableBytes();
                 writeHeaderBufToChannel(out, promise, allocator,
-                        headerLength, compressedLength, originLength, true);
+                        headerLength, compressedLength, originLength, true, compressCodec);
                 out.write(compressedData, promise);
             } catch (IOException e) {
                 e.printStackTrace();
@@ -693,7 +698,8 @@ public abstract class NettyMessage {
                                              ChannelPromise promise,
                                              ByteBufAllocator allocator,
                                              int headerLength, int compressedLength,
-                                             int originLength, boolean compressEnabled) {
+                                             int originLength, boolean compressEnabled,
+                                             String compressCodec) {
             ByteBuf headerBuf = allocateBuffer(allocator, ID, headerLength,
                     compressedLength, false);
             headerBuf.writeInt(sequenceId);
@@ -769,7 +775,8 @@ public abstract class NettyMessage {
                     compositedElementLengths,
                     dataBuffers,
                     nullBuffers,
-                    compressEnabled);
+                    compressEnabled,
+                    null);
         }
 
         /**
@@ -798,7 +805,8 @@ public abstract class NettyMessage {
                     Unpooled.buffer(0),
                     new ByteBuf[0],
                     new ByteBuf[0],
-                    false
+                    false,
+                    null
             );
         }
 

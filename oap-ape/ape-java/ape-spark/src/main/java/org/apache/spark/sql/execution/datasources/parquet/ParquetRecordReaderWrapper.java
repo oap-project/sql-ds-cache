@@ -51,6 +51,7 @@ public abstract class ParquetRecordReaderWrapper extends RecordReader<Void, Obje
   boolean preBufferEnabled = false;
   boolean redisEnabled = false;
   boolean remoteReaderCompressEnabled = false;
+  String remoteReaderCompressCodec = "zstd";
 
   ColumnarBatch columnarBatch;
 
@@ -106,6 +107,9 @@ public abstract class ParquetRecordReaderWrapper extends RecordReader<Void, Obje
     this.remoteReaderCompressEnabled = compressEnabled;
   }
 
+  public void setRemoteReaderCompressCodec(String codec) {
+    this.remoteReaderCompressCodec = codec;
+  }
   public void setFilter(FilterPredicate predicate) {}
 
   public void setAgg(String aggExpresion) {}

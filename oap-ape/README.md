@@ -106,6 +106,7 @@ Extra configuration to enable ape features:
 |`spark.sql.ape.parquet.cache.enabled` | whether enable parquet cache, you need to start plasma service on worker nodes if you enable this | false |
 |`spark.sql.ape.reader.location` | use local or remote reader in spark | local |
 |`spark.sql.ape.remote.reader.compressed `| enable compression when use remote reader | false |
+|`spark.sql.ape.remote.reader.compress.codec`| compression codec setting when enable compression, such as zstd, lz4-ipp, zlib-ipp, igzip. | zstd |
 
 For disaggrated mode, cp `$OAP_ROOT_DIR/oap-ape/ape-java/ape-server/target/ape-server-1.1.0-SNAPSHOT.jar` to APE server and launch it using script like:
 ```

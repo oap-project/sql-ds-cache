@@ -53,6 +53,7 @@ public class RequestHandler extends SimpleChannelInboundHandler<NettyMessage> {
     private long[] nativeDataBuffers;
     private long[] nativeNullBuffers;
     private boolean compressEnabled;
+    private String compressCodec;
 
     private ParquetReaderInitParams readerInitParams = null;
     private boolean hasNextBatch = true;
@@ -176,6 +177,7 @@ public class RequestHandler extends SimpleChannelInboundHandler<NettyMessage> {
         ParquetReaderInitParams params = readerInitParams;
         rowGroupsToRead = params.getTotalGroupsToRead();
         compressEnabled = params.isCompressEnabled();
+        compressCodec = params.getCompressCodec();
 
         long plasmaClientPoolPtr = 0L;
         if (params.isPlasmaCacheEnabled()) {
@@ -363,7 +365,8 @@ public class RequestHandler extends SimpleChannelInboundHandler<NettyMessage> {
                 compositedElementLengths,
                 dataBuffers,
                 nullBuffers,
-                compressEnabled
+                compressEnabled,
+                compressCodec
         );
 
     }
