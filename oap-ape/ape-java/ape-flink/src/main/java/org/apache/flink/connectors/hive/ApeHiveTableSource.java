@@ -235,7 +235,7 @@ public class ApeHiveTableSource implements
         ApeHiveSource hiveSource = sourceBuilder.build();
         DataStreamSource<RowData> source = execEnv.fromSource(
                 hiveSource, WatermarkStrategy.noWatermarks(),
-                "HiveSource-" + tablePath.getFullName());
+                "ApeHiveSource-" + tablePath.getFullName());
 
         if (isStreamingSource()) {
             return source;
