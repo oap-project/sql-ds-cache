@@ -23,78 +23,78 @@ package org.apache.flink.table.utils.ape;
  */
 public class AggregateExprBinaryOper extends AggregateExpr {
 
-	private AggregateExpr leftNode;
-	private AggregateExpr rightNode;
+    private AggregateExpr leftNode;
+    private AggregateExpr rightNode;
 
-	public AggregateExprBinaryOper(
-		Type type,
-		String dataType,
-		AggregateExpr leftNode,
-		AggregateExpr rightNode) {
-		super(type.name, dataType);
-		this.dataType = dataType;
-		this.leftNode = leftNode;
-		this.rightNode = rightNode;
-	}
+    public AggregateExprBinaryOper(
+        Type type,
+        String dataType,
+        AggregateExpr leftNode,
+        AggregateExpr rightNode) {
+        super(type.name, dataType);
+        this.dataType = dataType;
+        this.leftNode = leftNode;
+        this.rightNode = rightNode;
+    }
 
-	public AggregateExpr getLeftNode() {
-		return leftNode;
-	}
+    public AggregateExpr getLeftNode() {
+        return leftNode;
+    }
 
-	public void setLeftNode(AggregateExpr leftNode) {
-		this.leftNode = leftNode;
-	}
+    public void setLeftNode(AggregateExpr leftNode) {
+        this.leftNode = leftNode;
+    }
 
-	public AggregateExpr getRightNode() {
-		return rightNode;
-	}
+    public AggregateExpr getRightNode() {
+        return rightNode;
+    }
 
-	public void setRightNode(AggregateExpr rightNode) {
-		this.rightNode = rightNode;
-	}
+    public void setRightNode(AggregateExpr rightNode) {
+        this.rightNode = rightNode;
+    }
 
-	/**
-	 * Enum for supported binary operations.
-	 */
-	public enum Type {
-		ADD("Add"),
-		SUBTRACT("Subtract"),
-		MULTIPLY("Multiply"),
-		DIVIDE("Divide"),
-		MOD("Mod");
+    /**
+     * Enum for supported binary operations.
+     */
+    public enum Type {
+        ADD("Add"),
+        SUBTRACT("Subtract"),
+        MULTIPLY("Multiply"),
+        DIVIDE("Divide"),
+        MOD("Mod");
 
-		public String name;
-		Type(String n) {
-			name = n;
-		}
+        public String name;
+        Type(String n) {
+            name = n;
+        }
 
-		public static Type fromSqlKind(String sql) {
-			switch (sql) {
-				case "PLUS":
-					return Type.ADD;
-				case "MINUS":
-					return Type.SUBTRACT;
-				case "TIMES":
-					return Type.MULTIPLY;
-				case "DIVIDE":
-					return Type.DIVIDE;
-				case "MOD":
-					return Type.MOD;
-				default:
-					return null;
-			}
-		}
-	}
+        public static Type fromSqlKind(String sql) {
+            switch (sql) {
+                case "PLUS":
+                    return Type.ADD;
+                case "MINUS":
+                    return Type.SUBTRACT;
+                case "TIMES":
+                    return Type.MULTIPLY;
+                case "DIVIDE":
+                    return Type.DIVIDE;
+                case "MOD":
+                    return Type.MOD;
+                default:
+                    return null;
+            }
+        }
+    }
 
-	@Override
-	public void translateDataTypeName() {
-		super.translateDataTypeName();
+    @Override
+    public void translateDataTypeName() {
+        super.translateDataTypeName();
 
-		leftNode.translateDataTypeName();
-		rightNode.translateDataTypeName();
-	}
+        leftNode.translateDataTypeName();
+        rightNode.translateDataTypeName();
+    }
 
-	public boolean checkDataTypes() {
-		return leftNode.checkDataTypes() && rightNode.checkDataTypes();
-	}
+    public boolean checkDataTypes() {
+        return leftNode.checkDataTypes() && rightNode.checkDataTypes();
+    }
 }

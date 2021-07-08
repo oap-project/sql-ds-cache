@@ -67,380 +67,380 @@ import static org.apache.flink.table.filesystem.FileSystemOptions.STREAMING_SOUR
  * A TableSource implementation to read data from Hive tables.
  */
 public class ApeHiveTableSource extends HiveTableSource implements
-		SupportsFilterPushDown,
-		SupportsAggregationPushDown {
+        SupportsFilterPushDown,
+        SupportsAggregationPushDown {
 
-	private static final Logger LOG = LoggerFactory.getLogger(ApeHiveTableSource.class);
-	private static final Duration DEFAULT_SCAN_MONITOR_INTERVAL = Duration.ofMinutes(1L);
+    private static final Logger LOG = LoggerFactory.getLogger(ApeHiveTableSource.class);
+    private static final Duration DEFAULT_SCAN_MONITOR_INTERVAL = Duration.ofMinutes(1L);
 
-	// Remaining partition specs after partition pruning is performed. Null if pruning is not pushed down.
-	@Nullable
-	private List<Map<String, String>> remainingPartitions = null;
-	protected int[] projectedFields;
-	private Long limit = null;
+    // Remaining partition specs after partition pruning is performed. Null if pruning is not pushed down.
+    @Nullable
+    private List<Map<String, String>> remainingPartitions = null;
+    protected int[] projectedFields;
+    private Long limit = null;
 
-	public static final String JOB_CONF_KEY_PREDICATES =
-		"parquet.private.native.reader.filter.predicate";
-	public static final String JOB_CONF_KEY_PREDICATES_HUMAN =
-		"parquet.private.native.reader.filter.predicate.human.readable";
+    public static final String JOB_CONF_KEY_PREDICATES =
+        "parquet.private.native.reader.filter.predicate";
+    public static final String JOB_CONF_KEY_PREDICATES_HUMAN =
+        "parquet.private.native.reader.filter.predicate.human.readable";
 
-	public static final String JOB_CONF_KEY_AGGREGATES =
-		"parquet.private.native.reader.agg.expressions";
+    public static final String JOB_CONF_KEY_AGGREGATES =
+        "parquet.private.native.reader.agg.expressions";
 
-	protected FilterPredicate predicates = null;
+    protected FilterPredicate predicates = null;
 
-	protected List<String> aggOutputNames;
-	protected List<DataType> aggOutputTypes;
-	protected AggregateExprs aggregateExprs;
+    protected List<String> aggOutputNames;
+    protected List<DataType> aggOutputTypes;
+    protected AggregateExprs aggregateExprs;
 
-	public ApeHiveTableSource(
-			JobConf jobConf, ReadableConfig flinkConf, ObjectPath tablePath, CatalogTable catalogTable) {
-		super(jobConf, flinkConf, tablePath, catalogTable);
+    public ApeHiveTableSource(
+            JobConf jobConf, ReadableConfig flinkConf, ObjectPath tablePath, CatalogTable catalogTable) {
+        super(jobConf, flinkConf, tablePath, catalogTable);
 
-		jobConf.setBoolean(
-			ApeHiveOptions.TABLE_EXEC_HIVE_PARQUET_USE_NATIVE_READER.key(),
-			flinkConf.get(ApeHiveOptions.TABLE_EXEC_HIVE_PARQUET_USE_NATIVE_READER)
-		);
+        jobConf.setBoolean(
+            ApeHiveOptions.TABLE_EXEC_HIVE_PARQUET_USE_NATIVE_READER.key(),
+            flinkConf.get(ApeHiveOptions.TABLE_EXEC_HIVE_PARQUET_USE_NATIVE_READER)
+        );
 
-		jobConf.set(
-				ApeHiveOptions.TABLE_EXEC_HIVE_PARQUET_NATIVE_READER_MODE.key(),
-				flinkConf.get(ApeHiveOptions.TABLE_EXEC_HIVE_PARQUET_NATIVE_READER_MODE)
-		);
-	}
+        jobConf.set(
+                ApeHiveOptions.TABLE_EXEC_HIVE_PARQUET_NATIVE_READER_MODE.key(),
+                flinkConf.get(ApeHiveOptions.TABLE_EXEC_HIVE_PARQUET_NATIVE_READER_MODE)
+        );
+    }
 
-	@VisibleForTesting
-	protected DataStream<RowData> getDataStream(StreamExecutionEnvironment execEnv) {
-		validateScanConfigurations();
-		checkAcidTable(catalogTable, tablePath);
+    @VisibleForTesting
+    protected DataStream<RowData> getDataStream(StreamExecutionEnvironment execEnv) {
+        validateScanConfigurations();
+        checkAcidTable(catalogTable, tablePath);
 
-		// reset filters in job conf
-		setFilterPredicate(predicates);
-		if (predicates != null) {
-			LOG.info("Filters are pushed down to parquet reader.");
-		}
+        // reset filters in job conf
+        setFilterPredicate(predicates);
+        if (predicates != null) {
+            LOG.info("Filters are pushed down to parquet reader.");
+        }
 
-		// reset aggregates in job conf
-		setAggregateExpr(aggregateExprs);
-		if (aggregateExprs != null) {
-			LOG.info("Aggregates are pushed down to parquet reader.");
-		}
+        // reset aggregates in job conf
+        setAggregateExpr(aggregateExprs);
+        if (aggregateExprs != null) {
+            LOG.info("Aggregates are pushed down to parquet reader.");
+        }
 
-		List<HiveTablePartition> allHivePartitions = getAllPartitions(
-				jobConf,
-				hiveVersion,
-				tablePath,
-				catalogTable,
-				hiveShim,
-				remainingPartitions);
-		Configuration configuration = Configuration.fromMap(catalogTable.getOptions());
+        List<HiveTablePartition> allHivePartitions = getAllPartitions(
+                jobConf,
+                hiveVersion,
+                tablePath,
+                catalogTable,
+                hiveShim,
+                remainingPartitions);
+        Configuration configuration = Configuration.fromMap(catalogTable.getOptions());
 
-		ApeHiveSource.HiveSourceBuilder sourceBuilder = new ApeHiveSource.HiveSourceBuilder(
-				jobConf,
-				tablePath,
-				catalogTable,
-				allHivePartitions,
-				limit,
-				hiveVersion,
-				flinkConf.get(HiveOptions.TABLE_EXEC_HIVE_FALLBACK_MAPRED_READER),
-				(RowType) getProducedDataType().getLogicalType());
-		if (isStreamingSource()) {
-			if (catalogTable.getPartitionKeys().isEmpty()) {
-				String consumeOrderStr = configuration.get(STREAMING_SOURCE_PARTITION_ORDER);
-				ConsumeOrder consumeOrder = ConsumeOrder.getConsumeOrder(consumeOrderStr);
-				if (consumeOrder != ConsumeOrder.CREATE_TIME_ORDER) {
-					throw new UnsupportedOperationException(
-							"Only " + ConsumeOrder.CREATE_TIME_ORDER + " is supported for non partition table.");
-				}
-			}
+        ApeHiveSource.HiveSourceBuilder sourceBuilder = new ApeHiveSource.HiveSourceBuilder(
+                jobConf,
+                tablePath,
+                catalogTable,
+                allHivePartitions,
+                limit,
+                hiveVersion,
+                flinkConf.get(HiveOptions.TABLE_EXEC_HIVE_FALLBACK_MAPRED_READER),
+                (RowType) getProducedDataType().getLogicalType());
+        if (isStreamingSource()) {
+            if (catalogTable.getPartitionKeys().isEmpty()) {
+                String consumeOrderStr = configuration.get(STREAMING_SOURCE_PARTITION_ORDER);
+                ConsumeOrder consumeOrder = ConsumeOrder.getConsumeOrder(consumeOrderStr);
+                if (consumeOrder != ConsumeOrder.CREATE_TIME_ORDER) {
+                    throw new UnsupportedOperationException(
+                            "Only " + ConsumeOrder.CREATE_TIME_ORDER + " is supported for non partition table.");
+                }
+            }
 
-			Duration monitorInterval = configuration.get(STREAMING_SOURCE_MONITOR_INTERVAL) == null
-					? DEFAULT_SCAN_MONITOR_INTERVAL
-					: configuration.get(STREAMING_SOURCE_MONITOR_INTERVAL);
-			sourceBuilder.monitorContinuously(monitorInterval);
+            Duration monitorInterval = configuration.get(STREAMING_SOURCE_MONITOR_INTERVAL) == null
+                    ? DEFAULT_SCAN_MONITOR_INTERVAL
+                    : configuration.get(STREAMING_SOURCE_MONITOR_INTERVAL);
+            sourceBuilder.monitorContinuously(monitorInterval);
 
-			if (!catalogTable.getPartitionKeys().isEmpty()) {
-				sourceBuilder.setFetcher(new HiveContinuousPartitionFetcher());
-				final String defaultPartitionName = jobConf.get(HiveConf.ConfVars.DEFAULTPARTITIONNAME.varname,
-						HiveConf.ConfVars.DEFAULTPARTITIONNAME.defaultStrVal);
-				HiveContinuousPartitionFetcherContext<?> fetcherContext = new HiveContinuousPartitionFetcherContext(
-						tablePath,
-						hiveShim,
-						new JobConfWrapper(jobConf),
-						catalogTable.getPartitionKeys(),
-						getProducedTableSchema().getFieldDataTypes(),
-						getProducedTableSchema().getFieldNames(),
-						configuration,
-						defaultPartitionName);
-				sourceBuilder.setFetcherContext(fetcherContext);
-			}
-		}
+            if (!catalogTable.getPartitionKeys().isEmpty()) {
+                sourceBuilder.setFetcher(new HiveContinuousPartitionFetcher());
+                final String defaultPartitionName = jobConf.get(HiveConf.ConfVars.DEFAULTPARTITIONNAME.varname,
+                        HiveConf.ConfVars.DEFAULTPARTITIONNAME.defaultStrVal);
+                HiveContinuousPartitionFetcherContext<?> fetcherContext = new HiveContinuousPartitionFetcherContext(
+                        tablePath,
+                        hiveShim,
+                        new JobConfWrapper(jobConf),
+                        catalogTable.getPartitionKeys(),
+                        getProducedTableSchema().getFieldDataTypes(),
+                        getProducedTableSchema().getFieldNames(),
+                        configuration,
+                        defaultPartitionName);
+                sourceBuilder.setFetcherContext(fetcherContext);
+            }
+        }
 
-		ApeHiveSource hiveSource = sourceBuilder.build();
-		DataStreamSource<RowData> source = execEnv.fromSource(
-				hiveSource, WatermarkStrategy.noWatermarks(), "HiveSource-" + tablePath.getFullName());
+        ApeHiveSource hiveSource = sourceBuilder.build();
+        DataStreamSource<RowData> source = execEnv.fromSource(
+                hiveSource, WatermarkStrategy.noWatermarks(), "HiveSource-" + tablePath.getFullName());
 
-		if (isStreamingSource()) {
-			return source;
-		} else {
-			int parallelism = new HiveParallelismInference(tablePath, flinkConf)
-					.infer(
-							() -> HiveSourceFileEnumerator.getNumFiles(allHivePartitions, jobConf),
-							() -> HiveSourceFileEnumerator.createInputSplits(0, allHivePartitions, jobConf).size())
-					.limit(limit);
-			return source.setParallelism(parallelism);
-		}
-	}
+        if (isStreamingSource()) {
+            return source;
+        } else {
+            int parallelism = new HiveParallelismInference(tablePath, flinkConf)
+                    .infer(
+                            () -> HiveSourceFileEnumerator.getNumFiles(allHivePartitions, jobConf),
+                            () -> HiveSourceFileEnumerator.createInputSplits(0, allHivePartitions, jobConf).size())
+                    .limit(limit);
+            return source.setParallelism(parallelism);
+        }
+    }
 
-	private void validateScanConfigurations() {
-		String partitionInclude = catalogTable.getOptions().getOrDefault(
-				STREAMING_SOURCE_PARTITION_INCLUDE.key(),
-				STREAMING_SOURCE_PARTITION_INCLUDE.defaultValue());
-		Preconditions.checkArgument(
-				"all".equals(partitionInclude),
-				String.format(
-						"The only supported '%s' is 'all' in hive table scan, but is '%s'",
-						STREAMING_SOURCE_PARTITION_INCLUDE.key(),
-						partitionInclude));
-	}
+    private void validateScanConfigurations() {
+        String partitionInclude = catalogTable.getOptions().getOrDefault(
+                STREAMING_SOURCE_PARTITION_INCLUDE.key(),
+                STREAMING_SOURCE_PARTITION_INCLUDE.defaultValue());
+        Preconditions.checkArgument(
+                "all".equals(partitionInclude),
+                String.format(
+                        "The only supported '%s' is 'all' in hive table scan, but is '%s'",
+                        STREAMING_SOURCE_PARTITION_INCLUDE.key(),
+                        partitionInclude));
+    }
 
-	private DataType getProducedDataType() {
-		return getProducedTableSchema().toRowDataType().bridgedTo(RowData.class);
-	}
+    private DataType getProducedDataType() {
+        return getProducedTableSchema().toRowDataType().bridgedTo(RowData.class);
+    }
 
-	protected TableSchema getProducedTableSchema() {
-		TableSchema fullSchema = getTableSchema();
-		if (aggOutputNames != null) {
-			return TableSchema.builder().fields(
-				aggOutputNames.toArray(new String[0]),
-				aggOutputTypes.toArray(new DataType[0])
-			).build();
-		} else if (projectedFields != null) {
-			String[] fullNames = fullSchema.getFieldNames();
-			DataType[] fullTypes = fullSchema.getFieldDataTypes();
-			return TableSchema.builder().fields(
-				Arrays.stream(projectedFields).mapToObj(i -> fullNames[i]).toArray(String[]::new),
-				Arrays.stream(projectedFields).mapToObj(i -> fullTypes[i]).toArray(DataType[]::new)).build();
-		} else {
-			return fullSchema;
-		}
-	}
+    protected TableSchema getProducedTableSchema() {
+        TableSchema fullSchema = getTableSchema();
+        if (aggOutputNames != null) {
+            return TableSchema.builder().fields(
+                aggOutputNames.toArray(new String[0]),
+                aggOutputTypes.toArray(new DataType[0])
+            ).build();
+        } else if (projectedFields != null) {
+            String[] fullNames = fullSchema.getFieldNames();
+            DataType[] fullTypes = fullSchema.getFieldDataTypes();
+            return TableSchema.builder().fields(
+                Arrays.stream(projectedFields).mapToObj(i -> fullNames[i]).toArray(String[]::new),
+                Arrays.stream(projectedFields).mapToObj(i -> fullTypes[i]).toArray(DataType[]::new)).build();
+        } else {
+            return fullSchema;
+        }
+    }
 
-	@Override
-	public DynamicTableSource copy() {
-		ApeHiveTableSource source = new ApeHiveTableSource(jobConf, flinkConf, tablePath, catalogTable);
-		source.remainingPartitions = remainingPartitions;
-		source.projectedFields = projectedFields;
-		source.limit = limit;
+    @Override
+    public DynamicTableSource copy() {
+        ApeHiveTableSource source = new ApeHiveTableSource(jobConf, flinkConf, tablePath, catalogTable);
+        source.remainingPartitions = remainingPartitions;
+        source.projectedFields = projectedFields;
+        source.limit = limit;
 
-		source.predicates = predicates;
-		source.aggOutputNames = aggOutputNames;
-		source.aggOutputTypes = aggOutputTypes;
-		source.aggregateExprs = aggregateExprs;
-		return source;
-	}
+        source.predicates = predicates;
+        source.aggOutputNames = aggOutputNames;
+        source.aggOutputTypes = aggOutputTypes;
+        source.aggregateExprs = aggregateExprs;
+        return source;
+    }
 
-	@Override
-	public Result applyFilters(List<ResolvedExpression> filters) {
-		// check if APE is applicable
-		if (!isAPENativeFilterApplicable()) {
-			return Result.of(Collections.emptyList(), filters);
-		}
+    @Override
+    public Result applyFilters(List<ResolvedExpression> filters) {
+        // check if APE is applicable
+        if (!isAPENativeFilterApplicable()) {
+            return Result.of(Collections.emptyList(), filters);
+        }
 
-		// convert filters from Expressions to FilterPredicate
-		List<FilterPredicate> convertedPredicates = new ArrayList<>(filters.size());
-		List<ResolvedExpression> acceptedFilters = new ArrayList<>(filters.size());
-		List<ResolvedExpression> remainingFilters = new ArrayList<>(filters.size());
+        // convert filters from Expressions to FilterPredicate
+        List<FilterPredicate> convertedPredicates = new ArrayList<>(filters.size());
+        List<ResolvedExpression> acceptedFilters = new ArrayList<>(filters.size());
+        List<ResolvedExpression> remainingFilters = new ArrayList<>(filters.size());
 
-		for (ResolvedExpression filter : filters) {
-			FilterPredicate convertedPredicate = filter.accept(new ExpressionToPredicateConverter());
-			if (convertedPredicate != null) {
-				convertedPredicates.add(convertedPredicate);
-				acceptedFilters.add(filter);
-			} else {
-				remainingFilters.add(filter);
-			}
-		}
+        for (ResolvedExpression filter : filters) {
+            FilterPredicate convertedPredicate = filter.accept(new ExpressionToPredicateConverter());
+            if (convertedPredicate != null) {
+                convertedPredicates.add(convertedPredicate);
+                acceptedFilters.add(filter);
+            } else {
+                remainingFilters.add(filter);
+            }
+        }
 
-		// construct single Parquet FilterPredicate
-		FilterPredicate parquetPredicate = null;
-		if (!convertedPredicates.isEmpty()) {
-			// concat converted predicates with AND
-			parquetPredicate = convertedPredicates.get(0);
+        // construct single Parquet FilterPredicate
+        FilterPredicate parquetPredicate = null;
+        if (!convertedPredicates.isEmpty()) {
+            // concat converted predicates with AND
+            parquetPredicate = convertedPredicates.get(0);
 
-			for (FilterPredicate converted : convertedPredicates.subList(1, convertedPredicates.size())) {
-				parquetPredicate = FilterApi.and(parquetPredicate, converted);
-			}
+            for (FilterPredicate converted : convertedPredicates.subList(1, convertedPredicates.size())) {
+                parquetPredicate = FilterApi.and(parquetPredicate, converted);
+            }
 
-			// optimize the filter tree
-			parquetPredicate = parquetPredicate.accept(new PredicateOptimizers.AddNotNull());
-		}
+            // optimize the filter tree
+            parquetPredicate = parquetPredicate.accept(new PredicateOptimizers.AddNotNull());
+        }
 
-		// Here, just set predicate to table source.
-		// We don't set predicate to jobConf now to avoid overriding filters.
-		predicates = parquetPredicate;
+        // Here, just set predicate to table source.
+        // We don't set predicate to jobConf now to avoid overriding filters.
+        predicates = parquetPredicate;
 
-		// remove pushed filters from remainingFilters
-		return Result.of(acceptedFilters, remainingFilters);
-	}
+        // remove pushed filters from remainingFilters
+        return Result.of(acceptedFilters, remainingFilters);
+    }
 
-	private void setFilterPredicate(FilterPredicate parquetPredicate) {
-		if (parquetPredicate == null) {
-			jobConf.unset(JOB_CONF_KEY_PREDICATES_HUMAN);
-			jobConf.unset(JOB_CONF_KEY_PREDICATES);
-			return;
-		}
+    private void setFilterPredicate(FilterPredicate parquetPredicate) {
+        if (parquetPredicate == null) {
+            jobConf.unset(JOB_CONF_KEY_PREDICATES_HUMAN);
+            jobConf.unset(JOB_CONF_KEY_PREDICATES);
+            return;
+        }
 
-		jobConf.set(JOB_CONF_KEY_PREDICATES_HUMAN, parquetPredicate.toString());
+        jobConf.set(JOB_CONF_KEY_PREDICATES_HUMAN, parquetPredicate.toString());
 
-		try {
-			SerializationUtil.writeObjectToConfAsBase64(JOB_CONF_KEY_PREDICATES,
-				parquetPredicate, jobConf);
-		} catch (IOException ex) {
-			throw new RuntimeException(ex);
-		}
-	}
+        try {
+            SerializationUtil.writeObjectToConfAsBase64(JOB_CONF_KEY_PREDICATES,
+                parquetPredicate, jobConf);
+        } catch (IOException ex) {
+            throw new RuntimeException(ex);
+        }
+    }
 
-	private void setAggregateExpr(AggregateExprs aggregateExprs) {
-		if (aggregateExprs == null) {
-			jobConf.unset(JOB_CONF_KEY_AGGREGATES);
-			return;
-		}
+    private void setAggregateExpr(AggregateExprs aggregateExprs) {
+        if (aggregateExprs == null) {
+            jobConf.unset(JOB_CONF_KEY_AGGREGATES);
+            return;
+        }
 
-		try {
-			SerializationUtil.writeObjectToConfAsBase64(
-					JOB_CONF_KEY_AGGREGATES,
-					aggregateExprs,
-					jobConf);
-		} catch (IOException ex) {
-			throw new RuntimeException(ex);
-		}
-	}
+        try {
+            SerializationUtil.writeObjectToConfAsBase64(
+                    JOB_CONF_KEY_AGGREGATES,
+                    aggregateExprs,
+                    jobConf);
+        } catch (IOException ex) {
+            throw new RuntimeException(ex);
+        }
+    }
 
-	private boolean allPartitionsAreParquet() {
-		List<HiveTablePartition> allHivePartitions = getAllPartitions(
-			jobConf,
-			hiveVersion,
-			tablePath,
-			catalogTable,
-			hiveShim,
-			remainingPartitions);
+    private boolean allPartitionsAreParquet() {
+        List<HiveTablePartition> allHivePartitions = getAllPartitions(
+            jobConf,
+            hiveVersion,
+            tablePath,
+            catalogTable,
+            hiveShim,
+            remainingPartitions);
 
-		for (HiveTablePartition partition : allHivePartitions) {
-			boolean isParquet = partition.getStorageDescriptor().getSerdeInfo().getSerializationLib()
-				.toLowerCase().contains("parquet");
+        for (HiveTablePartition partition : allHivePartitions) {
+            boolean isParquet = partition.getStorageDescriptor().getSerdeInfo().getSerializationLib()
+                .toLowerCase().contains("parquet");
 
-			if (!isParquet) {
-				return false;
-			}
-		}
+            if (!isParquet) {
+                return false;
+            }
+        }
 
-		return true;
-	}
+        return true;
+    }
 
-	private boolean allColumnsSupportVectorization() {
-		RowType producedRowType = (RowType) getProducedTableSchema().toRowDataType().bridgedTo(RowData.class).getLogicalType();
-		for (RowType.RowField field : producedRowType.getFields()) {
-			if (isVectorizationUnsupported(field.getType())) {
-				LOG.info("Fallback to hadoop mapred reader, unsupported field type: " + field.getType());
-				return false;
-			}
-		}
+    private boolean allColumnsSupportVectorization() {
+        RowType producedRowType = (RowType) getProducedTableSchema().toRowDataType().bridgedTo(RowData.class).getLogicalType();
+        for (RowType.RowField field : producedRowType.getFields()) {
+            if (isVectorizationUnsupported(field.getType())) {
+                LOG.info("Fallback to hadoop mapred reader, unsupported field type: " + field.getType());
+                return false;
+            }
+        }
 
-		return true;
-	}
+        return true;
+    }
 
-	private static boolean isVectorizationUnsupported(LogicalType t) {
-		switch (t.getTypeRoot()) {
-			case CHAR:
-			case VARCHAR:
-			case BOOLEAN:
-			case BINARY:
-			case VARBINARY:
-			case DECIMAL:
-			case TINYINT:
-			case SMALLINT:
-			case INTEGER:
-			case BIGINT:
-			case FLOAT:
-			case DOUBLE:
-			case DATE:
-			case TIME_WITHOUT_TIME_ZONE:
-			case TIMESTAMP_WITHOUT_TIME_ZONE:
-			case TIMESTAMP_WITH_LOCAL_TIME_ZONE:
-				return false;
-			case TIMESTAMP_WITH_TIME_ZONE:
-			case INTERVAL_YEAR_MONTH:
-			case INTERVAL_DAY_TIME:
-			case ARRAY:
-			case MULTISET:
-			case MAP:
-			case ROW:
-			case DISTINCT_TYPE:
-			case STRUCTURED_TYPE:
-			case NULL:
-			case RAW:
-			case SYMBOL:
-			default:
-				return true;
-		}
-	}
+    private static boolean isVectorizationUnsupported(LogicalType t) {
+        switch (t.getTypeRoot()) {
+            case CHAR:
+            case VARCHAR:
+            case BOOLEAN:
+            case BINARY:
+            case VARBINARY:
+            case DECIMAL:
+            case TINYINT:
+            case SMALLINT:
+            case INTEGER:
+            case BIGINT:
+            case FLOAT:
+            case DOUBLE:
+            case DATE:
+            case TIME_WITHOUT_TIME_ZONE:
+            case TIMESTAMP_WITHOUT_TIME_ZONE:
+            case TIMESTAMP_WITH_LOCAL_TIME_ZONE:
+                return false;
+            case TIMESTAMP_WITH_TIME_ZONE:
+            case INTERVAL_YEAR_MONTH:
+            case INTERVAL_DAY_TIME:
+            case ARRAY:
+            case MULTISET:
+            case MAP:
+            case ROW:
+            case DISTINCT_TYPE:
+            case STRUCTURED_TYPE:
+            case NULL:
+            case RAW:
+            case SYMBOL:
+            default:
+                return true;
+        }
+    }
 
-	@Override
-	public boolean applyAggregations(
-		List<String> outputNames,
-		List<DataType> outputTypes,
-		AggregateExprs aggregateExprs) {
+    @Override
+    public boolean applyAggregations(
+        List<String> outputNames,
+        List<DataType> outputTypes,
+        AggregateExprs aggregateExprs) {
 
-		if (!isAPENativeAggApplicable()) {
-			return false;
-		}
+        if (!isAPENativeAggApplicable()) {
+            return false;
+        }
 
-		// transform data type names in aggregate expressions
-		try {
-			aggregateExprs.translateDataTypeName();
-		} catch (RuntimeException ex) {
-			LOG.warn(ex.toString());
-			return false;
-		}
+        // transform data type names in aggregate expressions
+        try {
+            aggregateExprs.translateDataTypeName();
+        } catch (RuntimeException ex) {
+            LOG.warn(ex.toString());
+            return false;
+        }
 
-		// check data types
-		if (!aggregateExprs.checkDataTypes()) {
-			LOG.info("Will not push down aggregates since data type checking not passed");
-			return false;
-		}
+        // check data types
+        if (!aggregateExprs.checkDataTypes()) {
+            LOG.info("Will not push down aggregates since data type checking not passed");
+            return false;
+        }
 
-		aggOutputNames = outputNames;
-		aggOutputTypes = outputTypes;
-		this.aggregateExprs = aggregateExprs;
+        aggOutputNames = outputNames;
+        aggOutputTypes = outputTypes;
+        this.aggregateExprs = aggregateExprs;
 
-		return true;
-	}
+        return true;
+    }
 
-	private boolean isAPENativeFilterApplicable() {
+    private boolean isAPENativeFilterApplicable() {
 
-		boolean useMapRedReader = flinkConf.get(HiveOptions.TABLE_EXEC_HIVE_FALLBACK_MAPRED_READER);
-		boolean useNativeParquetReader = flinkConf.get(ApeHiveOptions.TABLE_EXEC_HIVE_PARQUET_USE_NATIVE_READER);
-		boolean filterPushingDownEnabled = flinkConf.get(ApeHiveOptions.TABLE_EXEC_HIVE_PARQUET_PUSH_DOWN_FILTERS);
-		// join re-order does not know filters are pushed down.
-		// This may lead to worse efficiency when it moves backward tables with filters pushed down in joins.
-		boolean joinReorderEnabled = flinkConf.get(OptimizerConfigOptions.TABLE_OPTIMIZER_JOIN_REORDER_ENABLED);
-		// configuration that tells Flink whether push down filters or not when join re-order is enabled.
-		boolean evadingJoinReorder = flinkConf.get(ApeHiveOptions.TABLE_EXEC_HIVE_PARQUET_FILTERS_EVADING_JOIN_REORDER);
+        boolean useMapRedReader = flinkConf.get(HiveOptions.TABLE_EXEC_HIVE_FALLBACK_MAPRED_READER);
+        boolean useNativeParquetReader = flinkConf.get(ApeHiveOptions.TABLE_EXEC_HIVE_PARQUET_USE_NATIVE_READER);
+        boolean filterPushingDownEnabled = flinkConf.get(ApeHiveOptions.TABLE_EXEC_HIVE_PARQUET_PUSH_DOWN_FILTERS);
+        // join re-order does not know filters are pushed down.
+        // This may lead to worse efficiency when it moves backward tables with filters pushed down in joins.
+        boolean joinReorderEnabled = flinkConf.get(OptimizerConfigOptions.TABLE_OPTIMIZER_JOIN_REORDER_ENABLED);
+        // configuration that tells Flink whether push down filters or not when join re-order is enabled.
+        boolean evadingJoinReorder = flinkConf.get(ApeHiveOptions.TABLE_EXEC_HIVE_PARQUET_FILTERS_EVADING_JOIN_REORDER);
 
-		// check configurations
-		if (useMapRedReader
-				|| !useNativeParquetReader
-				|| !filterPushingDownEnabled
-				|| (joinReorderEnabled && evadingJoinReorder)) {
-			return false;
-		}
+        // check configurations
+        if (useMapRedReader
+                || !useNativeParquetReader
+                || !filterPushingDownEnabled
+                || (joinReorderEnabled && evadingJoinReorder)) {
+            return false;
+        }
 
-		// check parquet format and column types
-		return allColumnsSupportVectorization() && allPartitionsAreParquet();
-	}
+        // check parquet format and column types
+        return allColumnsSupportVectorization() && allPartitionsAreParquet();
+    }
 
-	private boolean isAPENativeAggApplicable() {
-		boolean aggPushingDownEnabled = flinkConf.get(ApeHiveOptions.TABLE_EXEC_HIVE_PARQUET_PUSH_DOWN_AGGREGATIONS);
-		return isAPENativeFilterApplicable() && aggPushingDownEnabled;
-	}
+    private boolean isAPENativeAggApplicable() {
+        boolean aggPushingDownEnabled = flinkConf.get(ApeHiveOptions.TABLE_EXEC_HIVE_PARQUET_PUSH_DOWN_AGGREGATIONS);
+        return isAPENativeFilterApplicable() && aggPushingDownEnabled;
+    }
 }

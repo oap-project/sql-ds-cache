@@ -22,9 +22,9 @@ package org.apache.flink.formats.parquet;
  * Config keys used in ape packages.
  */
 public class ApeParquetConfKeys {
-	// use native parquet reader or not.
-	public static final String USE_NATIVE_PARQUET_READER = "table.exec.hive.parquet-native-reader";
+    // use native parquet reader or not.
+    public static final String USE_NATIVE_PARQUET_READER = "table.exec.hive.parquet-native-reader";
 
-	// mode of native parquet reader.
-	public static final String NATIVE_PARQUET_READER_MODE = "table.exec.hive.parquet-native-reader.mode";
+    // mode of native parquet reader.
+    public static final String NATIVE_PARQUET_READER_MODE = "table.exec.hive.parquet-native-reader.mode";
 }

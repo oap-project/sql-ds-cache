@@ -22,44 +22,44 @@ package org.apache.flink.table.utils.ape;
  * Aggregate expression root.
  */
 public class AggregateExprRoot extends AggregateExpr {
-	public static final String DEFAULT_NAME = "RootAgg";
+    public static final String DEFAULT_NAME = "RootAgg";
 
-	private boolean isDistinct;
+    private boolean isDistinct;
 
-	private AggregateExprRootChild child;
+    private AggregateExprRootChild child;
 
-	public AggregateExprRoot(
-		boolean isDistinct,
-		AggregateExprRootChild child) {
-		super(DEFAULT_NAME, null);
-		this.isDistinct = isDistinct;
-		this.child = child;
-	}
+    public AggregateExprRoot(
+        boolean isDistinct,
+        AggregateExprRootChild child) {
+        super(DEFAULT_NAME, null);
+        this.isDistinct = isDistinct;
+        this.child = child;
+    }
 
-	public boolean getIsDistinct() {
-		return isDistinct;
-	}
+    public boolean getIsDistinct() {
+        return isDistinct;
+    }
 
-	public void setIsDistinct(boolean distinct) {
-		isDistinct = distinct;
-	}
+    public void setIsDistinct(boolean distinct) {
+        isDistinct = distinct;
+    }
 
-	public AggregateExpr getChild() {
-		return child;
-	}
+    public AggregateExpr getChild() {
+        return child;
+    }
 
-	public void setChild(AggregateExprRootChild child) {
-		this.child = child;
-	}
+    public void setChild(AggregateExprRootChild child) {
+        this.child = child;
+    }
 
-	@Override
-	public void translateDataTypeName() {
-		super.translateDataTypeName();
+    @Override
+    public void translateDataTypeName() {
+        super.translateDataTypeName();
 
-		child.translateDataTypeName();
-	}
+        child.translateDataTypeName();
+    }
 
-	public boolean checkDataTypes() {
-		return child.checkDataTypes();
-	}
+    public boolean checkDataTypes() {
+        return child.checkDataTypes();
+    }
 }

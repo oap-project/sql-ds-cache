@@ -39,35 +39,35 @@ import java.util.Map;
 @Internal
 public final class ApeBlinkPlannerFactory implements PlannerFactory {
 
-	@Override
-	public Planner create(
-		Map<String, String> properties,
-		Executor executor,
-		TableConfig tableConfig,
-		FunctionCatalog functionCatalog,
-		CatalogManager catalogManager) {
-		if (Boolean.valueOf(properties.getOrDefault(ApeEnvironmentSettings.STREAMING_MODE, "true"))) {
-			return new StreamPlanner(executor, tableConfig, functionCatalog, catalogManager);
-		} else {
-			return new ApeBatchPlanner(executor, tableConfig, functionCatalog, catalogManager);
-		}
-	}
+    @Override
+    public Planner create(
+        Map<String, String> properties,
+        Executor executor,
+        TableConfig tableConfig,
+        FunctionCatalog functionCatalog,
+        CatalogManager catalogManager) {
+        if (Boolean.valueOf(properties.getOrDefault(ApeEnvironmentSettings.STREAMING_MODE, "true"))) {
+            return new StreamPlanner(executor, tableConfig, functionCatalog, catalogManager);
+        } else {
+            return new ApeBatchPlanner(executor, tableConfig, functionCatalog, catalogManager);
+        }
+    }
 
-	@Override
-	public Map<String, String> optionalContext() {
-		Map<String, String> map = new HashMap<>();
-		map.put(ApeEnvironmentSettings.CLASS_NAME, this.getClass().getCanonicalName());
-		return map;
-	}
+    @Override
+    public Map<String, String> optionalContext() {
+        Map<String, String> map = new HashMap<>();
+        map.put(ApeEnvironmentSettings.CLASS_NAME, this.getClass().getCanonicalName());
+        return map;
+    }
 
-	@Override
-	public Map<String, String> requiredContext() {
-		DescriptorProperties properties = new DescriptorProperties();
-		return properties.asMap();
-	}
+    @Override
+    public Map<String, String> requiredContext() {
+        DescriptorProperties properties = new DescriptorProperties();
+        return properties.asMap();
+    }
 
-	@Override
-	public List<String> supportedProperties() {
-		return Arrays.asList(ApeEnvironmentSettings.STREAMING_MODE, ApeEnvironmentSettings.CLASS_NAME);
-	}
+    @Override
+    public List<String> supportedProperties() {
+        return Arrays.asList(ApeEnvironmentSettings.STREAMING_MODE, ApeEnvironmentSettings.CLASS_NAME);
+    }
 }

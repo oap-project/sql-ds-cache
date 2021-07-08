@@ -25,35 +25,35 @@ import java.util.List;
  * Class to hold the whole aggregate expressions to be pushed down.
  */
 public class AggregateExprs implements Serializable {
-	private List<AggregateExpr> groupByExprs;
-	private List<AggregateExpr> aggregateExprs;
+    private List<AggregateExpr> groupByExprs;
+    private List<AggregateExpr> aggregateExprs;
 
-	public AggregateExprs(List<AggregateExpr> groupByExprs, List<AggregateExpr> aggregateExprs) {
-		this.groupByExprs = groupByExprs;
-		this.aggregateExprs = aggregateExprs;
-	}
+    public AggregateExprs(List<AggregateExpr> groupByExprs, List<AggregateExpr> aggregateExprs) {
+        this.groupByExprs = groupByExprs;
+        this.aggregateExprs = aggregateExprs;
+    }
 
-	public List<AggregateExpr> getGroupByExprs() {
-		return groupByExprs;
-	}
+    public List<AggregateExpr> getGroupByExprs() {
+        return groupByExprs;
+    }
 
-	public void setGroupByExprs(List<AggregateExpr> groupByExprs) {
-		this.groupByExprs = groupByExprs;
-	}
+    public void setGroupByExprs(List<AggregateExpr> groupByExprs) {
+        this.groupByExprs = groupByExprs;
+    }
 
-	public List<AggregateExpr> getAggregateExprs() {
-		return aggregateExprs;
-	}
+    public List<AggregateExpr> getAggregateExprs() {
+        return aggregateExprs;
+    }
 
-	public void setAggregateExprs(List<AggregateExpr> aggregateExprs) {
-		this.aggregateExprs = aggregateExprs;
-	}
+    public void setAggregateExprs(List<AggregateExpr> aggregateExprs) {
+        this.aggregateExprs = aggregateExprs;
+    }
 
-	public void translateDataTypeName() {
-		aggregateExprs.forEach(AggregateExpr::translateDataTypeName);
-	}
+    public void translateDataTypeName() {
+        aggregateExprs.forEach(AggregateExpr::translateDataTypeName);
+    }
 
-	public boolean checkDataTypes() {
-		return aggregateExprs.stream().allMatch(AggregateExpr::checkDataTypes);
-	}
+    public boolean checkDataTypes() {
+        return aggregateExprs.stream().allMatch(AggregateExpr::checkDataTypes);
+    }
 }

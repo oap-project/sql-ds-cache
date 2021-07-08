@@ -24,25 +24,25 @@ import java.util.Arrays;
  * Aggregate expression column.
  */
 public class AggregateExprColumn extends AggregateExpr {
-	public static final String DEFAULT_NAME = "AttributeReference";
+    public static final String DEFAULT_NAME = "AttributeReference";
 
-	private String columnName;
+    private String columnName;
 
-	public AggregateExprColumn(String dataType, String columnName) {
-		super(DEFAULT_NAME, dataType);
-		this.dataType = dataType;
-		this.columnName = columnName;
-	}
+    public AggregateExprColumn(String dataType, String columnName) {
+        super(DEFAULT_NAME, dataType);
+        this.dataType = dataType;
+        this.columnName = columnName;
+    }
 
-	public String getColumnName() {
-		return columnName;
-	}
+    public String getColumnName() {
+        return columnName;
+    }
 
-	public void setColumnName(String columnName) {
-		this.columnName = columnName;
-	}
+    public void setColumnName(String columnName) {
+        this.columnName = columnName;
+    }
 
-	public boolean checkDataTypes() {
-		return !Arrays.asList("FloatType", "DoubleType").contains(dataType);
-	}
+    public boolean checkDataTypes() {
+        return !Arrays.asList("FloatType", "DoubleType").contains(dataType);
+    }
 }

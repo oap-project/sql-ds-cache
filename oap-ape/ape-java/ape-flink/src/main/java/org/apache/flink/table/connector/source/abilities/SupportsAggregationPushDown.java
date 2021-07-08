@@ -31,7 +31,7 @@ import java.util.List;
  *
  * <p>
  * For example,
- * 	select sum(d_date_sk) from date_dim where d_year = 2000;
+ *     select sum(d_date_sk) from date_dim where d_year = 2000;
  * The original plan of above sql in Flink may be:
  * == Optimized Logical Plan ==
  * HashAggregate(isMerge=[true], select=[Final_SUM(sum$0) AS EXPR$0])
@@ -58,9 +58,9 @@ import java.util.List;
  */
 public interface SupportsAggregationPushDown {
 
-	boolean applyAggregations(
-		List<String> outputNames,
-		List<DataType> outputTypes,
-		AggregateExprs aggregateExprs);
+    boolean applyAggregations(
+        List<String> outputNames,
+        List<DataType> outputTypes,
+        AggregateExprs aggregateExprs);
 
 }

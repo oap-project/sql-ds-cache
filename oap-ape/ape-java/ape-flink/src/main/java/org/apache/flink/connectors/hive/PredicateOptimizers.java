@@ -34,180 +34,180 @@ import javax.annotation.Nullable;
  */
 public class PredicateOptimizers {
 
-	/**
-	 * Add an `and` `is not null` brother to existing column predicate.
-	 */
-	static class AddNotNull implements FilterPredicate.Visitor<FilterPredicate> {
-		private FilterPredicate parent = null;
+    /**
+     * Add an `and` `is not null` brother to existing column predicate.
+     */
+    static class AddNotNull implements FilterPredicate.Visitor<FilterPredicate> {
+        private FilterPredicate parent = null;
 
-		@Override
-		public <T extends Comparable<T>> FilterPredicate visit(Operators.Eq<T> eq) {
-			// `is null` does not need to add `not null` predicate
-			if (eq.getValue() == null) {
-				return eq;
-			}
+        @Override
+        public <T extends Comparable<T>> FilterPredicate visit(Operators.Eq<T> eq) {
+            // `is null` does not need to add `not null` predicate
+            if (eq.getValue() == null) {
+                return eq;
+            }
 
-			if (needToBeNotNull(eq, eq.getColumn().getColumnPath())) {
-				return andNotNull(eq, eq.getColumn());
-			}
+            if (needToBeNotNull(eq, eq.getColumn().getColumnPath())) {
+                return andNotNull(eq, eq.getColumn());
+            }
 
-			return eq;
-		}
+            return eq;
+        }
 
-		@Override
-		public <T extends Comparable<T>> FilterPredicate visit(Operators.NotEq<T> notEq) {
-			// `is not null` does not need to add `not null` predicate
-			if (notEq.getValue() == null) {
-				return notEq;
-			}
+        @Override
+        public <T extends Comparable<T>> FilterPredicate visit(Operators.NotEq<T> notEq) {
+            // `is not null` does not need to add `not null` predicate
+            if (notEq.getValue() == null) {
+                return notEq;
+            }
 
-			if (needToBeNotNull(notEq, notEq.getColumn().getColumnPath())) {
-				return andNotNull(notEq, notEq.getColumn());
-			}
+            if (needToBeNotNull(notEq, notEq.getColumn().getColumnPath())) {
+                return andNotNull(notEq, notEq.getColumn());
+            }
 
-			return notEq;
-		}
+            return notEq;
+        }
 
-		@Override
-		public <T extends Comparable<T>> FilterPredicate visit(Operators.Lt<T> lt) {
-			if (needToBeNotNull(lt, lt.getColumn().getColumnPath())) {
-				return andNotNull(lt, lt.getColumn());
-			}
+        @Override
+        public <T extends Comparable<T>> FilterPredicate visit(Operators.Lt<T> lt) {
+            if (needToBeNotNull(lt, lt.getColumn().getColumnPath())) {
+                return andNotNull(lt, lt.getColumn());
+            }
 
-			return lt;
-		}
+            return lt;
+        }
 
-		@Override
-		public <T extends Comparable<T>> FilterPredicate visit(Operators.LtEq<T> ltEq) {
-			if (needToBeNotNull(ltEq, ltEq.getColumn().getColumnPath())) {
-				return andNotNull(ltEq, ltEq.getColumn());
-			}
+        @Override
+        public <T extends Comparable<T>> FilterPredicate visit(Operators.LtEq<T> ltEq) {
+            if (needToBeNotNull(ltEq, ltEq.getColumn().getColumnPath())) {
+                return andNotNull(ltEq, ltEq.getColumn());
+            }
 
-			return ltEq;
-		}
+            return ltEq;
+        }
 
-		@Override
-		public <T extends Comparable<T>> FilterPredicate visit(Operators.Gt<T> gt) {
-			if (needToBeNotNull(gt, gt.getColumn().getColumnPath())) {
-				return andNotNull(gt, gt.getColumn());
-			}
+        @Override
+        public <T extends Comparable<T>> FilterPredicate visit(Operators.Gt<T> gt) {
+            if (needToBeNotNull(gt, gt.getColumn().getColumnPath())) {
+                return andNotNull(gt, gt.getColumn());
+            }
 
-			return gt;
-		}
+            return gt;
+        }
 
-		@Override
-		public <T extends Comparable<T>> FilterPredicate visit(Operators.GtEq<T> gtEq) {
-			if (needToBeNotNull(gtEq, gtEq.getColumn().getColumnPath())) {
-				return andNotNull(gtEq, gtEq.getColumn());
-			}
+        @Override
+        public <T extends Comparable<T>> FilterPredicate visit(Operators.GtEq<T> gtEq) {
+            if (needToBeNotNull(gtEq, gtEq.getColumn().getColumnPath())) {
+                return andNotNull(gtEq, gtEq.getColumn());
+            }
 
-			return gtEq;
-		}
+            return gtEq;
+        }
 
-		// Check whether we need to add a `not null` predicate to a existing column predicate.
-		// Return false only if there exists an `and` brother which is `is not null` already.
-		boolean needToBeNotNull(FilterPredicate predicate, ColumnPath columnPath) {
-			if (!(parent instanceof Operators.And)) {
-				return true;
-			}
+        // Check whether we need to add a `not null` predicate to a existing column predicate.
+        // Return false only if there exists an `and` brother which is `is not null` already.
+        boolean needToBeNotNull(FilterPredicate predicate, ColumnPath columnPath) {
+            if (!(parent instanceof Operators.And)) {
+                return true;
+            }
 
-			boolean ret = true;
+            boolean ret = true;
 
-			Operators.And andParent = (Operators.And) parent;
-			FilterPredicate brother =
-				andParent.getLeft() == predicate ? andParent.getRight() : andParent.getLeft();
-			if (brother instanceof Operators.NotEq) {
-				Operators.NotEq notEq = (Operators.NotEq) brother;
+            Operators.And andParent = (Operators.And) parent;
+            FilterPredicate brother =
+                andParent.getLeft() == predicate ? andParent.getRight() : andParent.getLeft();
+            if (brother instanceof Operators.NotEq) {
+                Operators.NotEq notEq = (Operators.NotEq) brother;
 
-				if (notEq.getColumn().getColumnPath().equals(columnPath)
-					&& notEq.getValue() == null) {
-					// already has an `and` brother which means `is not null` for the same column
-					ret = false;
-				}
-			}
+                if (notEq.getColumn().getColumnPath().equals(columnPath)
+                    && notEq.getValue() == null) {
+                    // already has an `and` brother which means `is not null` for the same column
+                    ret = false;
+                }
+            }
 
-			return ret;
-		}
+            return ret;
+        }
 
-		@Nullable
-		private FilterPredicate notEquals(Tuple2<Operators.Column, Comparable> columnPair) {
-			if (columnPair.f0 instanceof Operators.IntColumn) {
-				return FilterApi.notEq(
-					(Operators.IntColumn) columnPair.f0,
-					(Integer) columnPair.f1);
-			} else if (columnPair.f0 instanceof Operators.LongColumn) {
-				return FilterApi.notEq((Operators.LongColumn) columnPair.f0, (Long) columnPair.f1);
-			} else if (columnPair.f0 instanceof Operators.DoubleColumn) {
-				return FilterApi.notEq(
-					(Operators.DoubleColumn) columnPair.f0,
-					(Double) columnPair.f1);
-			} else if (columnPair.f0 instanceof Operators.FloatColumn) {
-				return FilterApi.notEq(
-					(Operators.FloatColumn) columnPair.f0,
-					(Float) columnPair.f1);
-			} else if (columnPair.f0 instanceof Operators.BooleanColumn) {
-				return FilterApi.notEq(
-					(Operators.BooleanColumn) columnPair.f0,
-					(Boolean) columnPair.f1);
-			} else if (columnPair.f0 instanceof Operators.BinaryColumn) {
-				return FilterApi.notEq(
-					(Operators.BinaryColumn) columnPair.f0,
-					(Binary) columnPair.f1);
-			}
+        @Nullable
+        private FilterPredicate notEquals(Tuple2<Operators.Column, Comparable> columnPair) {
+            if (columnPair.f0 instanceof Operators.IntColumn) {
+                return FilterApi.notEq(
+                    (Operators.IntColumn) columnPair.f0,
+                    (Integer) columnPair.f1);
+            } else if (columnPair.f0 instanceof Operators.LongColumn) {
+                return FilterApi.notEq((Operators.LongColumn) columnPair.f0, (Long) columnPair.f1);
+            } else if (columnPair.f0 instanceof Operators.DoubleColumn) {
+                return FilterApi.notEq(
+                    (Operators.DoubleColumn) columnPair.f0,
+                    (Double) columnPair.f1);
+            } else if (columnPair.f0 instanceof Operators.FloatColumn) {
+                return FilterApi.notEq(
+                    (Operators.FloatColumn) columnPair.f0,
+                    (Float) columnPair.f1);
+            } else if (columnPair.f0 instanceof Operators.BooleanColumn) {
+                return FilterApi.notEq(
+                    (Operators.BooleanColumn) columnPair.f0,
+                    (Boolean) columnPair.f1);
+            } else if (columnPair.f0 instanceof Operators.BinaryColumn) {
+                return FilterApi.notEq(
+                    (Operators.BinaryColumn) columnPair.f0,
+                    (Binary) columnPair.f1);
+            }
 
-			return null;
-		}
+            return null;
+        }
 
-		private FilterPredicate andNotNull(FilterPredicate predicate, Operators.Column column) {
-			FilterPredicate notEqNull = notEquals(new Tuple2<>(column, null));
-			if (notEqNull != null) {
-				return FilterApi.and(notEqNull, predicate);
-			}
+        private FilterPredicate andNotNull(FilterPredicate predicate, Operators.Column column) {
+            FilterPredicate notEqNull = notEquals(new Tuple2<>(column, null));
+            if (notEqNull != null) {
+                return FilterApi.and(notEqNull, predicate);
+            }
 
-			return predicate;
-		}
+            return predicate;
+        }
 
-		@Override
-		public FilterPredicate visit(Operators.And and) {
-			parent = and;
-			FilterPredicate left = and.getLeft().accept(this);
+        @Override
+        public FilterPredicate visit(Operators.And and) {
+            parent = and;
+            FilterPredicate left = and.getLeft().accept(this);
 
-			parent = and;
-			FilterPredicate right = and.getRight().accept(this);
+            parent = and;
+            FilterPredicate right = and.getRight().accept(this);
 
-			return FilterApi.and(left, right);
-		}
+            return FilterApi.and(left, right);
+        }
 
-		@Override
-		public FilterPredicate visit(Operators.Or or) {
-			parent = or;
-			FilterPredicate left = or.getLeft().accept(this);
+        @Override
+        public FilterPredicate visit(Operators.Or or) {
+            parent = or;
+            FilterPredicate left = or.getLeft().accept(this);
 
-			parent = or;
-			FilterPredicate right = or.getRight().accept(this);
+            parent = or;
+            FilterPredicate right = or.getRight().accept(this);
 
-			return FilterApi.or(left, right);
-		}
+            return FilterApi.or(left, right);
+        }
 
-		@Override
-		public FilterPredicate visit(Operators.Not not) {
-			parent = not;
+        @Override
+        public FilterPredicate visit(Operators.Not not) {
+            parent = not;
 
-			FilterPredicate predicate = not.getPredicate().accept(this);
+            FilterPredicate predicate = not.getPredicate().accept(this);
 
-			return FilterApi.not(predicate);
-		}
+            return FilterApi.not(predicate);
+        }
 
-		@Override
-		public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> FilterPredicate visit(
-			Operators.UserDefined<T, U> userDefined) {
-			return userDefined;
-		}
+        @Override
+        public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> FilterPredicate visit(
+            Operators.UserDefined<T, U> userDefined) {
+            return userDefined;
+        }
 
-		@Override
-		public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> FilterPredicate visit(
-			Operators.LogicalNotUserDefined<T, U> logicalNotUserDefined) {
-			return logicalNotUserDefined;
-		}
-	}
+        @Override
+        public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> FilterPredicate visit(
+            Operators.LogicalNotUserDefined<T, U> logicalNotUserDefined) {
+            return logicalNotUserDefined;
+        }
+    }
 }

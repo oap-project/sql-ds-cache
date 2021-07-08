@@ -22,21 +22,21 @@ package org.apache.flink.table.utils.ape;
  * Aggregate expression literal.
  */
 public class AggregateExprLiteral extends AggregateExpr {
-	public static final String DEFAULT_NAME = "Literal";
+    public static final String DEFAULT_NAME = "Literal";
 
-	private String value;
+    private String value;
 
-	public AggregateExprLiteral(String dataType, String value) {
-		super(DEFAULT_NAME, dataType);
-		this.dataType = dataType;
-		this.value = value;
-	}
+    public AggregateExprLiteral(String dataType, String value) {
+        super(DEFAULT_NAME, dataType);
+        this.dataType = dataType;
+        this.value = value;
+    }
 
-	public String getValue() {
-		return value;
-	}
+    public String getValue() {
+        return value;
+    }
 
-	public void setValue(String value) {
-		this.value = value;
-	}
+    public void setValue(String value) {
+        this.value = value;
+    }
 }

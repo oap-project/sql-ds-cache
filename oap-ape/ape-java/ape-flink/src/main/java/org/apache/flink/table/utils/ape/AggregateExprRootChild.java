@@ -23,60 +23,60 @@ package org.apache.flink.table.utils.ape;
  */
 public class AggregateExprRootChild extends AggregateExpr {
 
-	private AggregateExpr child;
+    private AggregateExpr child;
 
-	public AggregateExprRootChild(Type type, AggregateExpr c) {
-		super(type.name, null);
-		child = c;
-	}
+    public AggregateExprRootChild(Type type, AggregateExpr c) {
+        super(type.name, null);
+        child = c;
+    }
 
-	public AggregateExpr getChild() {
-		return child;
-	}
+    public AggregateExpr getChild() {
+        return child;
+    }
 
-	public void setChild(AggregateExpr child) {
-		this.child = child;
-	}
+    public void setChild(AggregateExpr child) {
+        this.child = child;
+    }
 
-	/**
-	 * Enum of supported aggregate operations.
-	 */
-	public enum Type {
-		MAX("Max"),
-		MIN("Min"),
-		COUNT("Count"),
-		SUM("Sum"); /* `Average` will be parse to `Sum` and `Count`. So there is no `Average` */
+    /**
+     * Enum of supported aggregate operations.
+     */
+    public enum Type {
+        MAX("Max"),
+        MIN("Min"),
+        COUNT("Count"),
+        SUM("Sum"); /* `Average` will be parse to `Sum` and `Count`. So there is no `Average` */
 
-		public String name;
-		Type(String n) {
-			name = n;
-		}
+        public String name;
+        Type(String n) {
+            name = n;
+        }
 
-		public static Type fromSqlKind(String sql) {
-			switch (sql) {
-				case "max":
-					return Type.MAX;
-				case "min":
-					return Type.MIN;
-				case "count":
-				case "count1":
-					return Type.COUNT;
-				case "sum":
-					return Type.SUM;
-				default:
-					return null;
-			}
-		}
-	}
+        public static Type fromSqlKind(String sql) {
+            switch (sql) {
+                case "max":
+                    return Type.MAX;
+                case "min":
+                    return Type.MIN;
+                case "count":
+                case "count1":
+                    return Type.COUNT;
+                case "sum":
+                    return Type.SUM;
+                default:
+                    return null;
+            }
+        }
+    }
 
-	@Override
-	public void translateDataTypeName() {
-		super.translateDataTypeName();
+    @Override
+    public void translateDataTypeName() {
+        super.translateDataTypeName();
 
-		child.translateDataTypeName();
-	}
+        child.translateDataTypeName();
+    }
 
-	public boolean checkDataTypes() {
-		return child.checkDataTypes();
-	}
+    public boolean checkDataTypes() {
+        return child.checkDataTypes();
+    }
 }
