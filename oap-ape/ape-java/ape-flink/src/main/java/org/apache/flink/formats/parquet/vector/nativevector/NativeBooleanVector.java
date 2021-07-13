@@ -19,45 +19,26 @@
 package org.apache.flink.formats.parquet.vector.nativevector;
 
 import org.apache.flink.formats.parquet.utils.Platform;
-import org.apache.flink.table.data.vector.heap.HeapBooleanVector;
+import org.apache.flink.table.data.vector.writable.WritableBooleanVector;
 
-public class NativeBooleanVector extends HeapBooleanVector implements NativeVector {
+public class NativeBooleanVector extends AbstractNativeVector implements WritableBooleanVector {
 
-    private static final long serialVersionUID = 7216045902943789034L;
-
-    private long bufferPtr = 0;
-    private int typeSize = 0;
-    private int capacity = 0;
-    private long nullPtr = 0;
-
-    public NativeBooleanVector(int len, int typeLength) {
-        super(len);
-        typeSize = typeLength;
-    }
-
-    public void setPtr(long bufferPtr_, long nullPtr_, int size_) {
-        bufferPtr = bufferPtr_;
-        this.nullPtr = nullPtr_;
-        this.capacity = size_;
-    }
-
-    @Override
-    public long getBufferPtr() {
-        return bufferPtr;
-    }
-
-    @Override
-    public long getNullPtr() {
-        return nullPtr;
-    }
-
-    @Override
-    public boolean isNullAt(int i) {
-        return !Platform.getBoolean(null, nullPtr + i);
+    public NativeBooleanVector(int len, int typeSize) {
+        super(len, typeSize);
     }
 
     @Override
     public boolean getBoolean(int i) {
         return Platform.getBoolean(null, bufferPtr + i * typeSize);
+    }
+
+    @Override
+    public void setBoolean(int i, boolean b) {
+
+    }
+
+    @Override
+    public void fill(boolean b) {
+
     }
 }

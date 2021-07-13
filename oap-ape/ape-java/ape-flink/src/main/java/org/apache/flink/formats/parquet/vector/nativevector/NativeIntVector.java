@@ -19,41 +19,37 @@
 package org.apache.flink.formats.parquet.vector.nativevector;
 
 import org.apache.flink.formats.parquet.utils.Platform;
-import org.apache.flink.table.data.vector.heap.HeapIntVector;
+import org.apache.flink.table.data.vector.writable.WritableIntVector;
 
-public class NativeIntVector extends HeapIntVector implements NativeVector {
+public class NativeIntVector extends AbstractNativeVector implements WritableIntVector {
 
-    private static final long serialVersionUID = 7216045902943789034L;
-
-    private long bufferPtr = 0;
-    private int typeSize = 0;
-    private int capacity = 0;
-    private long nullPtr = 0;
-
-    public NativeIntVector(int len, int typeLength) {
-        super(len);
-        typeSize = typeLength;
-    }
-
-    public void setPtr(long bufferPtr_, long nullPtr_, int size_) {
-        bufferPtr = bufferPtr_;
-        nullPtr = nullPtr_;
-        capacity = size_;
+    public NativeIntVector(int len, int typeSize) {
+        super(len, typeSize);
     }
 
     @Override
-    public long getBufferPtr() {
-        return bufferPtr;
+    public void setInt(int i, int i1) {
+        // should not reach here in remote vectors
     }
 
     @Override
-    public long getNullPtr() {
-        return nullPtr;
+    public void setIntsFromBinary(int i, int i1, byte[] bytes, int i2) {
+        // should not reach here in remote vectors
     }
 
     @Override
-    public boolean isNullAt(int i) {
-        return !Platform.getBoolean(null, nullPtr + i);
+    public void setInts(int i, int i1, int i2) {
+        // should not reach here in remote vectors
+    }
+
+    @Override
+    public void setInts(int i, int i1, int[] ints, int i2) {
+        // should not reach here in remote vectors
+    }
+
+    @Override
+    public void fill(int i) {
+        // should not reach here in remote vectors
     }
 
     @Override

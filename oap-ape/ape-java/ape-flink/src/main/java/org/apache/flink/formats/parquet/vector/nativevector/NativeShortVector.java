@@ -19,41 +19,22 @@
 package org.apache.flink.formats.parquet.vector.nativevector;
 
 import org.apache.flink.formats.parquet.utils.Platform;
-import org.apache.flink.table.data.vector.heap.HeapShortVector;
+import org.apache.flink.table.data.vector.writable.WritableShortVector;
 
-public class NativeShortVector extends HeapShortVector implements NativeVector {
+public class NativeShortVector extends AbstractNativeVector implements WritableShortVector {
 
-    private static final long serialVersionUID = 7216045902943789034L;
-
-    private long bufferPtr = 0;
-    private int typeSize = 0;
-    private int capacity = 0;
-    private long nullPtr = 0;
-
-    public NativeShortVector(int len, int typeLength) {
-        super(len);
-        typeSize = typeLength;
-    }
-
-    public void setPtr(long bufferPtr_, long nullPtr_, int size_) {
-        bufferPtr = bufferPtr_;
-        nullPtr = nullPtr_;
-        capacity = size_;
+    public NativeShortVector(int len, int typeSize) {
+        super(len, typeSize);
     }
 
     @Override
-    public long getBufferPtr() {
-        return bufferPtr;
+    public void setShort(int i, short i1) {
+        // should not reach here in remote vectors
     }
 
     @Override
-    public long getNullPtr() {
-        return nullPtr;
-    }
-
-    @Override
-    public boolean isNullAt(int i) {
-        return !Platform.getBoolean(null, nullPtr + i);
+    public void fill(short i) {
+        // should not reach here in remote vectors
     }
 
     @Override
