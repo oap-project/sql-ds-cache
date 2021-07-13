@@ -24,23 +24,21 @@ import java.util.List;
 
 import com.google.gson.Gson;
 
-public class ConvertToJson {
+public class RequestedSchemaJsonConvertor {
 
-    private String jsonString;
-    private List<String> fieldType;
-    private List<String> fieldName;
+    private final List<String> fieldType;
+    private final List<String> fieldName;
 
-    public ConvertToJson(List<String> fieldType, List<String> fieldName) {
+    public RequestedSchemaJsonConvertor(List<String> fieldType, List<String> fieldName) {
         this.fieldName = fieldName;
         this.fieldType = fieldType;
     }
 
     public String toJson() {
         Gson gson = new Gson();
-        Message record = new Message();
+        RequestedSchema record = new RequestedSchema();
         record.setFields(this.fieldType, this.fieldName);
         record.setType("struct");
-        jsonString = gson.toJson(record);
-        return jsonString;
+        return gson.toJson(record);
     }
 }

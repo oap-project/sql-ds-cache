@@ -19,42 +19,28 @@
 package org.apache.flink.formats.parquet.vector.nativevector;
 
 import org.apache.flink.formats.parquet.utils.Platform;
-import org.apache.flink.table.data.vector.heap.HeapFloatVector;
+import org.apache.flink.table.data.vector.writable.WritableFloatVector;
 
 
-public class NativeFloatVector extends HeapFloatVector implements NativeVector {
+public class NativeFloatVector extends AbstractNativeVector implements WritableFloatVector {
 
-    private static final long serialVersionUID = 7216045902943789034L;
-
-    private long bufferPtr = 0;
-    private int typeSize = 0;
-    private int capacity = 0;
-    private long nullPtr = 0;
-
-    public NativeFloatVector(int len, int typeLength) {
-      super(len);
-      typeSize = typeLength;
-    }
-
-    public void setPtr(long bufferPtr_, long nullPtr_, int size_) {
-        bufferPtr = bufferPtr_;
-        nullPtr = nullPtr_;
-        capacity = size_;
+    public NativeFloatVector(int len, int typeSize) {
+      super(len, typeSize);
     }
 
     @Override
-    public long getBufferPtr() {
-        return bufferPtr;
+    public void setFloat(int i, float v) {
+        // should not reach here in remote vectors
     }
 
     @Override
-    public long getNullPtr() {
-        return nullPtr;
+    public void setFloatsFromBinary(int i, int i1, byte[] bytes, int i2) {
+        // should not reach here in remote vectors
     }
 
     @Override
-    public boolean isNullAt(int i) {
-        return !Platform.getBoolean(null, nullPtr + i);
+    public void fill(float v) {
+        // should not reach here in remote vectors
     }
 
     @Override

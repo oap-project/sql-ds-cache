@@ -19,32 +19,24 @@
 
 package org.apache.flink.formats.parquet.utils;
 
-import java.util.ArrayList;
-import java.util.List;
+public class RequestedField {
 
-public class Message {
-
+    private String name;
     private String type;
-    private List<Field> fields = new ArrayList<Field>();
 
-    public void setFields(List<String> fieldType, List<String> fieldName) {
-        for (int i = 0; i < fieldName.size(); i++) {
-            Field f = new Field();
-            f.setName(fieldName.get(i));
-            f.setType(fieldType.get(i));
-            fields.add(f);
-        }
+    public String getName() {
+        return name;
     }
 
-    public List<Field> getFields() {
-        return this.fields;
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getType() {
+        return type;
     }
 
     public void setType(String type) {
         this.type = type;
-    }
-
-    public String getType() {
-        return this.type;
     }
 }
