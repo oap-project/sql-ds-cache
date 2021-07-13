@@ -18,19 +18,19 @@
 
 package org.apache.flink.table.planner.plan.rules
 
-import org.apache.flink.table.planner.plan.nodes.logical._
-import org.apache.flink.table.planner.plan.rules.logical._
-import org.apache.flink.table.planner.plan.rules.physical.FlinkExpandConversionRule
-import org.apache.flink.table.planner.plan.rules.physical.batch._
+import scala.collection.JavaConverters._
 
 import org.apache.calcite.rel.core.RelFactories
 import org.apache.calcite.rel.logical.{LogicalIntersect, LogicalMinus, LogicalUnion}
 import org.apache.calcite.rel.rules._
 import org.apache.calcite.tools.{RuleSet, RuleSets}
+import org.apache.flink.table.planner.plan.nodes.logical._
+import org.apache.flink.table.planner.plan.rules.logical._
+import org.apache.flink.table.planner.plan.rules.physical.FlinkExpandConversionRule
+import org.apache.flink.table.planner.plan.rules.physical.batch._
 
-import scala.collection.JavaConverters._
 
-object FlinkBatchRuleSets {
+object ApeFlinkBatchRuleSets {
 
   val SEMI_JOIN_RULES: RuleSet = RuleSets.ofList(
     SimplifyFilterConditionRule.EXTENDED,
@@ -89,7 +89,7 @@ object FlinkBatchRuleSets {
   )
 
   private val LIMIT_RULES: RuleSet = RuleSets.ofList(
-    //push down localLimit
+    // push down localLimit
     PushLimitIntoTableSourceScanRule.INSTANCE,
     PushLimitIntoLegacyTableSourceScanRule.INSTANCE)
 
@@ -115,11 +115,11 @@ object FlinkBatchRuleSets {
         BatchLogicalWindowAggregateRule.INSTANCE,
         WindowPropertiesRules.WINDOW_PROPERTIES_RULE,
         WindowPropertiesRules.WINDOW_PROPERTIES_HAVING_RULE,
-        //ensure union set operator have the same row type
+        // ensure union set operator have the same row type
         new CoerceInputsRule(classOf[LogicalUnion], false),
-        //ensure intersect set operator have the same row type
+        // ensure intersect set operator have the same row type
         new CoerceInputsRule(classOf[LogicalIntersect], false),
-        //ensure except set operator have the same row type
+        // ensure except set operator have the same row type
         new CoerceInputsRule(classOf[LogicalMinus], false),
         ConvertToNotInOrInRule.INSTANCE,
         // optimize limit 0
@@ -207,7 +207,7 @@ object FlinkBatchRuleSets {
     CoreRules.PROJECT_MERGE,
     // remove identity project
     CoreRules.PROJECT_REMOVE,
-    //removes constant keys from an Agg
+    // removes constant keys from an Agg
     CoreRules.AGGREGATE_PROJECT_PULL_UP_CONSTANTS,
     // push project through a Union
     CoreRules.PROJECT_SET_OP_TRANSPOSE
@@ -216,7 +216,7 @@ object FlinkBatchRuleSets {
   val WINDOW_RULES: RuleSet = RuleSets.ofList(
     // slices a project into sections which contain window agg functions and sections which do not.
     CoreRules.PROJECT_TO_LOGICAL_PROJECT_AND_WINDOW,
-    //adjust the sequence of window's groups.
+    // adjust the sequence of window's groups.
     WindowGroupReorderRule.INSTANCE,
     // Transform window to LogicalWindowAggregate
     WindowPropertiesRules.WINDOW_PROPERTIES_RULE,
@@ -443,6 +443,8 @@ object FlinkBatchRuleSets {
     */
   val PHYSICAL_REWRITE: RuleSet = RuleSets.ofList(
     EnforceLocalHashAggRule.INSTANCE,
-    EnforceLocalSortAggRule.INSTANCE
+    EnforceLocalSortAggRule.INSTANCE,
+    PushLocalHashAggIntoTableSourceScanRule.INSTANCE,
+    PushLocalHashAggCalcIntoTableSourceScanRule.INSTANCE
   )
 }

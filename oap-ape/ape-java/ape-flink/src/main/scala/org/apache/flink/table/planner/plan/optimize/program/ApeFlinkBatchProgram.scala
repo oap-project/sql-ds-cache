@@ -18,17 +18,16 @@
 
 package org.apache.flink.table.planner.plan.optimize.program
 
+import org.apache.calcite.plan.hep.HepMatchOrder
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.table.api.config.OptimizerConfigOptions
 import org.apache.flink.table.planner.plan.nodes.FlinkConventions
-import org.apache.flink.table.planner.plan.rules.FlinkBatchRuleSets
-
-import org.apache.calcite.plan.hep.HepMatchOrder
+import org.apache.flink.table.planner.plan.rules.ApeFlinkBatchRuleSets
 
 /**
-  * Defines a sequence of programs to optimize flink batch table plan.
-  */
-object FlinkBatchProgram {
+ * Defines a sequence of programs to optimize flink batch table plan.
+ */
+object ApeFlinkBatchProgram {
   val SUBQUERY_REWRITE = "subquery_rewrite"
   val TEMPORAL_JOIN_REWRITE = "temporal_join_rewrite"
   val DECORRELATE = "decorrelate"
@@ -53,23 +52,23 @@ object FlinkBatchProgram {
         .addProgram(FlinkHepRuleSetProgramBuilder.newBuilder
           .setHepRulesExecutionType(HEP_RULES_EXECUTION_TYPE.RULE_SEQUENCE)
           .setHepMatchOrder(HepMatchOrder.BOTTOM_UP)
-          .add(FlinkBatchRuleSets.TABLE_REF_RULES)
+          .add(ApeFlinkBatchRuleSets.TABLE_REF_RULES)
           .build(), "convert table references before rewriting sub-queries to semi-join")
         .addProgram(FlinkHepRuleSetProgramBuilder.newBuilder
           .setHepRulesExecutionType(HEP_RULES_EXECUTION_TYPE.RULE_SEQUENCE)
           .setHepMatchOrder(HepMatchOrder.BOTTOM_UP)
-          .add(FlinkBatchRuleSets.SEMI_JOIN_RULES)
+          .add(ApeFlinkBatchRuleSets.SEMI_JOIN_RULES)
           .build(), "rewrite sub-queries to semi-join")
         .addProgram(FlinkHepRuleSetProgramBuilder.newBuilder
           .setHepRulesExecutionType(HEP_RULES_EXECUTION_TYPE.RULE_COLLECTION)
           .setHepMatchOrder(HepMatchOrder.BOTTOM_UP)
-          .add(FlinkBatchRuleSets.TABLE_SUBQUERY_RULES)
+          .add(ApeFlinkBatchRuleSets.TABLE_SUBQUERY_RULES)
           .build(), "sub-queries remove")
         // convert RelOptTableImpl (which exists in SubQuery before) to FlinkRelOptTable
         .addProgram(FlinkHepRuleSetProgramBuilder.newBuilder
           .setHepRulesExecutionType(HEP_RULES_EXECUTION_TYPE.RULE_SEQUENCE)
           .setHepMatchOrder(HepMatchOrder.BOTTOM_UP)
-          .add(FlinkBatchRuleSets.TABLE_REF_RULES)
+          .add(ApeFlinkBatchRuleSets.TABLE_REF_RULES)
           .build(), "convert table references after sub-queries removed")
         .build()
     )
@@ -82,13 +81,13 @@ object FlinkBatchProgram {
           FlinkHepRuleSetProgramBuilder.newBuilder
             .setHepRulesExecutionType(HEP_RULES_EXECUTION_TYPE.RULE_SEQUENCE)
             .setHepMatchOrder(HepMatchOrder.BOTTOM_UP)
-            .add(FlinkBatchRuleSets.EXPAND_PLAN_RULES)
+            .add(ApeFlinkBatchRuleSets.EXPAND_PLAN_RULES)
             .build(), "convert correlate to temporal table join")
         .addProgram(
           FlinkHepRuleSetProgramBuilder.newBuilder
             .setHepRulesExecutionType(HEP_RULES_EXECUTION_TYPE.RULE_SEQUENCE)
             .setHepMatchOrder(HepMatchOrder.BOTTOM_UP)
-            .add(FlinkBatchRuleSets.POST_EXPAND_CLEAN_UP_RULES)
+            .add(ApeFlinkBatchRuleSets.POST_EXPAND_CLEAN_UP_RULES)
             .build(), "convert enumerable table scan")
         .build())
 
@@ -101,7 +100,7 @@ object FlinkBatchProgram {
       FlinkHepRuleSetProgramBuilder.newBuilder
         .setHepRulesExecutionType(HEP_RULES_EXECUTION_TYPE.RULE_SEQUENCE)
         .setHepMatchOrder(HepMatchOrder.BOTTOM_UP)
-        .add(FlinkBatchRuleSets.DEFAULT_REWRITE_RULES)
+        .add(ApeFlinkBatchRuleSets.DEFAULT_REWRITE_RULES)
         .build())
 
     // rule based optimization: push down predicate(s)
@@ -114,26 +113,26 @@ object FlinkBatchProgram {
               FlinkHepRuleSetProgramBuilder.newBuilder
                 .setHepRulesExecutionType(HEP_RULES_EXECUTION_TYPE.RULE_SEQUENCE)
                 .setHepMatchOrder(HepMatchOrder.BOTTOM_UP)
-                .add(FlinkBatchRuleSets.JOIN_PREDICATE_REWRITE_RULES)
+                .add(ApeFlinkBatchRuleSets.JOIN_PREDICATE_REWRITE_RULES)
                 .build(), "join predicate rewrite")
             .addProgram(
               FlinkHepRuleSetProgramBuilder.newBuilder
                 .setHepRulesExecutionType(HEP_RULES_EXECUTION_TYPE.RULE_COLLECTION)
                 .setHepMatchOrder(HepMatchOrder.BOTTOM_UP)
-                .add(FlinkBatchRuleSets.FILTER_PREPARE_RULES)
+                .add(ApeFlinkBatchRuleSets.FILTER_PREPARE_RULES)
                 .build(), "other predicate rewrite")
             .setIterations(5).build(), "predicate rewrite")
         .addProgram(
           FlinkHepRuleSetProgramBuilder.newBuilder
             .setHepRulesExecutionType(HEP_RULES_EXECUTION_TYPE.RULE_SEQUENCE)
             .setHepMatchOrder(HepMatchOrder.BOTTOM_UP)
-            .add(FlinkBatchRuleSets.FILTER_TABLESCAN_PUSHDOWN_RULES)
+            .add(ApeFlinkBatchRuleSets.FILTER_TABLESCAN_PUSHDOWN_RULES)
             .build(), "push predicate into table scan")
         .addProgram(
           FlinkHepRuleSetProgramBuilder.newBuilder
             .setHepRulesExecutionType(HEP_RULES_EXECUTION_TYPE.RULE_SEQUENCE)
             .setHepMatchOrder(HepMatchOrder.BOTTOM_UP)
-            .add(FlinkBatchRuleSets.PRUNE_EMPTY_RULES)
+            .add(ApeFlinkBatchRuleSets.PRUNE_EMPTY_RULES)
             .build(), "prune empty after predicate push down")
         .build())
 
@@ -145,12 +144,12 @@ object FlinkBatchProgram {
           .addProgram(FlinkHepRuleSetProgramBuilder.newBuilder
             .setHepRulesExecutionType(HEP_RULES_EXECUTION_TYPE.RULE_COLLECTION)
             .setHepMatchOrder(HepMatchOrder.BOTTOM_UP)
-            .add(FlinkBatchRuleSets.JOIN_REORDER_PREPARE_RULES)
+            .add(ApeFlinkBatchRuleSets.JOIN_REORDER_PREPARE_RULES)
             .build(), "merge join into MultiJoin")
           .addProgram(FlinkHepRuleSetProgramBuilder.newBuilder
             .setHepRulesExecutionType(HEP_RULES_EXECUTION_TYPE.RULE_SEQUENCE)
             .setHepMatchOrder(HepMatchOrder.BOTTOM_UP)
-            .add(FlinkBatchRuleSets.JOIN_REORDER_RULES)
+            .add(ApeFlinkBatchRuleSets.JOIN_REORDER_RULES)
             .build(), "do join reorder")
           .build())
     }
@@ -162,12 +161,12 @@ object FlinkBatchProgram {
         .addProgram(FlinkHepRuleSetProgramBuilder.newBuilder
           .setHepRulesExecutionType(HEP_RULES_EXECUTION_TYPE.RULE_COLLECTION)
           .setHepMatchOrder(HepMatchOrder.BOTTOM_UP)
-          .add(FlinkBatchRuleSets.JOIN_COND_EQUAL_TRANSFER_RULES)
+          .add(ApeFlinkBatchRuleSets.JOIN_COND_EQUAL_TRANSFER_RULES)
           .build(), "simplify and push down join predicates")
         .addProgram(FlinkHepRuleSetProgramBuilder.newBuilder
           .setHepRulesExecutionType(HEP_RULES_EXECUTION_TYPE.RULE_COLLECTION)
           .setHepMatchOrder(HepMatchOrder.BOTTOM_UP)
-          .add(FlinkBatchRuleSets.JOIN_NULL_FILTER_RULES)
+          .add(ApeFlinkBatchRuleSets.JOIN_NULL_FILTER_RULES)
           .build(), "deal with possible null join keys")
         .build())
 
@@ -179,13 +178,13 @@ object FlinkBatchProgram {
           FlinkHepRuleSetProgramBuilder.newBuilder
             .setHepRulesExecutionType(HEP_RULES_EXECUTION_TYPE.RULE_COLLECTION)
             .setHepMatchOrder(HepMatchOrder.BOTTOM_UP)
-            .add(FlinkBatchRuleSets.PROJECT_RULES)
+            .add(ApeFlinkBatchRuleSets.PROJECT_RULES)
             .build(), "project rules")
         .addProgram(
           FlinkHepRuleSetProgramBuilder.newBuilder
             .setHepRulesExecutionType(HEP_RULES_EXECUTION_TYPE.RULE_SEQUENCE)
             .setHepMatchOrder(HepMatchOrder.BOTTOM_UP)
-            .add(FlinkBatchRuleSets.WINDOW_RULES)
+            .add(ApeFlinkBatchRuleSets.WINDOW_RULES)
             .build(), "window")
         .build())
 
@@ -193,7 +192,7 @@ object FlinkBatchProgram {
     chainedProgram.addLast(
       LOGICAL,
       FlinkVolcanoProgramBuilder.newBuilder
-        .add(FlinkBatchRuleSets.LOGICAL_OPT_RULES)
+        .add(ApeFlinkBatchRuleSets.LOGICAL_OPT_RULES)
         .setRequiredOutputTraits(Array(FlinkConventions.LOGICAL))
         .build())
 
@@ -203,14 +202,14 @@ object FlinkBatchProgram {
       FlinkHepRuleSetProgramBuilder.newBuilder
         .setHepRulesExecutionType(HEP_RULES_EXECUTION_TYPE.RULE_SEQUENCE)
         .setHepMatchOrder(HepMatchOrder.BOTTOM_UP)
-        .add(FlinkBatchRuleSets.LOGICAL_REWRITE)
+        .add(ApeFlinkBatchRuleSets.LOGICAL_REWRITE)
         .build())
 
     // optimize the physical plan
     chainedProgram.addLast(
       PHYSICAL,
       FlinkVolcanoProgramBuilder.newBuilder
-        .add(FlinkBatchRuleSets.PHYSICAL_OPT_RULES)
+        .add(ApeFlinkBatchRuleSets.PHYSICAL_OPT_RULES)
         .setRequiredOutputTraits(Array(FlinkConventions.BATCH_PHYSICAL))
         .build())
 
@@ -220,7 +219,7 @@ object FlinkBatchProgram {
       FlinkHepRuleSetProgramBuilder.newBuilder
         .setHepRulesExecutionType(HEP_RULES_EXECUTION_TYPE.RULE_SEQUENCE)
         .setHepMatchOrder(HepMatchOrder.BOTTOM_UP)
-        .add(FlinkBatchRuleSets.PHYSICAL_REWRITE)
+        .add(ApeFlinkBatchRuleSets.PHYSICAL_REWRITE)
         .build())
 
     chainedProgram
