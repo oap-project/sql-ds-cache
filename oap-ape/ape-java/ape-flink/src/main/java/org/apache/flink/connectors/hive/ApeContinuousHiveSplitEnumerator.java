@@ -53,16 +53,16 @@ import java.util.concurrent.Callable;
 /**
  * A continuously monitoring {@link SplitEnumerator} for hive source.
  */
-public class ContinuousHiveSplitEnumerator<T extends Comparable<T>> implements SplitEnumerator<HiveSourceSplit, PendingSplitsCheckpoint<HiveSourceSplit>> {
+public class ApeContinuousHiveSplitEnumerator<T extends Comparable<T>> implements SplitEnumerator<HiveSourceSplit, PendingSplitsCheckpoint<HiveSourceSplit>> {
 
-	private static final Logger LOG = LoggerFactory.getLogger(ContinuousHiveSplitEnumerator.class);
+	private static final Logger LOG = LoggerFactory.getLogger(ApeContinuousHiveSplitEnumerator.class);
 
 	private final SplitEnumeratorContext<HiveSourceSplit> enumeratorContext;
 	private final LinkedHashMap<Integer, String> readersAwaitingSplit;
 	private final FileSplitAssigner splitAssigner;
 	private final long discoveryInterval;
 
-	private final HiveTableSource.HiveContinuousPartitionFetcherContext<T> fetcherContext;
+	private final ApeHiveTableSource.HiveContinuousPartitionFetcherContext<T> fetcherContext;
 
 	// the maximum partition read offset seen so far
 	private T currentReadOffset;
@@ -70,7 +70,7 @@ public class ContinuousHiveSplitEnumerator<T extends Comparable<T>> implements S
 	private Collection<List<String>> seenPartitionsSinceOffset;
 	private final PartitionMonitor<T> monitor;
 
-	public ContinuousHiveSplitEnumerator(
+	public ApeContinuousHiveSplitEnumerator(
 			SplitEnumeratorContext<HiveSourceSplit> enumeratorContext,
 			T currentReadOffset,
 			Collection<List<String>> seenPartitionsSinceOffset,
@@ -79,7 +79,7 @@ public class ContinuousHiveSplitEnumerator<T extends Comparable<T>> implements S
 			JobConf jobConf,
 			ObjectPath tablePath,
 			ContinuousPartitionFetcher<Partition, T> fetcher,
-			HiveTableSource.HiveContinuousPartitionFetcherContext<T> fetcherContext) {
+			ApeHiveTableSource.HiveContinuousPartitionFetcherContext<T> fetcherContext) {
 		this.enumeratorContext = enumeratorContext;
 		this.currentReadOffset = currentReadOffset;
 		this.seenPartitionsSinceOffset = new ArrayList<>(seenPartitionsSinceOffset);
@@ -178,7 +178,7 @@ public class ContinuousHiveSplitEnumerator<T extends Comparable<T>> implements S
 		private final ObjectPath tablePath;
 		private final JobConf jobConf;
 		private final ContinuousPartitionFetcher<Partition, T> fetcher;
-		private final HiveTableSource.HiveContinuousPartitionFetcherContext<T> fetcherContext;
+		private final ApeHiveTableSource.HiveContinuousPartitionFetcherContext<T> fetcherContext;
 
 		private PartitionMonitor(
 				T currentReadOffset,
@@ -186,7 +186,7 @@ public class ContinuousHiveSplitEnumerator<T extends Comparable<T>> implements S
 				ObjectPath tablePath,
 				JobConf jobConf,
 				ContinuousPartitionFetcher<Partition, T> fetcher,
-				HiveTableSource.HiveContinuousPartitionFetcherContext<T> fetcherContext) {
+				ApeHiveTableSource.HiveContinuousPartitionFetcherContext<T> fetcherContext) {
 			this.currentReadOffset = currentReadOffset;
 			this.seenPartitionsSinceOffset = new HashSet<>(seenPartitionsSinceOffset);
 			this.tablePath = tablePath;

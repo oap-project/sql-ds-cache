@@ -65,13 +65,13 @@ import static org.apache.flink.table.filesystem.FileSystemOptions.STREAMING_SOUR
  * currently TableSource can not tell the downstream when the latest partition has been read finished. This is a
  * temporarily workaround and will re-implement in the future.
  */
-public class HiveLookupTableSource extends HiveTableSource implements LookupTableSource {
+public class ApeHiveLookupTableSource extends ApeHiveTableSource implements LookupTableSource {
 
 	private static final Duration DEFAULT_LOOKUP_MONITOR_INTERVAL = Duration.ofHours(1L);
 	private final Configuration configuration;
 	private Duration hiveTableReloadInterval;
 
-	public HiveLookupTableSource(
+	public ApeHiveLookupTableSource(
 			JobConf jobConf,
 			ReadableConfig flinkConf,
 			ObjectPath tablePath,

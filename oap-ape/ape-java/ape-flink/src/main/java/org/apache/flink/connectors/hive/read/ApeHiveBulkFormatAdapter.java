@@ -24,7 +24,7 @@ import org.apache.flink.connector.file.src.reader.BulkFormat;
 import org.apache.flink.connector.file.src.util.ArrayResultIterator;
 import org.apache.flink.connectors.hive.HiveTablePartition;
 import org.apache.flink.connectors.hive.JobConfWrapper;
-import org.apache.flink.formats.parquet.ParquetColumnarRowInputFormat;
+import org.apache.flink.formats.parquet.ApeParquetColumnarRowInputFormat;
 import org.apache.flink.orc.OrcColumnarRowFileInputFormat;
 import org.apache.flink.orc.nohive.OrcNoHiveColumnarRowInputFormat;
 import org.apache.flink.orc.shim.OrcShim;
@@ -59,11 +59,11 @@ import static org.apache.flink.table.data.vector.VectorizedColumnBatch.DEFAULT_S
  * A BulkFormat implementation for HiveSource. This implementation delegates reading to other BulkFormat instances,
  * because different hive partitions may need different BulkFormat to do the reading.
  */
-public class HiveBulkFormatAdapter implements BulkFormat<RowData, HiveSourceSplit> {
+public class ApeHiveBulkFormatAdapter implements BulkFormat<RowData, HiveSourceSplit> {
 
 	private static final long serialVersionUID = 1L;
 
-	private static final Logger LOG = LoggerFactory.getLogger(HiveBulkFormatAdapter.class);
+	private static final Logger LOG = LoggerFactory.getLogger(ApeHiveBulkFormatAdapter.class);
 
 	// schema evolution configs are not available in older versions of IOConstants, let's define them ourselves
 	private static final String SCHEMA_EVOLUTION_COLUMNS = "schema.evolution.columns";
@@ -81,7 +81,7 @@ public class HiveBulkFormatAdapter implements BulkFormat<RowData, HiveSourceSpli
 	private final RowType producedRowType;
 	private final boolean useMapRedReader;
 
-	public HiveBulkFormatAdapter(JobConfWrapper jobConfWrapper, List<String> partitionKeys, String[] fieldNames, DataType[] fieldTypes,
+	public ApeHiveBulkFormatAdapter(JobConfWrapper jobConfWrapper, List<String> partitionKeys, String[] fieldNames, DataType[] fieldTypes,
 			String hiveVersion, RowType producedRowType, boolean useMapRedReader) {
 		this.jobConfWrapper = jobConfWrapper;
 		this.partitionKeys = partitionKeys;
@@ -121,7 +121,7 @@ public class HiveBulkFormatAdapter implements BulkFormat<RowData, HiveSourceSpli
 
 	private BulkFormat<RowData, ? super HiveSourceSplit> createBulkFormatForSplit(HiveSourceSplit split) {
 		if (!useMapRedReader && useParquetVectorizedRead(split.getHiveTablePartition())) {
-			return ParquetColumnarRowInputFormat.createPartitionedFormat(
+			return ApeParquetColumnarRowInputFormat.createPartitionedFormat(
 					jobConfWrapper.conf(),
 					producedRowType,
 					partitionKeys,

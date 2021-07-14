@@ -36,7 +36,7 @@ import java.util.Map;
  *
  * <p>Example:
  * <pre>{@code
- *    EnvironmentSettings.newInstance()
+ *    ApeEnvironmentSettings.newInstance()
  *      .useBlinkPlanner()
  *      .inStreamingMode()
  *      .withBuiltInCatalogName("default_catalog")
@@ -45,7 +45,7 @@ import java.util.Map;
  * }</pre>
  */
 @PublicEvolving
-public class EnvironmentSettings {
+public class ApeEnvironmentSettings {
 
 	public static final String STREAMING_MODE = "streaming-mode";
 	public static final String CLASS_NAME = "class-name";
@@ -80,7 +80,7 @@ public class EnvironmentSettings {
 	 */
 	private final boolean isStreamingMode;
 
-	private EnvironmentSettings(
+	private ApeEnvironmentSettings(
 			@Nullable String plannerClass,
 			@Nullable String executorClass,
 			String builtInCatalogName,
@@ -94,7 +94,7 @@ public class EnvironmentSettings {
 	}
 
 	/**
-	 * Creates a builder for creating an instance of {@link EnvironmentSettings}.
+	 * Creates a builder for creating an instance of {@link ApeEnvironmentSettings}.
 	 *
 	 * <p>By default, it does not specify a required planner and will use the one that is available
 	 * on the classpath via discovery.
@@ -151,12 +151,12 @@ public class EnvironmentSettings {
 	}
 
 	/**
-	 * A builder for {@link EnvironmentSettings}.
+	 * A builder for {@link ApeEnvironmentSettings}.
 	 */
 	public static class Builder {
 		private static final String OLD_PLANNER_FACTORY = "org.apache.flink.table.planner.StreamPlannerFactory";
 		private static final String OLD_EXECUTOR_FACTORY = "org.apache.flink.table.executor.StreamExecutorFactory";
-		private static final String BLINK_PLANNER_FACTORY = "org.apache.flink.table.planner.delegation.BlinkPlannerFactory";
+		private static final String BLINK_PLANNER_FACTORY = "org.apache.flink.table.planner.delegation.ApeBlinkPlannerFactory";
 		private static final String BLINK_EXECUTOR_FACTORY = "org.apache.flink.table.planner.delegation.BlinkExecutorFactory";
 
 		private String plannerClass = BLINK_PLANNER_FACTORY;
@@ -248,10 +248,10 @@ public class EnvironmentSettings {
 		}
 
 		/**
-		 * Returns an immutable instance of {@link EnvironmentSettings}.
+		 * Returns an immutable instance of {@link ApeEnvironmentSettings}.
 		 */
-		public EnvironmentSettings build() {
-			return new EnvironmentSettings(
+		public ApeEnvironmentSettings build() {
+			return new ApeEnvironmentSettings(
 				plannerClass,
 				executorClass,
 				builtInCatalogName,
