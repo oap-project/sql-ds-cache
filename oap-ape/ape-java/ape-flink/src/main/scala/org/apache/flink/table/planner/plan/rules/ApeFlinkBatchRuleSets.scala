@@ -30,7 +30,7 @@ import org.apache.calcite.tools.{RuleSet, RuleSets}
 
 import scala.collection.JavaConverters._
 
-object FlinkBatchRuleSets {
+object ApeFlinkBatchRuleSets {
 
   val SEMI_JOIN_RULES: RuleSet = RuleSets.ofList(
     SimplifyFilterConditionRule.EXTENDED,
@@ -443,6 +443,8 @@ object FlinkBatchRuleSets {
     */
   val PHYSICAL_REWRITE: RuleSet = RuleSets.ofList(
     EnforceLocalHashAggRule.INSTANCE,
-    EnforceLocalSortAggRule.INSTANCE
+    EnforceLocalSortAggRule.INSTANCE,
+    PushLocalHashAggIntoTableSourceScanRule.INSTANCE,
+    PushLocalHashAggCalcIntoTableSourceScanRule.INSTANCE
   )
 }

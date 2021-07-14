@@ -32,6 +32,7 @@ import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.TableSchema;
+import org.apache.flink.table.api.config.OptimizerConfigOptions;
 import org.apache.flink.table.catalog.CatalogTable;
 import org.apache.flink.table.catalog.ObjectPath;
 import org.apache.flink.table.catalog.hive.client.HiveShim;
@@ -41,27 +42,38 @@ import org.apache.flink.table.connector.ChangelogMode;
 import org.apache.flink.table.connector.source.DataStreamScanProvider;
 import org.apache.flink.table.connector.source.DynamicTableSource;
 import org.apache.flink.table.connector.source.ScanTableSource;
+import org.apache.flink.table.connector.source.abilities.SupportsAggregationPushDown;
+import org.apache.flink.table.connector.source.abilities.SupportsFilterPushDown;
 import org.apache.flink.table.connector.source.abilities.SupportsLimitPushDown;
 import org.apache.flink.table.connector.source.abilities.SupportsPartitionPushDown;
 import org.apache.flink.table.connector.source.abilities.SupportsProjectionPushDown;
 import org.apache.flink.table.data.RowData;
+import org.apache.flink.table.expressions.ResolvedExpression;
 import org.apache.flink.table.filesystem.ContinuousPartitionFetcher;
 import org.apache.flink.table.types.DataType;
+import org.apache.flink.table.types.logical.LogicalType;
 import org.apache.flink.table.types.logical.RowType;
+import org.apache.flink.table.utils.ape.AggregateExprs;
 import org.apache.flink.util.Preconditions;
 
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.metastore.api.NoSuchObjectException;
 import org.apache.hadoop.hive.metastore.api.Partition;
 import org.apache.hadoop.mapred.JobConf;
+import org.apache.parquet.filter2.predicate.FilterApi;
+import org.apache.parquet.filter2.predicate.FilterPredicate;
+import org.apache.parquet.hadoop.util.SerializationUtil;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 
+import java.io.IOException;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -78,13 +90,15 @@ import static org.apache.flink.table.filesystem.FileSystemOptions.STREAMING_SOUR
 /**
  * A TableSource implementation to read data from Hive tables.
  */
-public class HiveTableSource implements
+public class ApeHiveTableSource implements
 		ScanTableSource,
 		SupportsPartitionPushDown,
 		SupportsProjectionPushDown,
-		SupportsLimitPushDown {
+		SupportsLimitPushDown,
+		SupportsFilterPushDown,
+		SupportsAggregationPushDown {
 
-	private static final Logger LOG = LoggerFactory.getLogger(HiveTableSource.class);
+	private static final Logger LOG = LoggerFactory.getLogger(ApeHiveTableSource.class);
 	private static final Duration DEFAULT_SCAN_MONITOR_INTERVAL = Duration.ofMinutes(1L);
 
 	protected final JobConf jobConf;
@@ -100,7 +114,21 @@ public class HiveTableSource implements
 	protected int[] projectedFields;
 	private Long limit = null;
 
-	public HiveTableSource(
+	public static final String JOB_CONF_KEY_PREDICATES =
+		"parquet.private.native.reader.filter.predicate";
+	public static final String JOB_CONF_KEY_PREDICATES_HUMAN =
+		"parquet.private.native.reader.filter.predicate.human.readable";
+
+	public static final String JOB_CONF_KEY_AGGREGATES =
+		"parquet.private.native.reader.agg.expressions";
+
+	protected FilterPredicate predicates = null;
+
+	protected List<String> aggOutputNames;
+	protected List<DataType> aggOutputTypes;
+	protected AggregateExprs aggregateExprs;
+
+	public ApeHiveTableSource(
 			JobConf jobConf, ReadableConfig flinkConf, ObjectPath tablePath, CatalogTable catalogTable) {
 		this.jobConf = Preconditions.checkNotNull(jobConf);
 		this.flinkConf = Preconditions.checkNotNull(flinkConf);
@@ -109,6 +137,11 @@ public class HiveTableSource implements
 		this.hiveVersion = Preconditions.checkNotNull(jobConf.get(HiveCatalogValidator.CATALOG_HIVE_VERSION),
 				"Hive version is not defined");
 		this.hiveShim = HiveShimLoader.loadHiveShim(hiveVersion);
+
+		jobConf.setBoolean(
+				ApeHiveOptions.TABLE_EXEC_HIVE_PARQUET_USE_NATIVE_READER.key(),
+				flinkConf.get(ApeHiveOptions.TABLE_EXEC_HIVE_PARQUET_USE_NATIVE_READER)
+		);
 	}
 
 	@Override
@@ -130,6 +163,19 @@ public class HiveTableSource implements
 	protected DataStream<RowData> getDataStream(StreamExecutionEnvironment execEnv) {
 		validateScanConfigurations();
 		checkAcidTable(catalogTable, tablePath);
+
+		// reset filters in job conf
+		setFilterPredicate(predicates);
+		if (predicates != null) {
+			LOG.info("Filters are pushed down to parquet reader.");
+		}
+
+		// reset aggregates in job conf
+		setAggregateExpr(aggregateExprs);
+		if (aggregateExprs != null) {
+			LOG.info("Aggregates are pushed down to parquet reader.");
+		}
+
 		List<HiveTablePartition> allHivePartitions = getAllPartitions(
 				jobConf,
 				hiveVersion,
@@ -139,7 +185,7 @@ public class HiveTableSource implements
 				remainingPartitions);
 		Configuration configuration = Configuration.fromMap(catalogTable.getOptions());
 
-		HiveSource.HiveSourceBuilder sourceBuilder = new HiveSource.HiveSourceBuilder(
+		ApeHiveSource.HiveSourceBuilder sourceBuilder = new ApeHiveSource.HiveSourceBuilder(
 				jobConf,
 				tablePath,
 				catalogTable,
@@ -180,7 +226,7 @@ public class HiveTableSource implements
 			}
 		}
 
-		HiveSource hiveSource = sourceBuilder.build();
+		ApeHiveSource hiveSource = sourceBuilder.build();
 		DataStreamSource<RowData> source = execEnv.fromSource(
 				hiveSource, WatermarkStrategy.noWatermarks(), "HiveSource-" + tablePath.getFullName());
 
@@ -224,14 +270,19 @@ public class HiveTableSource implements
 
 	protected TableSchema getProducedTableSchema() {
 		TableSchema fullSchema = getTableSchema();
-		if (projectedFields == null) {
-			return fullSchema;
-		} else {
+		if (aggOutputNames != null) {
+			return TableSchema.builder().fields(
+				aggOutputNames.toArray(new String[0]),
+				aggOutputTypes.toArray(new DataType[0])
+			).build();
+		} else if (projectedFields != null) {
 			String[] fullNames = fullSchema.getFieldNames();
 			DataType[] fullTypes = fullSchema.getFieldDataTypes();
 			return TableSchema.builder().fields(
 					Arrays.stream(projectedFields).mapToObj(i -> fullNames[i]).toArray(String[]::new),
 					Arrays.stream(projectedFields).mapToObj(i -> fullTypes[i]).toArray(DataType[]::new)).build();
+		} else {
+			return fullSchema;
 		}
 	}
 
@@ -277,11 +328,215 @@ public class HiveTableSource implements
 
 	@Override
 	public DynamicTableSource copy() {
-		HiveTableSource source = new HiveTableSource(jobConf, flinkConf, tablePath, catalogTable);
+		ApeHiveTableSource source = new ApeHiveTableSource(jobConf, flinkConf, tablePath, catalogTable);
 		source.remainingPartitions = remainingPartitions;
 		source.projectedFields = projectedFields;
 		source.limit = limit;
+
+		source.predicates = predicates;
+		source.aggOutputNames = aggOutputNames;
+		source.aggOutputTypes = aggOutputTypes;
+		source.aggregateExprs = aggregateExprs;
 		return source;
+	}
+
+	@Override
+	public Result applyFilters(List<ResolvedExpression> filters) {
+		// check if APE is applicable
+		if (!isAPENativeFilterApplicable()) {
+			return Result.of(Collections.emptyList(), filters);
+		}
+
+		// convert filters from Expressions to FilterPredicate
+		List<FilterPredicate> convertedPredicates = new ArrayList<>(filters.size());
+		List<ResolvedExpression> acceptedFilters = new ArrayList<>(filters.size());
+		List<ResolvedExpression> remainingFilters = new ArrayList<>(filters.size());
+
+		for (ResolvedExpression filter : filters) {
+			FilterPredicate convertedPredicate = filter.accept(new ExpressionToPredicateConverter());
+			if (convertedPredicate != null) {
+				convertedPredicates.add(convertedPredicate);
+				acceptedFilters.add(filter);
+			} else {
+				remainingFilters.add(filter);
+			}
+		}
+
+		// construct single Parquet FilterPredicate
+		FilterPredicate parquetPredicate = null;
+		if (!convertedPredicates.isEmpty()) {
+			// concat converted predicates with AND
+			parquetPredicate = convertedPredicates.get(0);
+
+			for (FilterPredicate converted : convertedPredicates.subList(1, convertedPredicates.size())) {
+				parquetPredicate = FilterApi.and(parquetPredicate, converted);
+			}
+
+			// optimize the filter tree
+			parquetPredicate = parquetPredicate.accept(new PredicateOptimizers.AddNotNull());
+		}
+
+		// Here, just set predicate to table source.
+		// We don't set predicate to jobConf now to avoid overriding filters.
+		predicates = parquetPredicate;
+
+		// remove pushed filters from remainingFilters
+		return Result.of(acceptedFilters, remainingFilters);
+	}
+
+	private void setFilterPredicate(FilterPredicate parquetPredicate) {
+		if (parquetPredicate == null) {
+			jobConf.unset(JOB_CONF_KEY_PREDICATES_HUMAN);
+			jobConf.unset(JOB_CONF_KEY_PREDICATES);
+			return;
+		}
+
+		jobConf.set(JOB_CONF_KEY_PREDICATES_HUMAN, parquetPredicate.toString());
+
+		try {
+			SerializationUtil.writeObjectToConfAsBase64(JOB_CONF_KEY_PREDICATES,
+				parquetPredicate, jobConf);
+		} catch (IOException ex) {
+			throw new RuntimeException(ex);
+		}
+	}
+
+	private void setAggregateExpr(AggregateExprs aggregateExprs) {
+		if (aggregateExprs == null) {
+			jobConf.unset(JOB_CONF_KEY_AGGREGATES);
+			return;
+		}
+
+		try {
+			SerializationUtil.writeObjectToConfAsBase64(
+					JOB_CONF_KEY_AGGREGATES,
+					aggregateExprs,
+					jobConf);
+		} catch (IOException ex) {
+			throw new RuntimeException(ex);
+		}
+	}
+
+	private boolean allPartitionsAreParquet() {
+		List<HiveTablePartition> allHivePartitions = getAllPartitions(
+			jobConf,
+			hiveVersion,
+			tablePath,
+			catalogTable,
+			hiveShim,
+			remainingPartitions);
+
+		for (HiveTablePartition partition : allHivePartitions) {
+			boolean isParquet = partition.getStorageDescriptor().getSerdeInfo().getSerializationLib()
+				.toLowerCase().contains("parquet");
+
+			if (!isParquet) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	private boolean allColumnsSupportVectorization() {
+		RowType producedRowType = (RowType) getProducedTableSchema().toRowDataType().bridgedTo(RowData.class).getLogicalType();
+		for (RowType.RowField field : producedRowType.getFields()) {
+			if (isVectorizationUnsupported(field.getType())) {
+				LOG.info("Fallback to hadoop mapred reader, unsupported field type: " + field.getType());
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	private static boolean isVectorizationUnsupported(LogicalType t) {
+		switch (t.getTypeRoot()) {
+			case CHAR:
+			case VARCHAR:
+			case BOOLEAN:
+			case BINARY:
+			case VARBINARY:
+			case DECIMAL:
+			case TINYINT:
+			case SMALLINT:
+			case INTEGER:
+			case BIGINT:
+			case FLOAT:
+			case DOUBLE:
+			case DATE:
+			case TIME_WITHOUT_TIME_ZONE:
+			case TIMESTAMP_WITHOUT_TIME_ZONE:
+			case TIMESTAMP_WITH_LOCAL_TIME_ZONE:
+				return false;
+			case TIMESTAMP_WITH_TIME_ZONE:
+			case INTERVAL_YEAR_MONTH:
+			case INTERVAL_DAY_TIME:
+			case ARRAY:
+			case MULTISET:
+			case MAP:
+			case ROW:
+			case DISTINCT_TYPE:
+			case STRUCTURED_TYPE:
+			case NULL:
+			case RAW:
+			case SYMBOL:
+			default:
+				return true;
+		}
+	}
+
+	@Override
+	public boolean applyAggregations(
+		List<String> outputNames,
+		List<DataType> outputTypes,
+		AggregateExprs aggregateExprs) {
+
+		if (!isAPENativeAggApplicable()) {
+			return false;
+		}
+
+		// transform data type names in aggregate expressions
+		try {
+			aggregateExprs.translateDataTypeName();
+		} catch (RuntimeException ex) {
+			LOG.warn(ex.toString());
+			return false;
+		}
+
+		aggOutputNames = outputNames;
+		aggOutputTypes = outputTypes;
+		this.aggregateExprs = aggregateExprs;
+
+		return true;
+	}
+
+	private boolean isAPENativeFilterApplicable() {
+
+		boolean useMapRedReader = flinkConf.get(HiveOptions.TABLE_EXEC_HIVE_FALLBACK_MAPRED_READER);
+		boolean useNativeParquetReader = flinkConf.get(ApeHiveOptions.TABLE_EXEC_HIVE_PARQUET_USE_NATIVE_READER);
+		boolean filterPushingDownEnabled = flinkConf.get(ApeHiveOptions.TABLE_EXEC_HIVE_PARQUET_PUSH_DOWN_FILTERS);
+		// join re-order does not know filters are pushed down.
+		// This may lead to worse efficiency when it moves backward tables with filters pushed down in joins.
+		boolean joinReorderEnabled = flinkConf.get(OptimizerConfigOptions.TABLE_OPTIMIZER_JOIN_REORDER_ENABLED);
+		// configuration that tells Flink whether push down filters or not when join re-order is enabled.
+		boolean evadingJoinReorder = flinkConf.get(ApeHiveOptions.TABLE_EXEC_HIVE_PARQUET_FILTERS_EVADING_JOIN_REORDER);
+
+		// check configurations
+		if (useMapRedReader
+				|| !useNativeParquetReader
+				|| !filterPushingDownEnabled
+				|| (joinReorderEnabled && evadingJoinReorder)) {
+			return false;
+		}
+
+		// check parquet format and column types
+		return allColumnsSupportVectorization() && allPartitionsAreParquet();
+	}
+
+	private boolean isAPENativeAggApplicable() {
+		boolean aggPushingDownEnabled = flinkConf.get(ApeHiveOptions.TABLE_EXEC_HIVE_PARQUET_PUSH_DOWN_AGGREGATIONS);
+		return isAPENativeFilterApplicable() && aggPushingDownEnabled;
 	}
 
 	/**

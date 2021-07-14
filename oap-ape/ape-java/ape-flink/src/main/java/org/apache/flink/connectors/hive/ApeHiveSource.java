@@ -29,7 +29,7 @@ import org.apache.flink.connector.file.src.assigners.FileSplitAssigner;
 import org.apache.flink.connector.file.src.assigners.SimpleSplitAssigner;
 import org.apache.flink.connector.file.src.enumerate.FileEnumerator;
 import org.apache.flink.connector.file.src.reader.BulkFormat;
-import org.apache.flink.connectors.hive.read.HiveBulkFormatAdapter;
+import org.apache.flink.connectors.hive.read.ApeHiveBulkFormatAdapter;
 import org.apache.flink.connectors.hive.read.HiveSourceSplit;
 import org.apache.flink.core.fs.Path;
 import org.apache.flink.core.io.SimpleVersionedSerializer;
@@ -57,17 +57,17 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 /**
  * A unified data source that reads a hive table.
  */
-public class HiveSource extends AbstractFileSource<RowData, HiveSourceSplit> implements ResultTypeQueryable<RowData> {
+public class ApeHiveSource extends AbstractFileSource<RowData, HiveSourceSplit> implements ResultTypeQueryable<RowData> {
 
 	private static final long serialVersionUID = 1L;
 
 	private final JobConfWrapper jobConfWrapper;
 	private final List<String> partitionKeys;
 	private final ContinuousPartitionFetcher<Partition, ?> fetcher;
-	private final HiveTableSource.HiveContinuousPartitionFetcherContext<?> fetcherContext;
+	private final ApeHiveTableSource.HiveContinuousPartitionFetcherContext<?> fetcherContext;
 	private final ObjectPath tablePath;
 
-	HiveSource(
+	ApeHiveSource(
 			Path[] inputPaths,
 			FileEnumerator.Provider fileEnumerator,
 			FileSplitAssigner.Provider splitAssigner,
@@ -77,7 +77,7 @@ public class HiveSource extends AbstractFileSource<RowData, HiveSourceSplit> imp
 			ObjectPath tablePath,
 			List<String> partitionKeys,
 			@Nullable ContinuousPartitionFetcher<Partition, ?> fetcher,
-			@Nullable HiveTableSource.HiveContinuousPartitionFetcherContext<?> fetcherContext) {
+			@Nullable ApeHiveTableSource.HiveContinuousPartitionFetcherContext<?> fetcherContext) {
 		super(
 				inputPaths,
 				fileEnumerator,
@@ -139,7 +139,7 @@ public class HiveSource extends AbstractFileSource<RowData, HiveSourceSplit> imp
 			Comparable<?> currentReadOffset,
 			Collection<List<String>> seenPartitions,
 			Collection<HiveSourceSplit> splits) {
-		return new ContinuousHiveSplitEnumerator(
+		return new ApeContinuousHiveSplitEnumerator(
 				enumContext,
 				currentReadOffset,
 				seenPartitions,
@@ -162,7 +162,7 @@ public class HiveSource extends AbstractFileSource<RowData, HiveSourceSplit> imp
 		private final List<String> partitionKeys;
 
 		private ContinuousPartitionFetcher<Partition, ?> fetcher = null;
-		private HiveTableSource.HiveContinuousPartitionFetcherContext<?> fetcherContext = null;
+		private ApeHiveTableSource.HiveContinuousPartitionFetcherContext<?> fetcherContext = null;
 
 		HiveSourceBuilder(
 				JobConf jobConf,
@@ -184,10 +184,10 @@ public class HiveSource extends AbstractFileSource<RowData, HiveSourceSplit> imp
 		}
 
 		@Override
-		public HiveSource build() {
+		public ApeHiveSource build() {
 			FileSplitAssigner.Provider splitAssigner = continuousSourceSettings == null || partitionKeys.isEmpty() ?
 					DEFAULT_SPLIT_ASSIGNER : SimpleSplitAssigner::new;
-			return new HiveSource(
+			return new ApeHiveSource(
 					inputPaths,
 					fileEnumerator,
 					splitAssigner,
@@ -206,7 +206,7 @@ public class HiveSource extends AbstractFileSource<RowData, HiveSourceSplit> imp
 			return this;
 		}
 
-		public HiveSourceBuilder setFetcherContext(HiveTableSource.HiveContinuousPartitionFetcherContext<?> fetcherContext) {
+		public HiveSourceBuilder setFetcherContext(ApeHiveTableSource.HiveContinuousPartitionFetcherContext<?> fetcherContext) {
 			this.fetcherContext = fetcherContext;
 			return this;
 		}
@@ -220,7 +220,7 @@ public class HiveSource extends AbstractFileSource<RowData, HiveSourceSplit> imp
 				Long limit) {
 			checkNotNull(catalogTable, "catalogTable can not be null.");
 			return LimitableBulkFormat.create(
-					new HiveBulkFormatAdapter(
+					new ApeHiveBulkFormatAdapter(
 							new JobConfWrapper(jobConf),
 							catalogTable.getPartitionKeys(),
 							catalogTable.getSchema().getFieldNames(),

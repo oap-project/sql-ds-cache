@@ -45,8 +45,8 @@ import static org.apache.flink.formats.parquet.vector.ParquetSplitReaderUtil.cre
  * A {@link ParquetVectorizedInputFormat} to provide {@link RowData} iterator.
  * Using {@link ColumnarRowData} to provide a row view of column batch.
  */
-public class ParquetColumnarRowInputFormat<SplitT extends FileSourceSplit> extends
-		ParquetVectorizedInputFormat<RowData, SplitT> {
+public class ApeParquetColumnarRowInputFormat<SplitT extends FileSourceSplit> extends
+		ApeParquetVectorizedInputFormat<RowData, SplitT> {
 
 	private static final long serialVersionUID = 1L;
 
@@ -55,7 +55,7 @@ public class ParquetColumnarRowInputFormat<SplitT extends FileSourceSplit> exten
 	/**
 	 * Constructor to create parquet format without extra fields.
 	 */
-	public ParquetColumnarRowInputFormat(
+	public ApeParquetColumnarRowInputFormat(
 			Configuration hadoopConfig,
 			RowType projectedType,
 			int batchSize,
@@ -78,7 +78,7 @@ public class ParquetColumnarRowInputFormat<SplitT extends FileSourceSplit> exten
 	 * @param producedType the produced row type for this input format, includes extra fields.
 	 * @param batchFactory factory for creating column batch, can cram in extra fields.
 	 */
-	public ParquetColumnarRowInputFormat(
+	public ApeParquetColumnarRowInputFormat(
 			Configuration hadoopConfig,
 			RowType projectedType,
 			RowType producedType,
