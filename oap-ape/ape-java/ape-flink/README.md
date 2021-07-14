@@ -8,15 +8,16 @@ This module bridges customized Flink and native APE engine.
 <!-- MarkdownTOC autolink="true" autoanchor="true" -->
 
 - [Install](#install)
-    - [1. Install Apache Hadoop and Apache Hive for data and resource management.](#1-install-apache-hadoop-and-apache-hive-for-data-and-resource-management)
-    - [2. Build and install arrow](#2-build-and-install-arrow)
-    - [3. Build and install APE-native](#3-build-and-install-ape-native)
-    - [4. Install Apache Flink](#4-install-apache-flink)
-    - [5. Build pmem-common](#5-build-pmem-common)
-    - [6. Build APE-java](#6-build-ape-java)
-    - [7. Build Flink with our patch](#7-build-flink-with-our-patch)
+    - [1. Install Apache Hadoop and Apache Hive](#1-install-apache-hadoop-and-apache-hive)
+    - [2. Install Apache Flink](#2-install-apache-flink)
+    - [3. Build and install Arrow libraries](#3-build-and-install-arrow-libraries)
+    - [4. Build and install APE native library](#4-build-and-install-ape-native-library)
+    - [5. Build and install pmem-common](#5-build-and-install-pmem-common)
+    - [6. Build and install Intel Codec Library](#6-build-and-install-intel-codec-library)
+    - [7. Build and install APE Java library](#7-build-and-install-ape-java-library)
 - [Usages](#usages)
-    - [Enable the native parquet reader provided by APE](#enable-the-native-parquet-reader-provided-by-ape)
+    - [Use table environment provided by APE](#use-table-environment-provided-by-ape)
+    - [Enable the native parquet reader](#enable-the-native-parquet-reader)
     - [Enable filters pushing down](#enable-filters-pushing-down)
     - [Enable aggregates pushing down \(experimental\)](#enable-aggregates-pushing-down-experimental)
     - [Enable cache of column chunks in native parquet reader](#enable-cache-of-column-chunks-in-native-parquet-reader)
@@ -27,13 +28,24 @@ This module bridges customized Flink and native APE engine.
 
 <a id="install"></a>
 ## Install
-<a id="1-install-apache-hadoop-and-apache-hive-for-data-and-resource-management"></a>
-### 1. Install [Apache Hadoop](https://hadoop.apache.org/releases.html) and [Apache Hive](https://hive.apache.org/downloads.html) for data and resource management.
+<a id="1-install-apache-hadoop-and-apache-hive"></a>
+### 1. Install [Apache Hadoop](https://hadoop.apache.org/releases.html) and [Apache Hive](https://hive.apache.org/downloads.html)
 ***(on your cluster nodes)***
 
+<a id="2-install-apache-flink"></a>
+### 2. Install [Apache Flink](https://flink.apache.org/downloads.html)
+***(on client node, we call it `client-node` below)***
 
-<a id="2-build-and-install-arrow"></a>
-### 2. Build and install arrow
+`FLINK_INSTALL_DIR` is assumed as the Flink install directory in below steps.
+
+To access data in Hive, you may need:
+* develop applications following [this guide](https://ci.apache.org/projects/flink/flink-docs-release-1.12/dev/table/connectors/hive/)
+* copy a jar file named `hadoop-mapreduce-client-core-x.x.x.jar` from `$HADOOP_HOME/share/hadoop/mapreduce/` to `$FLINK_INSTALL_DIR/lib/`
+* and set `source.reader.element.queue.capacity: 1` in `$FLINK_INSTALL_DIR/conf/flink-conf/yaml` because exceptions may come out when Flink decoding parquet data
+
+
+<a id="3-build-and-install-arrow-libraries"></a>
+### 3. Build and install Arrow libraries
 ***(on each worker of Hadoop Yarn)***
 
 ```
@@ -51,8 +63,8 @@ make -j
 sudo make install
 ```
 
-<a id="3-build-and-install-ape-native"></a>
-### 3. Build and install APE-native
+<a id="4-build-and-install-ape-native-library"></a>
+### 4. Build and install APE native library
 ***(on each worker of Hadoop Yarn)***
 
 ```
@@ -70,25 +82,27 @@ sudo cp oap-ape/ape-native/build/lib/libparquet_jni.so /usr/lib/
 ```
 
 
-<a id="4-install-apache-flink"></a>
-### 4. Install [Apache Flink](https://flink.apache.org/downloads.html)
-***(on client node, we call it `client-node` below)***
-
-`FLINK_INSTALL_DIR` is assumed as the Flink install directory in below steps.
-
-To access data in Hive, you may need:
-* develop applications following [this guide](https://ci.apache.org/projects/flink/flink-docs-release-1.12/dev/table/connectors/hive/)
-* copy a jar file named `hadoop-mapreduce-client-core-x.x.x.jar` from `$HADOOP_HOME/share/hadoop/mapreduce/` to `$FLINK_INSTALL_DIR/lib/`
-* and set `source.reader.element.queue.capacity: 1` in `$FLINK_INSTALL_DIR/conf/flink-conf/yaml` besource exceptions may come out when Flink decoding parquet data
-
-
-<a id="5-build-pmem-common"></a>
-### 5. Build pmem-common
+<a id="5-build-and-install-pmem-common"></a>
+### 5. Build and install pmem-common
 ***(on `client-node`)***
 
 ```
 git clone https://github.com/oap-project/pmem-common.git
 cd pmem-common
+git checkout branch-1.1-spark-3.x
+
+
+mvn clean install -DskipTests
+
+```
+
+<a id="6-build-and-install-intel-codec-library"></a>
+### 6. Build and install Intel Codec Library
+***(on `client-node`)***
+
+```
+git clone https://github.com/Intel-bigdata/IntelCodecLibrary.git
+cd IntelCodecLibrary
 
 
 mvn clean install -DskipTests
@@ -96,8 +110,8 @@ mvn clean install -DskipTests
 ```
 
 
-<a id="6-build-ape-java"></a>
-### 6. Build APE-java
+<a id="7-build-and-install-ape-java-library"></a>
+### 7. Build and install APE Java library
 ***(on `client-node`)***
 
 ```
@@ -113,36 +127,31 @@ mvn clean package -Pshading -pl :ape-flink
 cp ape-flink/target/ape-flink-1.1.0-SNAPSHOT.jar $FLINK_INSTALL_DIR/lib/
 ```
 
-<a id="7-build-flink-with-our-patch"></a>
-### 7. Build Flink with our patch
-***(on `client-node`)***
-
-`SQL_DS_CACHE_SOURCE_DIR` is assumed as the source code directory of this project in below steps.
-Patches are under `src/main/resources/flink-patches` of this module.
-
-```
-# for Flink version 1.12.0
-git clone https://github.com/apache/flink.git
-cd flink
-git checkout release-1.12.0
-git am $SQL_DS_CACHE_SOURCE_DIR/oap-ape/ape-java/ape-flink/src/main/resources/flink-patches/1.12.0/ape-patch-for-flink-1.12.0.patch
-mvn clean install -pl :flink-sql-connector-hive-2.3.6_2.11 -pl :flink-table-uber_2.11 -pl :flink-table-uber-blink_2.11 -DskipTests
-
-
-cp flink-connectors/flink-sql-connector-hive-2.3.6/target/flink-sql-connector-hive-2.3.6_2.11-1.12.0.jar $FLINK_INSTALL_DIR/lib/
-cp flink-table/flink-table-uber/target/flink-table-uber_2.11-1.12.0.jar $FLINK_INSTALL_DIR/lib/flink-table_2.11-1.12.0.jar
-cp flink-table/flink-table-uber-blink/target/flink-table-uber-blink_2.11-1.12.0.jar $FLINK_INSTALL_DIR/lib/flink-table-blink_2.11-1.12.0.jar
-
-```
-
 <a id="usages"></a>
 ## Usages
-<a id="enable-the-native-parquet-reader-provided-by-ape"></a>
-### Enable the native parquet reader provided by APE
+<a id="use-table-environment-provided-by-ape"></a>
+### Use table environment provided by APE
+***(config in applications, required by following features)***
+```
+    // Create APE's hive table env
+    ApeEnvironmentSettings settings = ApeEnvironmentSettings.newInstance().inBatchMode().build();
+    TableEnvironment tableEnv = ApeTableEnvironmentFactory.create(settings);
+
+    // Set APE's HiveCatalog as the catalog of current session
+    Catalog catalog = new ApeHiveCatalog(hiveCatalogName, hiveDefaultDBName, hiveConfDir);
+    tableEnv.registerCatalog(hiveCatalogName, catalog);
+    tableEnv.useCatalog(hiveCatalogName);
+
+    // Use hive dialect
+    tableEnv.getConfig().setSqlDialect(SqlDialect.HIVE);
+```
+
+<a id="enable-the-native-parquet-reader"></a>
+### Enable the native parquet reader
 ***(config in applications)***
 
 ```
-tableEnv.getConfig().getConfiguration().setBoolean(HiveOptions.TABLE_EXEC_HIVE_PARQUET_USE_NATIVE_READER.key(), true);
+    tableEnv.getConfig().getConfiguration().setBoolean(ApeHiveOptions.TABLE_EXEC_HIVE_PARQUET_USE_NATIVE_READER.key(), true);
 ```
 
 
@@ -151,8 +160,8 @@ tableEnv.getConfig().getConfiguration().setBoolean(HiveOptions.TABLE_EXEC_HIVE_P
 ***(config in Flink applications)***
 
 ```
-tableEnv.getConfig().getConfiguration().setBoolean(HiveOptions.TABLE_EXEC_HIVE_PARQUET_USE_NATIVE_READER.key(), true);
-tableEnv.getConfig().getConfiguration().setBoolean(HiveOptions.TABLE_EXEC_HIVE_PARQUET_PUSH_DOWN_FILTERS.key(), true);
+    tableEnv.getConfig().getConfiguration().setBoolean(ApeHiveOptions.TABLE_EXEC_HIVE_PARQUET_USE_NATIVE_READER.key(), true);
+    tableEnv.getConfig().getConfiguration().setBoolean(ApeHiveOptions.TABLE_EXEC_HIVE_PARQUET_PUSH_DOWN_FILTERS.key(), true);
 ```
 
 
@@ -161,9 +170,9 @@ tableEnv.getConfig().getConfiguration().setBoolean(HiveOptions.TABLE_EXEC_HIVE_P
 ***(config in Flink applications)***
 
 ```
-tableEnv.getConfig().getConfiguration().setBoolean(HiveOptions.TABLE_EXEC_HIVE_PARQUET_USE_NATIVE_READER.key(), true);
-tableEnv.getConfig().getConfiguration().setBoolean(HiveOptions.TABLE_EXEC_HIVE_PARQUET_PUSH_DOWN_FILTERS.key(), true);
-tableEnv.getConfig().getConfiguration().setBoolean(HiveOptions.TABLE_EXEC_HIVE_PARQUET_PUSH_DOWN_AGGREGATIONS.key(), true);
+    tableEnv.getConfig().getConfiguration().setBoolean(ApeHiveOptions.TABLE_EXEC_HIVE_PARQUET_USE_NATIVE_READER.key(), true);
+    tableEnv.getConfig().getConfiguration().setBoolean(ApeHiveOptions.TABLE_EXEC_HIVE_PARQUET_PUSH_DOWN_FILTERS.key(), true);
+    tableEnv.getConfig().getConfiguration().setBoolean(ApeHiveOptions.TABLE_EXEC_HIVE_PARQUET_PUSH_DOWN_AGGREGATIONS.key(), true);
 ```
 
 
@@ -172,7 +181,7 @@ tableEnv.getConfig().getConfiguration().setBoolean(HiveOptions.TABLE_EXEC_HIVE_P
 ***(config in Flink applications)***
 
 ```
-tableEnv.getConfig().getConfiguration().setBoolean(HiveOptions.TABLE_EXEC_HIVE_PARQUET_USE_NATIVE_READER.key(), true);
+    tableEnv.getConfig().getConfiguration().setBoolean(ApeHiveOptions.TABLE_EXEC_HIVE_PARQUET_USE_NATIVE_READER.key(), true);
 ```
 
 ***(config in $HADOOP_HOME/etc/hadoop/hdfs-site.xml on `client-node`)***
@@ -226,10 +235,15 @@ With below configurations, Flink can request data from remote APE servers in sep
 
 In this mode, `arrow` and `ape-native` are not required on Hadoop Yarn nodes.
 
+***(start ape servers on some nodes with `arrow` and `ape-native`)***
+
+See more at: [../ape-server/README.md](../ape-server/README.md)
+
+
 ***(config in Flink applications)***
 
 ```
-tableEnv.getConfig().getConfiguration().setString(HiveOptions.TABLE_EXEC_HIVE_PARQUET_NATIVE_READER_MODE.key(), "remote");
+    tableEnv.getConfig().getConfiguration().setString(ApeHiveOptions.TABLE_EXEC_HIVE_PARQUET_NATIVE_READER_MODE.key(), "remote");
 ```
 
 ***(config in $HADOOP_HOME/etc/hadoop/hdfs-site.xml on `client-node`)***

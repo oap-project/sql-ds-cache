@@ -12,9 +12,10 @@ Also, this makes Hadoop Yarn nodes clean without APE native dependencies.
 - [Install](#install)
 	- [1. Build and install arrow](#1-build-and-install-arrow)
 	- [2. Build and install APE-native](#2-build-and-install-ape-native)
-	- [3. Build pmem-common](#3-build-pmem-common)
-	- [4. Build APE-java and start APE servers](#4-build-ape-java-and-start-ape-servers)
-	- [5. Configure APE servers](#5-configure-ape-servers)
+	- [3. Build and install pmem-common](#3-build-and-install-pmem-common)
+	- [4. Build and install Intel Codec Library](#4-build-and-install-intel-codec-library)
+	- [5. Build APE-java and start APE servers](#5-build-ape-java-and-start-ape-servers)
+	- [6. Configure APE servers](#6-configure-ape-servers)
 
 <!-- /MarkdownTOC -->
 
@@ -58,13 +59,27 @@ make
 sudo cp oap-ape/ape-native/build/lib/libparquet_jni.so /usr/lib/
 ```
 
-<a id="3-build-pmem-common"></a>
-### 3. Build pmem-common
+<a id="3-build-and-install-pmem-common"></a>
+### 3. Build and install pmem-common
 ***(on each node of APE servers)***
 
 ```
 git clone https://github.com/oap-project/pmem-common.git
 cd pmem-common
+git checkout branch-1.1-spark-3.x
+
+
+mvn clean install -DskipTests
+
+```
+
+<a id="4-build-and-install-intel-codec-library"></a>
+### 4. Build and install Intel Codec Library
+***(on each node of APE servers)***
+
+```
+git clone https://github.com/Intel-bigdata/IntelCodecLibrary.git
+cd IntelCodecLibrary
 
 
 mvn clean install -DskipTests
@@ -72,8 +87,9 @@ mvn clean install -DskipTests
 ```
 
 
-<a id="4-build-ape-java-and-start-ape-servers"></a>
-### 4. Build APE-java and start APE servers
+
+<a id="5-build-ape-java-and-start-ape-servers"></a>
+### 5. Build APE-java and start APE servers
 ***(on each node of APE servers)***
 
 ```
@@ -90,8 +106,8 @@ cd ape-server
 java -cp target/*:$HADOOP_CLASSPATH com.intel.oap.ape.service.netty.server.NettyServer
 ```
 
-<a id="5-configure-ape-servers"></a>
-### 5. Configure APE servers
+<a id="6-configure-ape-servers"></a>
+### 6. Configure APE servers
 
 Logs in above step will show `port` that `ape-server` is listening on. 
 
