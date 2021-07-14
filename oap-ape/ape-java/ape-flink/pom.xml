@@ -24,6 +24,7 @@
     <flink.version>1.12.0</flink.version>
     <scala.binary.version>2.11</scala.binary.version>
     <flink.format.parquet.version>1.11.1</flink.format.parquet.version>
+    <spotless.version>2.4.2</spotless.version>
   </properties>
 
   <dependencies>
@@ -151,32 +152,68 @@
               </compilerArgs>
             </configuration>
           </plugin>
+
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-checkstyle-plugin</artifactId>
-            <version>3.0.0</version>
-            <configuration>
-              <failOnViolation>true</failOnViolation>
-              <includeTestSourceDirectory>true</includeTestSourceDirectory>
-              <sourceDirectories>
-                <directory>src/main/java</directory>
-              </sourceDirectories>
-              <testSourceDirectories>
-                <directory>src/test/java</directory>
-              </testSourceDirectories>
-              <configLocation>${basedir}/../dev/checkstyle.xml</configLocation>
-              <outputFile>${basedir}/target/checkstyle-output.xml</outputFile>
-              <inputEncoding>${project.build.sourceEncoding}</inputEncoding>
-              <outputEncoding>${project.reporting.outputEncoding}</outputEncoding>
-            </configuration>
+            <version>2.17</version>
+            <dependencies>
+              <dependency>
+                <groupId>com.puppycrawl.tools</groupId>
+                <artifactId>checkstyle</artifactId>
+                <!-- Note: match version with docs/flinkDev/ide_setup.md -->
+                <version>8.14</version>
+              </dependency>
+            </dependencies>
             <executions>
               <execution>
-                <phase>compile</phase>
+                <id>validate</id>
+                <phase>validate</phase>
                 <goals>
                   <goal>check</goal>
                 </goals>
               </execution>
             </executions>
+            <configuration>
+              <suppressionsLocation>/tools/maven/suppressions.xml</suppressionsLocation>
+              <includeTestSourceDirectory>true</includeTestSourceDirectory>
+              <configLocation>/tools/maven/checkstyle.xml</configLocation>
+              <logViolationsToConsole>true</logViolationsToConsole>
+              <failOnViolation>true</failOnViolation>
+            </configuration>
+          </plugin>
+
+          <!-- Scala Code Style, most of the configuration done via plugin management -->
+          <plugin>
+            <groupId>org.scalastyle</groupId>
+            <artifactId>scalastyle-maven-plugin</artifactId>
+            <configuration>
+              <configLocation>${project.basedir}/tools/maven/scalastyle-config.xml</configLocation>
+            </configuration>
+          </plugin>
+
+          <plugin>
+            <groupId>com.diffplug.spotless</groupId>
+            <artifactId>spotless-maven-plugin</artifactId>
+            <version>${spotless.version}</version>
+            <configuration>
+              <java>
+                <!-- define the steps to apply to those files -->
+                <trimTrailingWhitespace/>
+                <endWithNewline/>
+                <indent>
+                  <tabs>true</tabs>
+                  <spacesPerTab>4</spacesPerTab>
+                </indent>
+
+                <!-- \# refers to the static imports -->
+                <importOrder>
+                  <order>org.apache.flink,org.apache.flink.shaded,,javax,java,scala,\#</order>
+                </importOrder>
+
+                <removeUnusedImports />
+              </java>
+            </configuration>
           </plugin>
         </plugins>
       </build>
