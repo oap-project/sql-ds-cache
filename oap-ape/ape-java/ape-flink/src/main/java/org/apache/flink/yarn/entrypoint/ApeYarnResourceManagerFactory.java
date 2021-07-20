@@ -24,22 +24,22 @@ import org.apache.flink.runtime.resourcemanager.active.ActiveResourceManager;
 import org.apache.flink.runtime.resourcemanager.active.ActiveResourceManagerFactory;
 import org.apache.flink.runtime.resourcemanager.active.ResourceManagerDriver;
 import org.apache.flink.util.ConfigurationException;
+import org.apache.flink.yarn.ApeYarnResourceManagerDriver;
 import org.apache.flink.yarn.DefaultYarnNodeManagerClientFactory;
 import org.apache.flink.yarn.DefaultYarnResourceManagerClientFactory;
-import org.apache.flink.yarn.YarnResourceManagerDriver;
 import org.apache.flink.yarn.YarnWorkerNode;
 import org.apache.flink.yarn.configuration.YarnResourceManagerDriverConfiguration;
 
 /**
- * {@link ActiveResourceManagerFactory} implementation which creates a {@link ActiveResourceManager} with {@link YarnResourceManagerDriver}.
+ * {@link ActiveResourceManagerFactory} implementation which creates a {@link ActiveResourceManager} with {@link ApeYarnResourceManagerDriver}.
  */
-public class YarnResourceManagerFactory extends ActiveResourceManagerFactory<YarnWorkerNode> {
+public class ApeYarnResourceManagerFactory extends ActiveResourceManagerFactory<YarnWorkerNode> {
 
-	private static final YarnResourceManagerFactory INSTANCE = new YarnResourceManagerFactory();
+	private static final ApeYarnResourceManagerFactory INSTANCE = new ApeYarnResourceManagerFactory();
 
-	private YarnResourceManagerFactory() {}
+	private ApeYarnResourceManagerFactory() {}
 
-	public static YarnResourceManagerFactory getInstance() {
+	public static ApeYarnResourceManagerFactory getInstance() {
 		return INSTANCE;
 	}
 
@@ -47,7 +47,7 @@ public class YarnResourceManagerFactory extends ActiveResourceManagerFactory<Yar
 	protected ResourceManagerDriver<YarnWorkerNode> createResourceManagerDriver(Configuration configuration, String webInterfaceUrl, String rpcAddress) {
 		final YarnResourceManagerDriverConfiguration yarnResourceManagerDriverConfiguration = new YarnResourceManagerDriverConfiguration(System.getenv(), rpcAddress, webInterfaceUrl);
 
-		return new YarnResourceManagerDriver(
+		return new ApeYarnResourceManagerDriver(
 			configuration,
 			yarnResourceManagerDriverConfiguration,
 			DefaultYarnResourceManagerClientFactory.getInstance(),

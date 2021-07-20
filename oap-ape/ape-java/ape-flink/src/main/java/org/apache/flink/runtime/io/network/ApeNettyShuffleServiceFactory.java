@@ -22,8 +22,8 @@ import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.metrics.MetricGroup;
 import org.apache.flink.runtime.clusterframework.types.ResourceID;
+import org.apache.flink.runtime.io.disk.ApeFileChannelManagerImpl;
 import org.apache.flink.runtime.io.disk.FileChannelManager;
-import org.apache.flink.runtime.io.disk.FileChannelManagerImpl;
 import org.apache.flink.runtime.io.network.buffer.NetworkBufferPool;
 import org.apache.flink.runtime.io.network.netty.NettyConfig;
 import org.apache.flink.runtime.io.network.netty.NettyConnectionManager;
@@ -37,6 +37,7 @@ import org.apache.flink.runtime.shuffle.NettyShuffleMaster;
 import org.apache.flink.runtime.shuffle.ShuffleEnvironmentContext;
 import org.apache.flink.runtime.shuffle.ShuffleServiceFactory;
 import org.apache.flink.runtime.taskmanager.NettyShuffleEnvironmentConfiguration;
+import org.apache.flink.yarn.ApeYarnOptions;
 
 import java.util.concurrent.Executor;
 
@@ -46,9 +47,9 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 /**
  * Netty based shuffle service implementation.
  */
-public class NettyShuffleServiceFactory implements ShuffleServiceFactory<NettyShuffleDescriptor, ResultPartition, SingleInputGate> {
+public class ApeNettyShuffleServiceFactory implements ShuffleServiceFactory<NettyShuffleDescriptor, ResultPartition, SingleInputGate> {
 
-	private static final String DIR_NAME_PREFIX = "netty-shuffle";
+	private static final String DIR_NAME_PREFIX = "netty-shuffle-ape";
 
 	@Override
 	public NettyShuffleMaster createShuffleMaster(Configuration configuration) {
@@ -103,7 +104,11 @@ public class NettyShuffleServiceFactory implements ShuffleServiceFactory<NettySh
 
 		NettyConfig nettyConfig = config.nettyConfig();
 
-		FileChannelManager fileChannelManager = new FileChannelManagerImpl(config.getTempDirs(), DIR_NAME_PREFIX);
+		String numaBindingPathOrdering = nettyConfig.getConfig().get(ApeYarnOptions.NUMA_BINDING_PATH_ORDERING);
+		Integer numaBindingPathMaxPercent = nettyConfig.getConfig().get(ApeYarnOptions.NUMA_BINDING_PATH_MAX_PERCENT);
+
+		FileChannelManager fileChannelManager = new ApeFileChannelManagerImpl(
+				config.getTempDirs(), DIR_NAME_PREFIX, numaBindingPathOrdering, numaBindingPathMaxPercent);
 
 		ConnectionManager connectionManager = nettyConfig != null ?
 			new NettyConnectionManager(resultPartitionManager, taskEventPublisher, nettyConfig) :

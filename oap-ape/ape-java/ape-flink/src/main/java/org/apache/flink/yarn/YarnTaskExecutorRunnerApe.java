@@ -25,6 +25,7 @@ import org.apache.flink.configuration.SecurityOptions;
 import org.apache.flink.configuration.TaskManagerOptions;
 import org.apache.flink.core.plugin.PluginManager;
 import org.apache.flink.runtime.clusterframework.BootstrapTools;
+import org.apache.flink.runtime.taskexecutor.ApeTaskManagerRunner;
 import org.apache.flink.runtime.taskexecutor.TaskManagerRunner;
 import org.apache.flink.runtime.util.EnvironmentInformation;
 import org.apache.flink.runtime.util.JvmShutdownSafeguard;
@@ -43,9 +44,9 @@ import java.util.Map;
 /**
  * This class is the executable entry point for running a TaskExecutor in a YARN container.
  */
-public class YarnTaskExecutorRunner {
+public class YarnTaskExecutorRunnerApe {
 
-	protected static final Logger LOG = LoggerFactory.getLogger(YarnTaskExecutorRunner.class);
+	protected static final Logger LOG = LoggerFactory.getLogger(YarnTaskExecutorRunnerApe.class);
 
 	/** The process environment variables. */
 	private static final Map<String, String> ENV = System.getenv();
@@ -87,7 +88,7 @@ public class YarnTaskExecutorRunner {
 			final Configuration configuration = TaskManagerRunner.loadConfiguration(args);
 			setupAndModifyConfiguration(configuration, currDir, ENV);
 
-			TaskManagerRunner.runTaskManagerSecurely(configuration);
+			ApeTaskManagerRunner.runTaskManagerSecurely(configuration);
 		}
 		catch (Throwable t) {
 			final Throwable strippedThrowable = ExceptionUtils.stripException(t, UndeclaredThrowableException.class);

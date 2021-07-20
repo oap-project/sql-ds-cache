@@ -39,9 +39,9 @@ import java.util.Map;
 /**
  * Entry point for Yarn session clusters.
  */
-public class YarnSessionClusterEntrypoint extends SessionClusterEntrypoint {
+public class YarnSessionClusterEntrypointApe extends SessionClusterEntrypoint {
 
-	public YarnSessionClusterEntrypoint(Configuration configuration) {
+	public YarnSessionClusterEntrypointApe(Configuration configuration) {
 		super(configuration);
 	}
 
@@ -52,12 +52,12 @@ public class YarnSessionClusterEntrypoint extends SessionClusterEntrypoint {
 
 	@Override
 	protected DispatcherResourceManagerComponentFactory createDispatcherResourceManagerComponentFactory(Configuration configuration) {
-		return DefaultDispatcherResourceManagerComponentFactory.createSessionComponentFactory(YarnResourceManagerFactory.getInstance());
+		return DefaultDispatcherResourceManagerComponentFactory.createSessionComponentFactory(ApeYarnResourceManagerFactory.getInstance());
 	}
 
 	public static void main(String[] args) {
 		// startup checks and logging
-		EnvironmentInformation.logEnvironmentInfo(LOG, YarnSessionClusterEntrypoint.class.getSimpleName(), args);
+		EnvironmentInformation.logEnvironmentInfo(LOG, YarnSessionClusterEntrypointApe.class.getSimpleName(), args);
 		SignalHandler.register(LOG);
 		JvmShutdownSafeguard.installAsShutdownHook(LOG);
 
@@ -78,10 +78,10 @@ public class YarnSessionClusterEntrypoint extends SessionClusterEntrypoint {
 		final Configuration dynamicParameters = ClusterEntrypointUtils.parseParametersOrExit(
 			args,
 			new DynamicParametersConfigurationParserFactory(),
-			YarnSessionClusterEntrypoint.class);
+			YarnSessionClusterEntrypointApe.class);
 		final Configuration configuration = YarnEntrypointUtils.loadConfiguration(workingDirectory, dynamicParameters, env);
 
-		YarnSessionClusterEntrypoint yarnSessionClusterEntrypoint = new YarnSessionClusterEntrypoint(configuration);
+		YarnSessionClusterEntrypointApe yarnSessionClusterEntrypoint = new YarnSessionClusterEntrypointApe(configuration);
 
 		ClusterEntrypoint.runClusterEntrypoint(yarnSessionClusterEntrypoint);
 	}
