@@ -69,4 +69,10 @@ public class ApeYarnOptions {
 					.defaultValue(95)
 					.withDescription("The max percentage of storage utilization in percentage " +
 							"allowed for numa binding paths.");
+
+	public static final ConfigOption<Boolean> NUMA_BINDING_PATH_ENABLED =
+			ConfigOptions.key("yarn.container-numa-binding.path-binding")
+					.booleanType()
+					.defaultValue(false)
+					.withDescription("Indicator whether paths are bound to numa nodes.");
 }

@@ -28,6 +28,7 @@ import org.apache.flink.runtime.execution.librarycache.BlobLibraryCacheManager;
 import org.apache.flink.runtime.execution.librarycache.LibraryCacheManager;
 import org.apache.flink.runtime.io.disk.iomanager.ApeIOManagerAsync;
 import org.apache.flink.runtime.io.disk.iomanager.IOManager;
+import org.apache.flink.runtime.io.disk.iomanager.IOManagerAsync;
 import org.apache.flink.runtime.io.network.TaskEventDispatcher;
 import org.apache.flink.runtime.memory.MemoryManager;
 import org.apache.flink.runtime.rpc.FatalErrorHandler;
@@ -92,14 +93,22 @@ public class ApeTaskManagerServices {
 		final TaskEventDispatcher taskEventDispatcher = new TaskEventDispatcher();
 
 		// start the I/O manager, it will create some temp directories.
-		String numaBindingPathOrdering = taskManagerServicesConfiguration.getConfiguration().get(
-				ApeYarnOptions.NUMA_BINDING_PATH_ORDERING);
-		Integer numaBindingPathMaxPercent = taskManagerServicesConfiguration.getConfiguration().get(
-				ApeYarnOptions.NUMA_BINDING_PATH_MAX_PERCENT);
-		final IOManager ioManager = new ApeIOManagerAsync(
-				taskManagerServicesConfiguration.getTmpDirPaths(),
-				numaBindingPathOrdering,
-				numaBindingPathMaxPercent);
+		final IOManager ioManager;
+		boolean numaBindingPathsEnabled = taskManagerServicesConfiguration.getConfiguration()
+				.get(ApeYarnOptions.NUMA_BINDING_PATH_ENABLED);
+		if (numaBindingPathsEnabled) {
+			String numaBindingPathOrdering = taskManagerServicesConfiguration.getConfiguration().get(
+					ApeYarnOptions.NUMA_BINDING_PATH_ORDERING);
+			Integer numaBindingPathMaxPercent = taskManagerServicesConfiguration.getConfiguration().get(
+					ApeYarnOptions.NUMA_BINDING_PATH_MAX_PERCENT);
+			ioManager = new ApeIOManagerAsync(
+					taskManagerServicesConfiguration.getTmpDirPaths(),
+					numaBindingPathOrdering,
+					numaBindingPathMaxPercent);
+		} else {
+			ioManager = new IOManagerAsync(taskManagerServicesConfiguration.getTmpDirPaths());
+		}
+
 
 		final ShuffleEnvironment<?, ?> shuffleEnvironment = createShuffleEnvironment(
 			taskManagerServicesConfiguration,

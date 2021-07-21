@@ -189,7 +189,10 @@ public class ApeTaskManagerRunner {
 			String numaPathsStr = numaPathList.get(Integer.parseInt(numaBindingNodesIndex));
 			String[] numaPaths = numaPathsStr.split(",");
 			if (numaPaths.length > 0) {
+				configuration.set(ApeYarnOptions.NUMA_BINDING_PATH_ENABLED, true);
 				configuration.set(CoreOptions.TMP_DIRS, numaPathsStr);
+			} else {
+				configuration.set(ApeYarnOptions.NUMA_BINDING_PATH_ENABLED, false);
 			}
 		}
 

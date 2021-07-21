@@ -24,6 +24,7 @@ import org.apache.flink.metrics.MetricGroup;
 import org.apache.flink.runtime.clusterframework.types.ResourceID;
 import org.apache.flink.runtime.io.disk.ApeFileChannelManagerImpl;
 import org.apache.flink.runtime.io.disk.FileChannelManager;
+import org.apache.flink.runtime.io.disk.FileChannelManagerImpl;
 import org.apache.flink.runtime.io.network.buffer.NetworkBufferPool;
 import org.apache.flink.runtime.io.network.netty.NettyConfig;
 import org.apache.flink.runtime.io.network.netty.NettyConnectionManager;
@@ -104,11 +105,17 @@ public class ApeNettyShuffleServiceFactory implements ShuffleServiceFactory<Nett
 
 		NettyConfig nettyConfig = config.nettyConfig();
 
-		String numaBindingPathOrdering = nettyConfig.getConfig().get(ApeYarnOptions.NUMA_BINDING_PATH_ORDERING);
-		Integer numaBindingPathMaxPercent = nettyConfig.getConfig().get(ApeYarnOptions.NUMA_BINDING_PATH_MAX_PERCENT);
-
-		FileChannelManager fileChannelManager = new ApeFileChannelManagerImpl(
-				config.getTempDirs(), DIR_NAME_PREFIX, numaBindingPathOrdering, numaBindingPathMaxPercent);
+		FileChannelManager fileChannelManager;
+		boolean numaBindingPathsEnabled = nettyConfig.getConfig()
+				.get(ApeYarnOptions.NUMA_BINDING_PATH_ENABLED);
+		if (numaBindingPathsEnabled) {
+			String numaBindingPathOrdering = nettyConfig.getConfig().get(ApeYarnOptions.NUMA_BINDING_PATH_ORDERING);
+			Integer numaBindingPathMaxPercent = nettyConfig.getConfig().get(ApeYarnOptions.NUMA_BINDING_PATH_MAX_PERCENT);
+			fileChannelManager = new ApeFileChannelManagerImpl(
+					config.getTempDirs(), DIR_NAME_PREFIX, numaBindingPathOrdering, numaBindingPathMaxPercent);
+		} else {
+			fileChannelManager = new FileChannelManagerImpl(config.getTempDirs(), DIR_NAME_PREFIX);
+		}
 
 		ConnectionManager connectionManager = nettyConfig != null ?
 			new NettyConnectionManager(resultPartitionManager, taskEventPublisher, nettyConfig) :
