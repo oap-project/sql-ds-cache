@@ -109,7 +109,6 @@ public class ApeTaskManagerServices {
 			ioManager = new IOManagerAsync(taskManagerServicesConfiguration.getTmpDirPaths());
 		}
 
-
 		final ShuffleEnvironment<?, ?> shuffleEnvironment = createShuffleEnvironment(
 			taskManagerServicesConfiguration,
 			taskEventDispatcher,
