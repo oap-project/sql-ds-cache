@@ -39,9 +39,9 @@ import java.util.Map;
 /**
  * Entry point for Yarn per-job clusters.
  */
-public class YarnJobClusterEntrypoint extends JobClusterEntrypoint {
+public class YarnJobClusterEntrypointApe extends JobClusterEntrypoint {
 
-	public YarnJobClusterEntrypoint(Configuration configuration) {
+	public YarnJobClusterEntrypointApe(Configuration configuration) {
 		super(configuration);
 	}
 
@@ -53,7 +53,7 @@ public class YarnJobClusterEntrypoint extends JobClusterEntrypoint {
 	@Override
 	protected DefaultDispatcherResourceManagerComponentFactory createDispatcherResourceManagerComponentFactory(Configuration configuration) throws IOException {
 		return DefaultDispatcherResourceManagerComponentFactory.createJobComponentFactory(
-			YarnResourceManagerFactory.getInstance(),
+			ApeYarnResourceManagerFactory.getInstance(),
 			FileJobGraphRetriever.createFrom(
 					configuration,
 					YarnEntrypointUtils.getUsrLibDir(configuration).orElse(null)));
@@ -66,7 +66,7 @@ public class YarnJobClusterEntrypoint extends JobClusterEntrypoint {
 
 	public static void main(String[] args) {
 		// startup checks and logging
-		EnvironmentInformation.logEnvironmentInfo(LOG, YarnJobClusterEntrypoint.class.getSimpleName(), args);
+		EnvironmentInformation.logEnvironmentInfo(LOG, YarnJobClusterEntrypointApe.class.getSimpleName(), args);
 		SignalHandler.register(LOG);
 		JvmShutdownSafeguard.installAsShutdownHook(LOG);
 
@@ -87,10 +87,10 @@ public class YarnJobClusterEntrypoint extends JobClusterEntrypoint {
 		final Configuration dynamicParameters = ClusterEntrypointUtils.parseParametersOrExit(
 			args,
 			new DynamicParametersConfigurationParserFactory(),
-			YarnJobClusterEntrypoint.class);
+			YarnJobClusterEntrypointApe.class);
 		final Configuration configuration = YarnEntrypointUtils.loadConfiguration(workingDirectory, dynamicParameters, env);
 
-		YarnJobClusterEntrypoint yarnJobClusterEntrypoint = new YarnJobClusterEntrypoint(configuration);
+		YarnJobClusterEntrypointApe yarnJobClusterEntrypoint = new YarnJobClusterEntrypointApe(configuration);
 
 		ClusterEntrypoint.runClusterEntrypoint(yarnJobClusterEntrypoint);
 	}

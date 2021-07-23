@@ -70,13 +70,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Queue;
+import java.util.Random;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+
+import static org.apache.flink.runtime.clusterframework.ApeBootstrapTools.NUMA_BINDING_NODES_INDEX_CONF_KEY;
 
 /**
  * Implementation of {@link ResourceManagerDriver} for Yarn deployment.
  */
-public class YarnResourceManagerDriver extends AbstractResourceManagerDriver<YarnWorkerNode> {
+public class ApeYarnResourceManagerDriver extends AbstractResourceManagerDriver<YarnWorkerNode> {
 
 	/** Environment variable name of the hostname given by YARN.
 	 * In task executor we use the hostnames given by YARN consistently throughout akka */
@@ -112,7 +117,9 @@ public class YarnResourceManagerDriver extends AbstractResourceManagerDriver<Yar
 
 	private TaskExecutorProcessSpecContainerResourcePriorityAdapter taskExecutorProcessSpecContainerResourcePriorityAdapter;
 
-	public YarnResourceManagerDriver(
+	private final Map<String, AtomicInteger> numaBindingNodeCounter = new ConcurrentHashMap<>();
+
+	public ApeYarnResourceManagerDriver(
 		Configuration flinkConfig,
 		YarnResourceManagerDriverConfiguration configuration,
 		YarnResourceManagerClientFactory yarnResourceManagerClientFactory,
@@ -376,10 +383,25 @@ public class YarnResourceManagerDriver extends AbstractResourceManagerDriver<Yar
 		final ContaineredTaskManagerParameters taskManagerParameters =
 			ContaineredTaskManagerParameters.create(flinkConfig, taskExecutorProcessSpec);
 
-		log.info("TaskExecutor {} will be started on {} with {}.",
+		// select numa node if configured
+		String logInfo = "";
+		List<String> numaNodeList = flinkConfig.get(ApeYarnOptions.NUMA_BINDING_NODE_LIST);
+		if (numaNodeList.size() > 0) {
+			int numaCount = numaNodeList.size();
+			numaBindingNodeCounter.putIfAbsent(host, new AtomicInteger(new Random().nextInt(numaCount)));
+			AtomicInteger current = numaBindingNodeCounter.get(host);
+			int numaIndex = current.incrementAndGet() % numaCount;
+			taskManagerParameters.taskManagerEnv().put(
+					NUMA_BINDING_NODES_INDEX_CONF_KEY, String.valueOf(numaIndex));
+
+			logInfo = " on numa nodes: " + numaNodeList.get(numaIndex);
+		}
+
+		log.info("TaskExecutor {} will be started on {} with {}{}.",
 			containerId.getStringWithMetadata(),
 			host,
-			taskExecutorProcessSpec);
+			taskExecutorProcessSpec,
+			logInfo);
 
 		final Configuration taskManagerConfig = BootstrapTools.cloneConfiguration(flinkConfig);
 		taskManagerConfig.set(TaskManagerOptions.TASK_MANAGER_RESOURCE_ID, containerId.getResourceIdString());
@@ -390,7 +412,7 @@ public class YarnResourceManagerDriver extends AbstractResourceManagerDriver<Yar
 
 		log.debug("TaskManager configuration: {}", taskManagerConfig);
 
-		final ContainerLaunchContext taskExecutorLaunchContext = Utils.createTaskExecutorContext(
+		final ContainerLaunchContext taskExecutorLaunchContext = ApeUtils.createTaskExecutorContext(
 			flinkConfig,
 			yarnConfig,
 			configuration,

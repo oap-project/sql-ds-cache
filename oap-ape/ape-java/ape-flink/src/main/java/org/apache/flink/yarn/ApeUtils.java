@@ -20,7 +20,7 @@ package org.apache.flink.yarn;
 
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.configuration.ConfigUtils;
-import org.apache.flink.runtime.clusterframework.BootstrapTools;
+import org.apache.flink.runtime.clusterframework.ApeBootstrapTools;
 import org.apache.flink.runtime.clusterframework.ContaineredTaskManagerParameters;
 import org.apache.flink.runtime.util.HadoopUtils;
 import org.apache.flink.util.FlinkException;
@@ -75,9 +75,9 @@ import static org.apache.flink.yarn.YarnConfigKeys.LOCAL_RESOURCE_DESCRIPTOR_SEP
 /**
  * Utility class that provides helper methods to work with Apache Hadoop YARN.
  */
-public final class Utils {
+public final class ApeUtils {
 
-	private static final Logger LOG = LoggerFactory.getLogger(Utils.class);
+	private static final Logger LOG = LoggerFactory.getLogger(ApeUtils.class);
 
 	/** KRB5 file name populated in YARN container for secure IT run. */
 	public static final String KRB5_FILE_NAME = "krb5.conf";
@@ -328,7 +328,7 @@ public final class Utils {
 	/**
 	 * Private constructor to prevent instantiation.
 	 */
-	private Utils() {
+	private ApeUtils() {
 		throw new RuntimeException();
 	}
 
@@ -455,7 +455,7 @@ public final class Utils {
 		boolean hasLogback = new File(workingDirectory, "logback.xml").exists();
 		boolean hasLog4j = new File(workingDirectory, "log4j.properties").exists();
 
-		String launchCommand = BootstrapTools.getTaskManagerShellCommand(
+		String launchCommand = ApeBootstrapTools.getTaskManagerShellCommand(
 				flinkConfig, tmParams, ".", ApplicationConstants.LOG_DIR_EXPANSION_VAR,
 				hasLogback, hasLog4j, hasKrb5, taskManagerMainClass, taskManagerDynamicProperties);
 

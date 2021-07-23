@@ -15,13 +15,15 @@ This module bridges customized Flink and native APE engine.
     - [5. Build and install pmem-common](#5-build-and-install-pmem-common)
     - [6. Build and install Intel Codec Library](#6-build-and-install-intel-codec-library)
     - [7. Build and install APE Java library](#7-build-and-install-ape-java-library)
-- [Usages](#usages)
+- [Usages for Data Source Acceleration](#usages-for-data-source-acceleration)
     - [Use table environment provided by APE](#use-table-environment-provided-by-ape)
     - [Enable the native parquet reader](#enable-the-native-parquet-reader)
     - [Enable filters pushing down](#enable-filters-pushing-down)
     - [Enable aggregates pushing down \(experimental\)](#enable-aggregates-pushing-down-experimental)
     - [Enable cache of column chunks in native parquet reader](#enable-cache-of-column-chunks-in-native-parquet-reader)
     - [APE in disaggregated mode](#ape-in-disaggregated-mode)
+- [Usages for Intermediate I/O](#usages-for-intermediate-io)
+    - [Numa binding for task managers](#numa-binding-for-task-managers)
 
 <!-- /MarkdownTOC -->
 
@@ -127,8 +129,8 @@ mvn clean package -Pshading -pl :ape-flink
 cp ape-flink/target/ape-flink-1.1.0-SNAPSHOT.jar $FLINK_INSTALL_DIR/lib/
 ```
 
-<a id="usages"></a>
-## Usages
+<a id="usages-for-data-source-acceleration"></a>
+## Usages for Data Source Acceleration
 <a id="use-table-environment-provided-by-ape"></a>
 ### Use table environment provided by APE
 ***(config in applications, required by following features)***
@@ -253,4 +255,55 @@ See more at: [../ape-server/README.md](../ape-server/README.md)
         <name>fs.ape.client.remote.servers</name>
         <value>host1:port1,host2:port2</value>
     </property>
+```
+
+<a id="usages-for-intermediate-io"></a>
+## Usages for Intermediate I/O
+
+<a id="numa-binding-for-task-managers"></a>
+### Numa binding for task managers
+
+With below configurations, Flink's each task manager on Yarn will be bound to specified CPU node, memory and storage.
+
+This feature makes it faster to write / load intermediate data to / from some types of storage.
+
+Steps:
+
+
+(1) Install numactl
+
+
+***(on each worker of Hadoop Yarn)***
+```
+    sudo yum install numactl
+
+```
+
+(2) Enable numa binding in Flink's config file. You don't need to change code of Flink applications.
+
+
+***(config in `$FLINK_INSTALL_DIR/conf/flink-conf.yaml`)***
+
+```
+    # Set template of starting command for job manager / task manager provided by APE.
+    yarn.container-start-command-template: %java% %jvmmem% %jvmopts% %logging% %class%Ape %args% %redirects%
+
+    # Set allowed numa nodes, in groups, devided by ';'. Multiple nodes can be specified with ','.
+    yarn.container-numa-binding.node-list: 0;1
+
+    # Set the storage for each numa node group. Multiple paths can be specified with ','.
+    yarn.container-numa-binding.path-list: /mnt/pmem0;/mnt/pmem1
+
+    # Set the priority of paths, 'prior' or 'fair'.
+    # 'prior' means to use paths one by one until no space left.
+    # 'fair' means to use paths in a round-robin manner.
+    yarn.container-numa-binding.path-ordering: prior
+
+    # Set the shuffle service plugin provided by APE.
+    # This customized shuffle service will follow the configured path priority.
+    shuffle-service-factory.class: org.apache.flink.runtime.io.network.ApeNettyShuffleServiceFactory
+
+    # Optional
+    yarn.container-numa-binding.path-utilization-max-percentage: 95
+
 ```

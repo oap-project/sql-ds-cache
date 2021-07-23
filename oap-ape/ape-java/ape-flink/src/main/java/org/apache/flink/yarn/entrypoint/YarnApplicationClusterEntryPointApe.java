@@ -51,12 +51,12 @@ import java.util.stream.Collectors;
  * An {@link ApplicationClusterEntryPoint} for Yarn.
  */
 @Internal
-public final class YarnApplicationClusterEntryPoint extends ApplicationClusterEntryPoint {
+public final class YarnApplicationClusterEntryPointApe extends ApplicationClusterEntryPoint {
 
-	private YarnApplicationClusterEntryPoint(
+	private YarnApplicationClusterEntryPointApe(
 			final Configuration configuration,
 			final PackagedProgram program) {
-		super(configuration, program, YarnResourceManagerFactory.getInstance());
+		super(configuration, program, ApeYarnResourceManagerFactory.getInstance());
 	}
 
 	@Override
@@ -66,7 +66,7 @@ public final class YarnApplicationClusterEntryPoint extends ApplicationClusterEn
 
 	public static void main(final String[] args) {
 		// startup checks and logging
-		EnvironmentInformation.logEnvironmentInfo(LOG, YarnApplicationClusterEntryPoint.class.getSimpleName(), args);
+		EnvironmentInformation.logEnvironmentInfo(LOG, YarnApplicationClusterEntryPointApe.class.getSimpleName(), args);
 		SignalHandler.register(LOG);
 		JvmShutdownSafeguard.installAsShutdownHook(LOG);
 
@@ -87,7 +87,7 @@ public final class YarnApplicationClusterEntryPoint extends ApplicationClusterEn
 		final Configuration dynamicParameters = ClusterEntrypointUtils.parseParametersOrExit(
 			args,
 			new DynamicParametersConfigurationParserFactory(),
-			YarnApplicationClusterEntryPoint.class);
+			YarnApplicationClusterEntryPointApe.class);
 		final Configuration configuration = YarnEntrypointUtils.loadConfiguration(workingDirectory, dynamicParameters, env);
 
 		PackagedProgram program = null;
@@ -105,8 +105,8 @@ public final class YarnApplicationClusterEntryPoint extends ApplicationClusterEn
 			System.exit(1);
 		}
 
-		YarnApplicationClusterEntryPoint yarnApplicationClusterEntrypoint =
-				new YarnApplicationClusterEntryPoint(configuration, program);
+		YarnApplicationClusterEntryPointApe yarnApplicationClusterEntrypoint =
+				new YarnApplicationClusterEntryPointApe(configuration, program);
 
 		ClusterEntrypoint.runClusterEntrypoint(yarnApplicationClusterEntrypoint);
 	}
