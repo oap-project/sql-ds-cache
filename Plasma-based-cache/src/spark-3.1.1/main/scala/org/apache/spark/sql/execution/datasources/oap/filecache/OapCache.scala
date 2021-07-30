@@ -217,15 +217,23 @@ private[filecache] class CacheGuardian(maxMemory: Long) extends Thread with Logg
 }
 
 private[filecache] object OapCache extends Logging {
-  def plasmaServerDetect(): Boolean = {
-    val command = "ps -ef" #| "grep plasma"
-    val plasmaServerStatus = command.!!
-    if (plasmaServerStatus.indexOf("plasma-store-server") == -1) {
-      logWarning("External cache strategy requires plasma-store-server launched, " +
-        "failed to detect plasma-store-server, will fallback to simpleCache.")
-      return false
+  def plasmaServerDetect(sparkEnv: SparkEnv): Boolean = {
+    val socket = sparkEnv.conf.get(OapConf.OAP_EXTERNAL_CACHE_SOCKET_PATH)
+    try {
+      System.loadLibrary("plasma_java")
+    } catch {
+      case e: Exception => logError(s"load plasma jni lib failed " + e.getMessage)
     }
-    true
+    var plasmaDetected: Boolean = true;
+    try {
+      val conn: plasma.PlasmaClient = new plasma.PlasmaClient(socket, "", 0)
+    } catch {
+      case e: PlasmaClientException =>
+        logWarning("External cache strategy requires plasma-store-server launched, " +
+          "failed to detect plasma-store-server, will fallback to simpleCache." + e.getMessage)
+        plasmaDetected = false;
+    }
+    plasmaDetected
   }
   def cacheFallBackDetect(sparkEnv: SparkEnv,
                           fallBackEnabled: Boolean = true,
@@ -299,7 +307,7 @@ private[filecache] object OapCache extends Logging {
 
     oapCacheOpt match {
       case "external" =>
-        if (plasmaServerDetect()) new ExternalCache(fiberType)
+        if (plasmaServerDetect(sparkEnv)) new ExternalCache(fiberType)
         else new SimpleOapCache()
       case "guava" =>
         if (cacheFallBackDetect(sparkEnv, fallBackEnabled.toBoolean, fallBackRes.toBoolean)) {
@@ -956,7 +964,8 @@ class MixCache(dataCacheMemory: Long,
 
 class ExternalCache(fiberType: FiberType) extends OapCache with Logging {
   private val conf = SparkEnv.get.conf
-  private val externalStoreCacheSocket: String = "/tmp/plasmaStore"
+  private val externalStoreCacheSocket: String =
+    conf.get(OapConf.OAP_EXTERNAL_CACHE_SOCKET_PATH)
   private var cacheInit: Boolean = false
   private var externalDBClient: ExternalDBClient = null
 
