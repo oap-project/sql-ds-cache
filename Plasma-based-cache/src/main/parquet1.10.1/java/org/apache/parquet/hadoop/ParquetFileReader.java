@@ -597,18 +597,18 @@ public class ParquetFileReader implements Closeable {
   }
 
   private final InputFile file;
-  protected final SeekableInputStream f;
+  public final SeekableInputStream f;
   private final ParquetReadOptions options;
-  protected final Map<ColumnPath, ColumnDescriptor> paths = new HashMap<>();
+  public final Map<ColumnPath, ColumnDescriptor> paths = new HashMap<>();
   private final FileMetaData fileMetaData; // may be null
-  protected final List<BlockMetaData> blocks;
+  public final List<BlockMetaData> blocks;
 
   // not final. in some cases, this may be lazily loaded for backward-compat.
   private ParquetMetadata footer;
 
-  protected int currentBlock = 0;
-  protected ColumnChunkPageReadStore currentRowGroup = null;
-  protected DictionaryPageReader nextDictionaryReader = null;
+  public int currentBlock = 0;
+  public ColumnChunkPageReadStore currentRowGroup = null;
+  public DictionaryPageReader nextDictionaryReader = null;
 
   /**
    * @param configuration the Hadoop conf
@@ -823,7 +823,7 @@ public class ParquetFileReader implements Closeable {
     return advanceToNextBlock();
   }
 
-  protected boolean advanceToNextBlock() {
+  public boolean advanceToNextBlock() {
     if (currentBlock == blocks.size()) {
       return false;
     }
@@ -1036,7 +1036,7 @@ public class ParquetFileReader implements Closeable {
   /**
    * deals with a now fixed bug where compressedLength was missing a few bytes.
    */
-  protected class WorkaroundChunk extends Chunk {
+  public class WorkaroundChunk extends Chunk {
 
     private final SeekableInputStream f;
 
@@ -1098,7 +1098,7 @@ public class ParquetFileReader implements Closeable {
    */
   static class ChunkDescriptor {
 
-    protected final ColumnDescriptor col;
+    public final ColumnDescriptor col;
     private final ColumnChunkMetaData metadata;
     private final long fileOffset;
     private final int size;

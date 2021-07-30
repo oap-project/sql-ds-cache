@@ -295,6 +295,8 @@ spark.oap.cache.strategy                                     external
 spark.sql.oap.dcpmm.free.wait.threshold                      50000000000
 # according to your executor core number
 spark.executor.sql.oap.cache.external.client.pool.size       10
+# The socket path of plasma server, default is /tmp/plasmaStore
+spark.sql.oap.external.cache.socket.path                     /tmp/plasmaStore
 ```
 Start Plasma service manually
 

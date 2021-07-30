@@ -135,7 +135,7 @@ private[sql] object MemoryManager extends Logging {
       case "tmp" => new TmpDramMemoryManager(sparkEnv)
       case "kmem" => new DaxKmemMemoryManager(sparkEnv)
       case "plasma" =>
-        if (plasmaServerDetect()) {
+        if (plasmaServerDetect(sparkEnv)) {
           new PlasmaMemoryManager(sparkEnv)
         } else {
           new OffHeapMemoryManager(sparkEnv)
@@ -164,7 +164,7 @@ private[sql] object MemoryManager extends Logging {
       case "noevict" => new HybridMemoryManager(sparkEnv)
       case "vmem" => new TmpDramMemoryManager(sparkEnv)
       case "external" =>
-        if (plasmaServerDetect()) {
+        if (plasmaServerDetect(sparkEnv)) {
           new PlasmaMemoryManager(sparkEnv)
         } else {
           new OffHeapMemoryManager(sparkEnv)

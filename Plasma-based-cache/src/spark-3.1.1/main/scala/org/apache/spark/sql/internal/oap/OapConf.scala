@@ -772,4 +772,10 @@ object OapConf {
       .stringConf
       .createWithDefault("RedisClient")
 
+  val OAP_EXTERNAL_CACHE_SOCKET_PATH =
+    SqlConfAdapter.buildConf("spark.sql.oap.external.cache.socket.path")
+      .internal()
+      .doc("The socket path of plasma cache")
+      .stringConf
+      .createWithDefault("/tmp/plasmaStore")
 }
