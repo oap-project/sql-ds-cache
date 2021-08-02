@@ -217,24 +217,6 @@ private[filecache] class CacheGuardian(maxMemory: Long) extends Thread with Logg
 }
 
 private[filecache] object OapCache extends Logging {
-  def plasmaServerDetect(sparkEnv: SparkEnv): Boolean = {
-    val socket = sparkEnv.conf.get(OapConf.OAP_EXTERNAL_CACHE_SOCKET_PATH)
-    try {
-      System.loadLibrary("plasma_java")
-    } catch {
-      case e: Exception => logError(s"load plasma jni lib failed " + e.getMessage)
-    }
-    var plasmaDetected: Boolean = true;
-    try {
-      val conn: plasma.PlasmaClient = new plasma.PlasmaClient(socket, "", 0)
-    } catch {
-      case e: PlasmaClientException =>
-        logWarning("External cache strategy requires plasma-store-server launched, " +
-          "failed to detect plasma-store-server, will fallback to simpleCache." + e.getMessage)
-        plasmaDetected = false;
-    }
-    plasmaDetected
-  }
   def cacheFallBackDetect(sparkEnv: SparkEnv,
                           fallBackEnabled: Boolean = true,
                           fallBackRes: Boolean = true): Boolean = {
@@ -307,7 +289,7 @@ private[filecache] object OapCache extends Logging {
 
     oapCacheOpt match {
       case "external" =>
-        if (plasmaServerDetect(sparkEnv)) new ExternalCache(fiberType)
+        if (ExternalCacheDetector.plasmaServerDetect(sparkEnv)) new ExternalCache(fiberType)
         else new SimpleOapCache()
       case "guava" =>
         if (cacheFallBackDetect(sparkEnv, fallBackEnabled.toBoolean, fallBackRes.toBoolean)) {
@@ -959,6 +941,27 @@ class MixCache(dataCacheMemory: Long,
   override def cleanUp: Unit = {
     dataCacheBackend.cleanUp()
     indexCacheBackend.cleanUp()
+  }
+}
+
+object ExternalCacheDetector extends Logging {
+  def plasmaServerDetect(sparkEnv: SparkEnv): Boolean = {
+    val socket = sparkEnv.conf.get(OapConf.OAP_EXTERNAL_CACHE_SOCKET_PATH)
+    try {
+      System.loadLibrary("plasma_java")
+    } catch {
+      case e: Exception => logError(s"load plasma jni lib failed " + e.getMessage)
+    }
+    var plasmaDetected: Boolean = true;
+    try {
+      val conn: plasma.PlasmaClient = new plasma.PlasmaClient(socket, "", 0)
+    } catch {
+      case e: plasma.exceptions.PlasmaClientException =>
+        logWarning("External cache strategy requires plasma-store-server launched, " +
+          "failed to detect plasma-store-server, will fallback to simpleCache." + e.getMessage)
+        plasmaDetected = false;
+    }
+    plasmaDetected
   }
 }
 

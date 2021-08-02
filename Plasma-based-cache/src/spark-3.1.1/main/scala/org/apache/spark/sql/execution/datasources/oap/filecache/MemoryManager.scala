@@ -31,7 +31,6 @@ import org.apache.spark.internal.config.ConfigEntry
 import org.apache.spark.memory.MemoryMode
 import org.apache.spark.sql.execution.datasources.OapException
 import org.apache.spark.sql.execution.datasources.oap.filecache.FiberType.FiberType
-import org.apache.spark.sql.execution.datasources.oap.filecache.OapCache.plasmaServerDetect
 import org.apache.spark.sql.execution.datasources.oap.utils.PersistentMemoryConfigUtils
 import org.apache.spark.sql.internal.oap.OapConf
 import org.apache.spark.storage.{BlockManager, TestBlockId}
@@ -135,7 +134,7 @@ private[sql] object MemoryManager extends Logging {
       case "tmp" => new TmpDramMemoryManager(sparkEnv)
       case "kmem" => new DaxKmemMemoryManager(sparkEnv)
       case "plasma" =>
-        if (plasmaServerDetect(sparkEnv)) {
+        if (ExternalCacheDetector.plasmaServerDetect(sparkEnv)) {
           new PlasmaMemoryManager(sparkEnv)
         } else {
           new OffHeapMemoryManager(sparkEnv)
@@ -164,7 +163,7 @@ private[sql] object MemoryManager extends Logging {
       case "noevict" => new HybridMemoryManager(sparkEnv)
       case "vmem" => new TmpDramMemoryManager(sparkEnv)
       case "external" =>
-        if (plasmaServerDetect(sparkEnv)) {
+        if (ExternalCacheDetector.plasmaServerDetect(sparkEnv)) {
           new PlasmaMemoryManager(sparkEnv)
         } else {
           new OffHeapMemoryManager(sparkEnv)
