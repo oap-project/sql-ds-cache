@@ -954,9 +954,11 @@ object ExternalCacheDetector extends Logging {
     }
     var plasmaDetected: Boolean = true;
     try {
+      logInfo("Trying to connect plasma server: " + socket)
       val conn: plasma.PlasmaClient = new plasma.PlasmaClient(socket, "", 0)
     } catch {
       case e: plasma.exceptions.PlasmaClientException =>
+        e.printStackTrace()
         logWarning("External cache strategy requires plasma-store-server launched, " +
           "failed to detect plasma-store-server, will fallback to simpleCache." + e.getMessage)
         plasmaDetected = false;
