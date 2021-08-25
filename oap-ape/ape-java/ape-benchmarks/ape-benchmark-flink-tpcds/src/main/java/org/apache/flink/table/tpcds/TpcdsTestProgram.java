@@ -20,6 +20,7 @@ package org.apache.flink.table.tpcds;
 
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.connectors.hive.ApeHiveOptions;
+import org.apache.flink.connectors.hive.HiveOptions;
 import org.apache.flink.core.fs.FileSystem;
 import org.apache.flink.streaming.api.graph.GlobalDataExchangeMode;
 import org.apache.flink.table.api.ApeEnvironmentSettings;
@@ -87,6 +88,7 @@ public class TpcdsTestProgram {
 		String cmdBeforeQuery = params.get("cmdBeforeQuery", "");
 		String querySet = params.get("querySet", "1");
 		boolean joinReorder = params.getBoolean("joinReorder", false);
+		int sourceParallelism = params.getInt("sourceParallelism", 60);
 		boolean enableApe = params.getBoolean("enableApe", false);
 
 		TableEnvironment tableEnvironment;
@@ -95,11 +97,11 @@ public class TpcdsTestProgram {
 
 			if (enableApe) {
 				System.out.println("-- using APE's hive table env");
-				tableEnvironment = getApeHiveTableEnv(hiveConfDir, joinReorder);
+				tableEnvironment = getApeHiveTableEnv(hiveConfDir, joinReorder, sourceParallelism);
 
 			} else {
 				System.out.println("-- using default hive table env");
-				tableEnvironment = getDefaultHiveTableEnv(hiveConfDir, joinReorder);
+				tableEnvironment = getDefaultHiveTableEnv(hiveConfDir, joinReorder, sourceParallelism);
 			}
 
 			// debug
@@ -221,7 +223,7 @@ public class TpcdsTestProgram {
 	}
 
 	private static TableEnvironment getDefaultHiveTableEnv(
-			String hiveConfDir, boolean joinReorder) {
+			String hiveConfDir, boolean joinReorder, int sourceParallelism) {
 		// Create APE's hive table env
 		EnvironmentSettings settings = EnvironmentSettings.newInstance().inBatchMode().build();
 		TableEnvironment tableEnv = TableEnvironment.create(settings);
@@ -248,10 +250,14 @@ public class TpcdsTestProgram {
 					.setBoolean(OptimizerConfigOptions.TABLE_OPTIMIZER_JOIN_REORDER_ENABLED, true);
 		}
 
+		tableEnv.getConfig().getConfiguration()
+				.setInteger(HiveOptions.TABLE_EXEC_HIVE_INFER_SOURCE_PARALLELISM_MAX, sourceParallelism);
+
 		return tableEnv;
 	}
 
-	private static TableEnvironment getApeHiveTableEnv(String hiveConfDir, boolean joinReorder) {
+	private static TableEnvironment getApeHiveTableEnv(String hiveConfDir, boolean joinReorder,
+													   int sourceParallelism) {
 		// Create APE's hive table env
 		ApeEnvironmentSettings settings = ApeEnvironmentSettings.newInstance().inBatchMode().build();
 		TableEnvironment tableEnv = ApeTableEnvironmentFactory.create(settings);
@@ -275,6 +281,10 @@ public class TpcdsTestProgram {
 			tableEnv.getConfig().getConfiguration()
 					.setBoolean(OptimizerConfigOptions.TABLE_OPTIMIZER_JOIN_REORDER_ENABLED, true);
 		}
+
+		tableEnv.getConfig().getConfiguration()
+				.setInteger(HiveOptions.TABLE_EXEC_HIVE_INFER_SOURCE_PARALLELISM_MAX, sourceParallelism);
+
 		tableEnv.getConfig().getConfiguration()
 				.setBoolean(ApeHiveOptions.TABLE_EXEC_HIVE_PARQUET_FILTERS_EVADING_JOIN_REORDER, true);
 
