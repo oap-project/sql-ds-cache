@@ -225,7 +225,7 @@ public class TpchTestProgram {
 		TableEnvironment tableEnv = TableEnvironment.create(settings);
 
 		// Set APE's HiveCatalog as the catalog of current session
-		Catalog catalog = new HiveCatalog(hiveCatalogName, hiveDefaultDBName, hiveConfDir);
+		Catalog catalog = new HiveCatalog(hiveCatalogName, hiveDefaultDBName, hiveConfDir, "2.3.6");
 		tableEnv.registerCatalog(hiveCatalogName, catalog);
 		tableEnv.useCatalog(hiveCatalogName);
 
@@ -259,7 +259,7 @@ public class TpchTestProgram {
 		TableEnvironment tableEnv = ApeTableEnvironmentFactory.create(settings);
 
 		// Set APE's HiveCatalog as the catalog of current session
-		Catalog catalog = new ApeHiveCatalog(hiveCatalogName, hiveDefaultDBName, hiveConfDir);
+		Catalog catalog = new ApeHiveCatalog(hiveCatalogName, hiveDefaultDBName, hiveConfDir, "2.3.6");
 		tableEnv.registerCatalog(hiveCatalogName, catalog);
 		tableEnv.useCatalog(hiveCatalogName);
 
