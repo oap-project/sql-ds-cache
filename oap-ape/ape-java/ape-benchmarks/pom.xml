@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.intel.oap</groupId>
+        <artifactId>oap-ape</artifactId>
+        <version>1.1.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>ape-benchmarks</artifactId>
+    <version>${ape.version}</version>
+    <packaging>pom</packaging>
+    <name>OAP Project APE(Accelerator based Pmem Engine) Benchmarks</name>
+
+    <modules>
+        <module>ape-benchmark-flink-tpch</module>
+        <module>ape-benchmark-flink-tpcds</module>
+    </modules>
+</project>

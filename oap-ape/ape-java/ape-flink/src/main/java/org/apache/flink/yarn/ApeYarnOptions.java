@@ -31,7 +31,7 @@ public class ApeYarnOptions {
 			ConfigOptions.key("yarn.container-numa-binding.node-list")
 					.stringType()
 					.asList()
-					.noDefaultValue()
+					.defaultValues()
 					.withDescription("The numa nodes that are allowed to run task managers. " +
 							"Format: node1[,node2...][;node3[,node4...]], e.g. \"1,2;3\". " +
 							"The example means there are 2 numa binding nodes groups. " +
@@ -44,7 +44,7 @@ public class ApeYarnOptions {
 			ConfigOptions.key("yarn.container-numa-binding.path-list")
 					.stringType()
 					.asList()
-					.noDefaultValue()
+					.defaultValues()
 					.withDescription("The directories to be used only by the corresponding numa " +
 							"nodes. Format: path1[,path2...][;path3[,path4...]], e.g. " +
 							"/mnt/disk1,/mnt/disk2;/mnt/disk3. " +
