@@ -17,7 +17,7 @@
 
   <groupId>com.intel.oap</groupId>
   <artifactId>sql-ds-cache-parent</artifactId>
-  <version>1.2.0-snapshot</version>
+  <version>1.2.0</version>
   <name>OAP Project SQL DS Cache Parent POM</name>
   <packaging>pom</packaging>
 
