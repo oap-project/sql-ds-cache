@@ -392,7 +392,7 @@ Socket Configuration -&gt; Intel UPI General Configuration -&gt; Stale AtoS :  D
 <p>For more information you can refer to <a href="https://software.intel.com/content/www/us/en/develop/articles/quick-start-guide-configure-intel-optane-dc-persistent-memory-on-linux.html">Quick Start Guide: Provision Intel® Optane™ DC Persistent Memory</a></p>
 <ul>
 <li>
-<p>SQL Data Source Cache uses Plasma as a node-level external cache service, the benefit of using external cache is data could be shared across process boundaries.  <a href="http://arrow.apache.org/blog/2017/08/08/plasma-in-memory-object-store/">Plasma</a> is a high-performance shared-memory object store and a component of <a href="https://github.com/apache/arrow">Apache Arrow</a>. We have modified Plasma to support PMem, and make it open source on <a href="https://github.com/oap-project/arrow/tree/arrow-4.0.0-oap-1.1.1">oap-project-Arrow</a> repo. If you have finished <a href="../OAP-Installation-Guide/">OAP Installation Guide</a>, Plasma will be automatically installed and then you just need copy <code>arrow-plasma-4.0.0.jar</code> to <code>$SPARK_HOME/jars</code>. For manual building and installation steps you can refer to <a href="../Developer-Guide/#Plasma-installation">Plasma installation</a>.</p>
+<p>SQL Data Source Cache uses Plasma as a node-level external cache service, the benefit of using external cache is data could be shared across process boundaries.  <a href="http://arrow.apache.org/blog/2017/08/08/plasma-in-memory-object-store/">Plasma</a> is a high-performance shared-memory object store and a component of <a href="https://github.com/apache/arrow">Apache Arrow</a>. We have modified Plasma to support PMem, and make it open source on <a href="https://github.com/oap-project/arrow/tree/arrow-4.0.0-oap-1.2">oap-project-Arrow</a> repo. If you have finished <a href="../OAP-Installation-Guide/">OAP Installation Guide</a>, Plasma will be automatically installed and then you just need copy <code>arrow-plasma-4.0.0.jar</code> to <code>$SPARK_HOME/jars</code>. For manual building and installation steps you can refer to <a href="../Developer-Guide/#Plasma-installation">Plasma installation</a>.</p>
 </li>
 <li>
 <p>Refer to configuration below to apply external cache strategy and start Plasma service on each node and start your workload.</p>
@@ -406,11 +406,11 @@ spark.executor.instances          6
 spark.sql.extensions              org.apache.spark.sql.OapExtensions
 
 # absolute path of the jar on your working node, when in Yarn client mode
-spark.files                       $HOME/miniconda2/envs/oapenv/oap_jars/plasma-sql-ds-cache-&lt;version&gt;-with-spark-&lt;version&gt;.jar,$HOME/miniconda2/envs/oapenv/oap_jars/pmem-common-&lt;version&gt;-with-spark-&lt;version&gt;.jar
+spark.files                       $HOME/miniconda2/envs/oapenv/oap_jars/plasma-sql-ds-cache-&lt;version&gt;-with-spark-&lt;version&gt;.jar,$HOME/miniconda2/envs/oapenv/oap_jars/pmem-common-&lt;version&gt;-with-spark-&lt;version&gt;.jar,$HOME/miniconda2/envs/oapenv/oap_jars/arrow-plasma-4.0.0.jar
 # relative path to spark.files, just specify jar name in current dir, when in Yarn client mode
-spark.executor.extraClassPath     ./plasma-sql-ds-cache-&lt;version&gt;-with-spark-&lt;version&gt;.jar:./pmem-common-&lt;version&gt;-with-spark-&lt;version&gt;.jar
+spark.executor.extraClassPath     ./plasma-sql-ds-cache-&lt;version&gt;-with-spark-&lt;version&gt;.jar:./pmem-common-&lt;version&gt;-with-spark-&lt;version&gt;.jar:./arrow-plasma-4.0.0.jar
 # absolute path of the jar on your working node,when in Yarn client mode
-spark.driver.extraClassPath       $HOME/miniconda2/envs/oapenv/oap_jars/plasma-sql-ds-cache-&lt;version&gt;-with-spark-&lt;version&gt;.jar:$HOME/miniconda2/envs/oapenv/oap_jars/pmem-common-&lt;version&gt;-with-spark-&lt;version&gt;.jar
+spark.driver.extraClassPath       $HOME/miniconda2/envs/oapenv/oap_jars/plasma-sql-ds-cache-&lt;version&gt;-with-spark-&lt;version&gt;.jar:$HOME/miniconda2/envs/oapenv/oap_jars/pmem-common-&lt;version&gt;-with-spark-&lt;version&gt;.jar:$HOME/miniconda2/envs/oapenv/oap_jars/arrow-plasma-4.0.0.jar
 
 # for parquet file format, enable binary cache
 spark.sql.oap.parquet.binary.cache.enabled                   true
@@ -474,14 +474,14 @@ Run <code>yarn app -destroy plasma-store-service</code>to destroy it.</p>
 </ul>
 <h2 id="run-tpc-ds-benchmark">Run TPC-DS Benchmark</h2>
 <p>This section provides instructions and tools for running TPC-DS queries to evaluate the cache performance of various configurations. The TPC-DS suite has many queries and we select 9 I/O intensive queries to simplify performance evaluation.</p>
-<p>We created some tool scripts <a href="https://github.com/oap-project/oap-tools/releases/download/v1.1.1-spark-3.1.1/oap-benchmark-tool.zip">oap-benchmark-tool.zip</a> to simplify running the workload. If you are already familiar with TPC-DS data generation and running a TPC-DS tool suite, skip our tool and use the TPC-DS tool suite directly.</p>
+<p>We created some tool scripts <a href="https://github.com/oap-project/oap-tools/releases/download/v1.2.0/oap-benchmark-tool.zip">oap-benchmark-tool.zip</a> to simplify running the workload. If you are already familiar with TPC-DS data generation and running a TPC-DS tool suite, skip our tool and use the TPC-DS tool suite directly.</p>
 <h3 id="prerequisites_2">Prerequisites</h3>
 <ul>
 <li>Python 2.7+ is required on the working node. </li>
 </ul>
 <h3 id="prepare-the-tool">Prepare the Tool</h3>
 <ol>
-<li>Download <a href="https://github.com/oap-project/oap-tools/releases/download/v1.1.1-spark-3.1.1/oap-benchmark-tool.zip">oap-benchmark-tool.zip</a> and unzip to a folder (for example, <code>oap-benchmark-tool</code> folder) on your working node. </li>
+<li>Download <a href="https://github.com/oap-project/oap-tools/releases/download/v1.2.0/oap-benchmark-tool.zip">oap-benchmark-tool.zip</a> and unzip to a folder (for example, <code>oap-benchmark-tool</code> folder) on your working node. </li>
 <li>Copy <code>oap-benchmark-tool/tools/tpcds-kits</code> to <strong><em>ALL</em></strong> worker nodes under the same folder (for example, <code>/home/oap/tpcds-kits</code>).</li>
 </ol>
 <h3 id="generate-tpc-ds-data">Generate TPC-DS Data</h3>
