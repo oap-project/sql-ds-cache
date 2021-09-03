@@ -36,7 +36,7 @@ To use optimized Plasma cache with OAP, you need following components:
 ```
 cd /tmp
 git clone https://github.com/oap-project/arrow.git
-cd arrow && git checkout arrow-4.0.0-oap-1.1.1
+cd arrow && git checkout v4.0.0-oap-1.2.0
 cd cpp
 mkdir release
 cd release
