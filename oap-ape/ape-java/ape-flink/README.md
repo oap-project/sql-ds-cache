@@ -1,4 +1,6 @@
 # APE-FLINK
+(Chinese version here: [中文版](README_CN.md))
+
 APE engine is designed to load parquet files from HDFS clusters with native reader for faster data loading with cache capability, filters, and aggregate functions.
 
 This module bridges customized Flink and native APE engine.
