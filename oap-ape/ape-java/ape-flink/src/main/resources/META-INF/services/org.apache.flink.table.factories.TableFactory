@@ -14,3 +14,4 @@
 # limitations under the License.
 
 org.apache.flink.table.planner.delegation.ApeBlinkPlannerFactory
+org.apache.flink.table.catalog.hive.factories.ApeHiveCatalogFactory
