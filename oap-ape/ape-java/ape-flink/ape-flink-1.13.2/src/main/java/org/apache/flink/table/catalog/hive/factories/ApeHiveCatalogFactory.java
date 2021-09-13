@@ -20,66 +20,32 @@ package org.apache.flink.table.catalog.hive.factories;
 
 import org.apache.flink.table.catalog.Catalog;
 import org.apache.flink.table.catalog.hive.ApeHiveCatalog;
-import org.apache.flink.table.catalog.hive.client.HiveShimLoader;
-import org.apache.flink.table.catalog.hive.descriptors.ApeHiveCatalogValidator;
-import org.apache.flink.table.descriptors.DescriptorProperties;
+import org.apache.flink.table.factories.FactoryUtil;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
-
-import static org.apache.flink.table.catalog.hive.descriptors.ApeHiveCatalogValidator.CATALOG_HADOOP_CONF_DIR;
-import static org.apache.flink.table.catalog.hive.descriptors.ApeHiveCatalogValidator.CATALOG_HIVE_CONF_DIR;
-import static org.apache.flink.table.catalog.hive.descriptors.ApeHiveCatalogValidator.CATALOG_HIVE_VERSION;
-import static org.apache.flink.table.catalog.hive.descriptors.ApeHiveCatalogValidator.CATALOG_TYPE_VALUE_HIVE;
-import static org.apache.flink.table.descriptors.CatalogDescriptorValidator.CATALOG_DEFAULT_DATABASE;
-import static org.apache.flink.table.descriptors.CatalogDescriptorValidator.CATALOG_PROPERTY_VERSION;
-import static org.apache.flink.table.descriptors.CatalogDescriptorValidator.CATALOG_TYPE;
+import static org.apache.flink.table.catalog.hive.factories.HiveCatalogFactoryOptions.DEFAULT_DATABASE;
+import static org.apache.flink.table.catalog.hive.factories.HiveCatalogFactoryOptions.HADOOP_CONF_DIR;
+import static org.apache.flink.table.catalog.hive.factories.HiveCatalogFactoryOptions.HIVE_CONF_DIR;
+import static org.apache.flink.table.catalog.hive.factories.HiveCatalogFactoryOptions.HIVE_VERSION;
 
 /** Catalog factory for {@link ApeHiveCatalog}. */
 public class ApeHiveCatalogFactory extends HiveCatalogFactory {
+
     @Override
-    public Map<String, String> requiredContext() {
-        Map<String, String> context = new HashMap<>();
-        context.put(CATALOG_TYPE, CATALOG_TYPE_VALUE_HIVE); // ape_hive
-        context.put(CATALOG_PROPERTY_VERSION, "1"); // backwards compatibility
-        return context;
+    public String factoryIdentifier() {
+        return "ape_hive";
     }
 
     @Override
-    public Catalog createCatalog(String name, Map<String, String> properties) {
-        final DescriptorProperties descriptorProperties = getValidatedProperties(properties);
-
-        final String defaultDatabase =
-                descriptorProperties
-                        .getOptionalString(CATALOG_DEFAULT_DATABASE)
-                        .orElse(ApeHiveCatalog.DEFAULT_DB);
-
-        final Optional<String> hiveConfDir =
-                descriptorProperties.getOptionalString(CATALOG_HIVE_CONF_DIR);
-
-        final Optional<String> hadoopConfDir =
-                descriptorProperties.getOptionalString(CATALOG_HADOOP_CONF_DIR);
-
-        final String version =
-                descriptorProperties
-                        .getOptionalString(CATALOG_HIVE_VERSION)
-                        .orElse(HiveShimLoader.getHiveVersion());
+    public Catalog createCatalog(Context context) {
+        final FactoryUtil.CatalogFactoryHelper helper =
+                FactoryUtil.createCatalogFactoryHelper(this, context);
+        helper.validate();
 
         return new ApeHiveCatalog(
-                name,
-                defaultDatabase,
-                hiveConfDir.orElse(null),
-                hadoopConfDir.orElse(null),
-                version);
-    }
-
-    private static DescriptorProperties getValidatedProperties(Map<String, String> properties) {
-        final DescriptorProperties descriptorProperties = new DescriptorProperties(true);
-        descriptorProperties.putProperties(properties);
-
-        new ApeHiveCatalogValidator().validate(descriptorProperties);
-
-        return descriptorProperties;
+                context.getName(),
+                helper.getOptions().get(DEFAULT_DATABASE),
+                helper.getOptions().get(HIVE_CONF_DIR),
+                helper.getOptions().get(HADOOP_CONF_DIR),
+                helper.getOptions().get(HIVE_VERSION));
     }
 }

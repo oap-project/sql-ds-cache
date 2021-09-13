@@ -181,7 +181,7 @@ public class ApeYarnResourceManagerDriver extends AbstractResourceManagerDriver<
             taskExecutorProcessSpecContainerResourcePriorityAdapter =
                     new TaskExecutorProcessSpecContainerResourcePriorityAdapter(
                             registerApplicationMasterResponse.getMaximumResourceCapability(),
-                            ExternalResourceUtils.getExternalResources(
+                            ExternalResourceUtils.getExternalResourceConfigurationKeys(
                                     flinkConfig,
                                     YarnConfigOptions.EXTERNAL_RESOURCE_YARN_CONFIG_KEY_SUFFIX));
         } catch (Exception e) {

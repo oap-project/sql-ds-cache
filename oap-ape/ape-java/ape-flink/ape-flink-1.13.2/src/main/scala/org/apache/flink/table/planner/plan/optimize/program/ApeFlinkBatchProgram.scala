@@ -26,16 +26,18 @@ import org.apache.flink.table.planner.plan.rules.ApeFlinkBatchRuleSets
 import org.apache.calcite.plan.hep.HepMatchOrder
 
 /**
-  * Defines a sequence of programs to optimize flink batch table plan.
-  */
+ * Defines a sequence of programs to optimize flink batch table plan.
+ */
 object ApeFlinkBatchProgram {
   val SUBQUERY_REWRITE = "subquery_rewrite"
   val TEMPORAL_JOIN_REWRITE = "temporal_join_rewrite"
   val DECORRELATE = "decorrelate"
+  val TIME_INDICATOR = "time_indicator"
   val DEFAULT_REWRITE = "default_rewrite"
   val PREDICATE_PUSHDOWN = "predicate_pushdown"
   val JOIN_REORDER = "join_reorder"
   val JOIN_REWRITE = "join_rewrite"
+  val PROJECT_REWRITE = "project_rewrite"
   val WINDOW = "window"
   val LOGICAL = "logical"
   val LOGICAL_REWRITE = "logical_rewrite"
@@ -46,7 +48,7 @@ object ApeFlinkBatchProgram {
     val chainedProgram = new FlinkChainedProgram[BatchOptimizeContext]()
 
     chainedProgram.addLast(
-       // rewrite sub-queries to joins
+      // rewrite sub-queries to joins
       SUBQUERY_REWRITE,
       FlinkGroupProgramBuilder.newBuilder[BatchOptimizeContext]
         // rewrite QueryOperationCatalogViewTable before rewriting sub-queries
@@ -94,6 +96,9 @@ object ApeFlinkBatchProgram {
 
     // query decorrelation
     chainedProgram.addLast(DECORRELATE, new FlinkDecorrelateProgram)
+
+    // convert time indicators
+    chainedProgram.addLast(TIME_INDICATOR, new FlinkRelTimeIndicatorProgram)
 
     // default rewrite, includes: predicate simplification, expression reduction, etc.
     chainedProgram.addLast(
@@ -173,20 +178,11 @@ object ApeFlinkBatchProgram {
 
     // window rewrite
     chainedProgram.addLast(
-      WINDOW,
-      FlinkGroupProgramBuilder.newBuilder[BatchOptimizeContext]
-        .addProgram(
-          FlinkHepRuleSetProgramBuilder.newBuilder
-            .setHepRulesExecutionType(HEP_RULES_EXECUTION_TYPE.RULE_COLLECTION)
-            .setHepMatchOrder(HepMatchOrder.BOTTOM_UP)
-            .add(ApeFlinkBatchRuleSets.PROJECT_RULES)
-            .build(), "project rules")
-        .addProgram(
-          FlinkHepRuleSetProgramBuilder.newBuilder
-            .setHepRulesExecutionType(HEP_RULES_EXECUTION_TYPE.RULE_SEQUENCE)
-            .setHepMatchOrder(HepMatchOrder.BOTTOM_UP)
-            .add(ApeFlinkBatchRuleSets.WINDOW_RULES)
-            .build(), "window")
+      PROJECT_REWRITE,
+      FlinkHepRuleSetProgramBuilder.newBuilder
+        .setHepRulesExecutionType(HEP_RULES_EXECUTION_TYPE.RULE_COLLECTION)
+        .setHepMatchOrder(HepMatchOrder.BOTTOM_UP)
+        .add(ApeFlinkBatchRuleSets.PROJECT_RULES)
         .build())
 
     // optimize the logical plan

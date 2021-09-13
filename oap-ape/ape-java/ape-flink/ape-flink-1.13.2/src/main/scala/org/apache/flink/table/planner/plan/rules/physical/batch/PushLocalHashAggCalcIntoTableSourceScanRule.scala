@@ -19,7 +19,6 @@ package org.apache.flink.table.planner.plan.rules.physical.batch
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
-
 import org.apache.calcite.plan.{RelOptRule, RelOptRuleCall}
 import org.apache.calcite.plan.RelOptRule.{any, operand}
 import org.apache.calcite.rex.{RexCall, RexInputRef, RexLiteral, RexLocalRef}
@@ -27,8 +26,9 @@ import org.apache.calcite.sql.SqlBinaryOperator
 import org.apache.calcite.sql.`type`.{SqlTypeFamily, SqlTypeName}
 import org.apache.flink.table.connector.source.abilities.SupportsAggregationPushDown
 import org.apache.flink.table.planner.calcite.FlinkTypeFactory
+import org.apache.flink.table.planner.plan.abilities.source.SourceAbilitySpec
 import org.apache.flink.table.planner.plan.nodes.FlinkConventions
-import org.apache.flink.table.planner.plan.nodes.physical.batch.{BatchExecCalc, BatchExecExchange, BatchExecLocalHashAggregate, BatchExecTableSourceScan}
+import org.apache.flink.table.planner.plan.nodes.physical.batch.{BatchPhysicalCalc, BatchPhysicalExchange, BatchPhysicalLocalHashAggregate, BatchPhysicalTableSourceScan}
 import org.apache.flink.table.planner.plan.schema.TableSourceTable
 import org.apache.flink.table.planner.plan.utils.AggregateUtil
 import org.apache.flink.table.types.utils.TypeConversions
@@ -37,29 +37,29 @@ import org.apache.flink.table.utils.ape._
 
 /**
  * Some aggregation functions are carried out tow-phase aggregate with calc, that is:
- * BatchExecTableSourceScan
- *   -> BatchExecCalc
- *     -> BatchExecLocalHashAggregate
- *       -> BatchExecExchange
- *         -> BatchExecHashAggregate
+ * BatchPhysicalTableSourceScan
+ *   -> BatchPhysicalCalc
+ *     -> BatchPhysicalLocalHashAggregate
+ *       -> BatchPhysicalExchange
+ *         -> BatchPhysicalHashAggregate
  *
  * If the `input` mentioned above can processing agg functions partially, then we can push down
  * aggregations and calculation to the input.
  * After that `LocalHashAggregate` and `Calc` should be removed from the plan.
  */
 class PushLocalHashAggCalcIntoTableSourceScanRule extends RelOptRule(
-  operand(classOf[BatchExecExchange],
-    operand(classOf[BatchExecLocalHashAggregate],
-      operand(classOf[BatchExecCalc],
-        operand(classOf[BatchExecTableSourceScan], FlinkConventions.BATCH_PHYSICAL, any)))),
+  operand(classOf[BatchPhysicalExchange],
+    operand(classOf[BatchPhysicalLocalHashAggregate],
+      operand(classOf[BatchPhysicalCalc],
+        operand(classOf[BatchPhysicalTableSourceScan], FlinkConventions.BATCH_PHYSICAL, any)))),
   "PushLocalHashAggIntoTableSourceScanRule")
-  with ApeBatchExecAggRuleBase {
+  with ApeBatchPhysicalAggRuleBase {
 
   override def onMatch(call: RelOptRuleCall): Unit = {
-    val exchange = call.rels(0).asInstanceOf[BatchExecExchange]
-    val localAgg = call.rels(1).asInstanceOf[BatchExecLocalHashAggregate]
-    val calc = call.rels(2).asInstanceOf[BatchExecCalc]
-    val input = call.rels(3).asInstanceOf[BatchExecTableSourceScan]
+    val exchange = call.rels(0).asInstanceOf[BatchPhysicalExchange]
+    val localAgg = call.rels(1).asInstanceOf[BatchPhysicalLocalHashAggregate]
+    val calc = call.rels(2).asInstanceOf[BatchPhysicalCalc]
+    val input = call.rels(3).asInstanceOf[BatchPhysicalTableSourceScan]
 
     val tableSourceTable = input.getTable.unwrap(classOf[TableSourceTable])
 
@@ -93,10 +93,11 @@ class PushLocalHashAggCalcIntoTableSourceScanRule extends RelOptRule(
         val newTableSourceTable = tableSourceTable.copy(
           newTableSource,
           localAgg.getRowType,
-          Array[String]("aggregation=[" + localAgg.getRowType.getFieldNames.asScala.mkString(",") + "]"))
+          Array[String]("aggregation=[" + localAgg.getRowType.getFieldNames.asScala.mkString(",") + "]"),
+          Array[SourceAbilitySpec]())
 
-        val newScan = new BatchExecTableSourceScan(
-          input.getCluster, input.getTraitSet, newTableSourceTable)
+        val newScan = new BatchPhysicalTableSourceScan(
+          input.getCluster, input.getTraitSet, input.getHints, newTableSourceTable)
 
         // replace input of exchange
         val newExchange = exchange.copy(exchange.getTraitSet, newScan, exchange.distribution)
@@ -105,9 +106,9 @@ class PushLocalHashAggCalcIntoTableSourceScanRule extends RelOptRule(
     }
   }
 
-  def makeAggregateExprs(localAgg: BatchExecLocalHashAggregate,
-                         calc: BatchExecCalc,
-                         input: BatchExecTableSourceScan
+  def makeAggregateExprs(localAgg: BatchPhysicalLocalHashAggregate,
+                         calc: BatchPhysicalCalc,
+                         input: BatchPhysicalTableSourceScan
                         ): Option[AggregateExprs] = {
 
     // 1. wrap input columns of table with expression class
@@ -124,7 +125,7 @@ class PushLocalHashAggCalcIntoTableSourceScanRule extends RelOptRule(
 
     // 3. collect grouped columns from calc columns
     val groups = new ArrayBuffer[AggregateExpr]
-    localAgg.getGrouping.foreach(index => {
+    localAgg.grouping.foreach(index => {
       calcOutputColumns.get(index) match {
         case c: AggregateExprColumn => groups.append(c)
         case _ => return None
@@ -136,7 +137,7 @@ class PushLocalHashAggCalcIntoTableSourceScanRule extends RelOptRule(
 
     // parse output types of agg functions
     val (_, aggOutputTypes, _) = AggregateUtil.transformToBatchAggregateFunctions(
-      localAgg.getAggCallList, localAgg.getInput(0).getRowType)
+      FlinkTypeFactory.toLogicalRowType(localAgg.getInput(0).getRowType), localAgg.getAggCallList)
 
     val aggregateColumns = flattenAggFunctions(localAgg, aggOutputTypes, calcOutputColumns.get)
     if (aggregateColumns.isEmpty) {
@@ -169,7 +170,7 @@ class PushLocalHashAggCalcIntoTableSourceScanRule extends RelOptRule(
     Some(aggregateExprs)
   }
 
-  def getAggregateExprsFromCalc(calc: BatchExecCalc, inputColumns: ArrayBuffer[AggregateExprColumn])
+  def getAggregateExprsFromCalc(calc: BatchPhysicalCalc, inputColumns: ArrayBuffer[AggregateExprColumn])
   : Option[ArrayBuffer[AggregateExpr]] = {
 
     val program = calc.getProgram

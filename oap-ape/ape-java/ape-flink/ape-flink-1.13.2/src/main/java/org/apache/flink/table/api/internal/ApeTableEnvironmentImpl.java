@@ -18,6 +18,7 @@
 
 package org.apache.flink.table.api.internal;
 
+import org.apache.flink.configuration.Configuration;
 import org.apache.flink.table.api.ApeEnvironmentSettings;
 import org.apache.flink.table.api.TableConfig;
 import org.apache.flink.table.catalog.CatalogManager;
@@ -55,12 +56,22 @@ public class ApeTableEnvironmentImpl extends TableEnvironmentImpl {
                 userClassLoader);
     }
 
-    public static TableEnvironmentImpl create(ApeEnvironmentSettings settings) {
+    public static TableEnvironmentImpl create(Configuration configuration) {
+        return create(ApeEnvironmentSettings.fromConfiguration(configuration), configuration);
+    }
 
+    public static TableEnvironmentImpl create(ApeEnvironmentSettings settings) {
+        return create(settings, settings.toConfiguration());
+    }
+
+    private static TableEnvironmentImpl create(
+            ApeEnvironmentSettings settings, Configuration configuration) {
         // temporary solution until FLINK-15635 is fixed
         ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
 
+        // use configuration to init table config
         TableConfig tableConfig = new TableConfig();
+        tableConfig.addConfiguration(configuration);
 
         ModuleManager moduleManager = new ModuleManager();
 

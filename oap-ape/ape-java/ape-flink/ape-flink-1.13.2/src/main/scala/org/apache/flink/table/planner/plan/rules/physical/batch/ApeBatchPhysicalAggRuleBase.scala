@@ -23,13 +23,13 @@ import scala.collection.mutable.ArrayBuffer
 import org.apache.calcite.sql.`type`.SqlTypeName
 import org.apache.flink.table.planner.calcite.FlinkTypeFactory
 import org.apache.flink.table.planner.functions.aggfunctions.DeclarativeAggregateFunction
-import org.apache.flink.table.planner.plan.nodes.physical.batch.BatchExecLocalHashAggregate
+import org.apache.flink.table.planner.plan.nodes.physical.batch.BatchPhysicalLocalHashAggregate
 import org.apache.flink.table.types.DataType
 import org.apache.flink.table.utils.ape.{AggregateExpr, AggregateExprLiteral, AggregateExprRoot, AggregateExprRootChild}
 
-trait ApeBatchExecAggRuleBase extends BatchExecAggRuleBase{
+trait ApeBatchPhysicalAggRuleBase extends BatchPhysicalAggRuleBase{
 
-  def flattenAggFunctions(localAgg: BatchExecLocalHashAggregate,
+  def flattenAggFunctions(localAgg: BatchPhysicalLocalHashAggregate,
                           aggOutputTypes: Array[Array[DataType]],
                           inputColumns: ArrayBuffer[AggregateExpr])
   : Option[ArrayBuffer[AggregateExprRoot]] = {

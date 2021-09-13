@@ -86,7 +86,7 @@ public class YarnTaskExecutorRunnerApe {
             final Configuration configuration = TaskManagerRunner.loadConfiguration(args);
             setupAndModifyConfiguration(configuration, currDir, ENV);
 
-            ApeTaskManagerRunner.runTaskManagerSecurely(configuration);
+            ApeTaskManagerRunner.runTaskManagerProcessSecurely(configuration);
         } catch (Throwable t) {
             final Throwable strippedThrowable =
                     ExceptionUtils.stripException(t, UndeclaredThrowableException.class);

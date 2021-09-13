@@ -207,13 +207,15 @@ public abstract class ApeParquetVectorizedInputFormat<T, SplitT extends FileSour
             }
         }
 
-        final int numBatchesToCirculate =
-                config.getInteger(SourceReaderOptions.ELEMENT_QUEUE_CAPACITY);
         final Pool<ParquetReaderBatch<T>> poolOfBatches =
-                createPoolOfBatches(split, requestedSchema, numBatchesToCirculate);
+                createPoolOfBatches(split, requestedSchema, numBatchesToCirculate(config));
 
         return new ParquetReader(
                 reader, requestedSchema, totalRowCount, poolOfBatches, nativeReaderWrapper);
+    }
+
+    protected int numBatchesToCirculate(Configuration config) {
+        return config.getInteger(SourceReaderOptions.ELEMENT_QUEUE_CAPACITY);
     }
 
     @Override

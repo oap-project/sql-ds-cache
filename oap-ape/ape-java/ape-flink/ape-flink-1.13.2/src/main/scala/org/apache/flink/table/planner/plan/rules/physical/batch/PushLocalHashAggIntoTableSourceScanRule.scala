@@ -19,13 +19,13 @@ package org.apache.flink.table.planner.plan.rules.physical.batch
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
-
 import org.apache.calcite.plan.{RelOptRule, RelOptRuleCall}
 import org.apache.calcite.plan.RelOptRule.{any, operand}
 import org.apache.flink.table.connector.source.abilities.SupportsAggregationPushDown
 import org.apache.flink.table.planner.calcite.FlinkTypeFactory
+import org.apache.flink.table.planner.plan.abilities.source.SourceAbilitySpec
 import org.apache.flink.table.planner.plan.nodes.FlinkConventions
-import org.apache.flink.table.planner.plan.nodes.physical.batch.{BatchExecExchange, BatchExecLocalHashAggregate, BatchExecTableSourceScan}
+import org.apache.flink.table.planner.plan.nodes.physical.batch.{BatchPhysicalExchange, BatchPhysicalLocalHashAggregate, BatchPhysicalTableSourceScan}
 import org.apache.flink.table.planner.plan.schema.TableSourceTable
 import org.apache.flink.table.planner.plan.utils.AggregateUtil
 import org.apache.flink.table.types.utils.TypeConversions
@@ -34,25 +34,25 @@ import org.apache.flink.table.utils.ape.{AggregateExpr, AggregateExprColumn, Agg
 
 /**
  * Some aggregation functions are carried out tow-phase aggregate, that is:
- * BatchExecTableSourceScan
- *   -> BatchExecLocalHashAggregate
- *     -> BatchExecExchange
- *       -> BatchExecHashAggregate
+ * BatchPhysicalTableSourceScan
+ *   -> BatchPhysicalLocalHashAggregate
+ *     -> BatchPhysicalExchange
+ *       -> BatchPhysicalHashAggregate
  *
  * If the `input` mentioned above can processing agg functions partially, then we can push down
  * aggregations to the input. And the `LocalHashAggregate` should be removed from the plan.
  */
 class PushLocalHashAggIntoTableSourceScanRule extends RelOptRule(
-  operand(classOf[BatchExecExchange],
-    operand(classOf[BatchExecLocalHashAggregate],
-      operand(classOf[BatchExecTableSourceScan], FlinkConventions.BATCH_PHYSICAL, any))),
+  operand(classOf[BatchPhysicalExchange],
+    operand(classOf[BatchPhysicalLocalHashAggregate],
+      operand(classOf[BatchPhysicalTableSourceScan], FlinkConventions.BATCH_PHYSICAL, any))),
   "PushLocalHashAggIntoTableSourceScanRule")
-  with ApeBatchExecAggRuleBase {
+  with ApeBatchPhysicalAggRuleBase {
 
   override def onMatch(call: RelOptRuleCall): Unit = {
-    val exchange = call.rels(0).asInstanceOf[BatchExecExchange]
-    val localAgg = call.rels(1).asInstanceOf[BatchExecLocalHashAggregate]
-    val input = call.rels(2).asInstanceOf[BatchExecTableSourceScan]
+    val exchange = call.rels(0).asInstanceOf[BatchPhysicalExchange]
+    val localAgg = call.rels(1).asInstanceOf[BatchPhysicalLocalHashAggregate]
+    val input = call.rels(2).asInstanceOf[BatchPhysicalTableSourceScan]
 
     val tableSourceTable = input.getTable.unwrap(classOf[TableSourceTable])
 
@@ -85,10 +85,10 @@ class PushLocalHashAggIntoTableSourceScanRule extends RelOptRule(
         val newTableSourceTable = tableSourceTable.copy(
           newTableSource,
           localAgg.getRowType,
-          Array[String]("aggregation=[" + localAgg.getRowType.getFieldNames.asScala.mkString(",") + "]"))
-
-        val newScan = new BatchExecTableSourceScan(
-          input.getCluster, input.getTraitSet, newTableSourceTable)
+          Array[String]("aggregation=[" + localAgg.getRowType.getFieldNames.asScala.mkString(",") + "]"),
+          Array[SourceAbilitySpec]())
+        val newScan = new BatchPhysicalTableSourceScan(
+          input.getCluster, input.getTraitSet, input.getHints, newTableSourceTable)
 
         // replace input of exchange
         val newExchange = exchange.copy(exchange.getTraitSet, newScan, exchange.distribution)
@@ -97,8 +97,8 @@ class PushLocalHashAggIntoTableSourceScanRule extends RelOptRule(
     }
   }
 
-  def makeAggregateExprs(localAgg: BatchExecLocalHashAggregate,
-                         input: BatchExecTableSourceScan
+  def makeAggregateExprs(localAgg: BatchPhysicalLocalHashAggregate,
+                         input: BatchPhysicalTableSourceScan
                         ): Option[AggregateExprs] = {
 
     // 1. wrap input columns of table with expression class
@@ -109,7 +109,7 @@ class PushLocalHashAggIntoTableSourceScanRule extends RelOptRule(
 
     // 2. collect grouped columns from input columns
     val groups = new ArrayBuffer[AggregateExpr]
-    localAgg.getGrouping.foreach(index => {
+    localAgg.grouping.foreach(index => {
       inputColumns(index) match {
         case c: AggregateExprColumn => groups.append(c)
         case _ => return None
@@ -121,7 +121,7 @@ class PushLocalHashAggIntoTableSourceScanRule extends RelOptRule(
 
     // parse output types of agg functions
     val (_, aggOutputTypes, _) = AggregateUtil.transformToBatchAggregateFunctions(
-      localAgg.getAggCallList, localAgg.getInput(0).getRowType)
+      FlinkTypeFactory.toLogicalRowType(localAgg.getInput(0).getRowType), localAgg.getAggCallList)
 
     val aggregateColumns = flattenAggFunctions(localAgg, aggOutputTypes, inputColumns)
     if (aggregateColumns.isEmpty) {

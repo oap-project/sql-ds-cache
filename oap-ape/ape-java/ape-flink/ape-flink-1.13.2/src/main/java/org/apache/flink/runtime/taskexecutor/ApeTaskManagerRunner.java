@@ -18,18 +18,16 @@
 
 package org.apache.flink.runtime.taskexecutor;
 
-import org.apache.flink.api.common.time.Time;
+import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.CoreOptions;
-import org.apache.flink.configuration.WebOptions;
 import org.apache.flink.core.fs.FileSystem;
 import org.apache.flink.core.plugin.PluginManager;
 import org.apache.flink.core.plugin.PluginUtils;
 import org.apache.flink.metrics.MetricGroup;
 import org.apache.flink.runtime.blob.BlobCacheService;
 import org.apache.flink.runtime.clusterframework.types.ResourceID;
-import org.apache.flink.runtime.concurrent.ScheduledExecutor;
 import org.apache.flink.runtime.entrypoint.FlinkParseException;
 import org.apache.flink.runtime.externalresource.ExternalResourceInfoProvider;
 import org.apache.flink.runtime.heartbeat.HeartbeatServices;
@@ -40,6 +38,7 @@ import org.apache.flink.runtime.metrics.groups.TaskManagerMetricGroup;
 import org.apache.flink.runtime.metrics.util.MetricUtils;
 import org.apache.flink.runtime.rpc.FatalErrorHandler;
 import org.apache.flink.runtime.rpc.RpcService;
+import org.apache.flink.runtime.security.FlinkSecurityManager;
 import org.apache.flink.runtime.security.SecurityConfiguration;
 import org.apache.flink.runtime.security.SecurityUtils;
 import org.apache.flink.runtime.util.ConfigurationParserUtils;
@@ -48,6 +47,7 @@ import org.apache.flink.runtime.util.ExecutorThreadFactory;
 import org.apache.flink.runtime.util.JvmShutdownSafeguard;
 import org.apache.flink.runtime.util.SignalHandler;
 import org.apache.flink.util.ExceptionUtils;
+import org.apache.flink.util.FlinkException;
 import org.apache.flink.yarn.ApeYarnOptions;
 
 import org.slf4j.Logger;
@@ -59,7 +59,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static org.apache.flink.runtime.clusterframework.ApeBootstrapTools.NUMA_BINDING_NODES_INDEX_CONF_KEY;
-import static org.apache.flink.runtime.security.ExitTrappingSecurityManager.replaceGracefulExitWithHaltIfConfigured;
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
 /**
@@ -72,6 +71,8 @@ public class ApeTaskManagerRunner {
     private static final Logger LOG = LoggerFactory.getLogger(ApeTaskManagerRunner.class);
 
     private static final int STARTUP_FAILURE_RETURN_CODE = 1;
+    private static final int SUCCESS_EXIT_CODE = 0;
+    @VisibleForTesting static final int FAILURE_EXIT_CODE = 1;
 
     // --------------------------------------------------------------------------------------------
     //  Static entry point
@@ -91,7 +92,7 @@ public class ApeTaskManagerRunner {
             LOG.info("Cannot determine the maximum number of open file descriptors");
         }
 
-        runTaskManagerSecurely(args);
+        runTaskManagerProcessSecurely(args);
     }
 
     public static Configuration loadConfiguration(String[] args) throws FlinkParseException {
@@ -99,43 +100,70 @@ public class ApeTaskManagerRunner {
                 args, TaskManagerRunner.class.getSimpleName());
     }
 
-    public static void runTaskManager(Configuration configuration, PluginManager pluginManager)
+    public static int runTaskManager(Configuration configuration, PluginManager pluginManager)
             throws Exception {
-        final TaskManagerRunner taskManagerRunner =
-                new TaskManagerRunner(
-                        configuration,
-                        pluginManager,
-                        ApeTaskManagerRunner::createTaskExecutorService);
+        final TaskManagerRunner taskManagerRunner;
 
-        taskManagerRunner.start();
-    }
-
-    public static void runTaskManagerSecurely(String[] args) {
         try {
-            Configuration configuration = loadConfiguration(args);
-            runTaskManagerSecurely(configuration);
+            taskManagerRunner =
+                    new TaskManagerRunner(
+                            configuration,
+                            pluginManager,
+                            ApeTaskManagerRunner::createTaskExecutorService);
+            taskManagerRunner.start();
+        } catch (Exception exception) {
+            throw new FlinkException("Failed to start the TaskManagerRunner.", exception);
+        }
+
+        try {
+            return taskManagerRunner.getTerminationFuture().get().getExitCode();
         } catch (Throwable t) {
-            final Throwable strippedThrowable =
-                    ExceptionUtils.stripException(t, UndeclaredThrowableException.class);
-            LOG.error("TaskManager initialization failed.", strippedThrowable);
-            System.exit(STARTUP_FAILURE_RETURN_CODE);
+            throw new FlinkException(
+                    "Unexpected failure during runtime of TaskManagerRunner.",
+                    ExceptionUtils.stripExecutionException(t));
         }
     }
 
-    public static void runTaskManagerSecurely(Configuration configuration) throws Exception {
-        replaceGracefulExitWithHaltIfConfigured(configuration);
+    public static void runTaskManagerProcessSecurely(String[] args) {
+        Configuration configuration = null;
+
+        try {
+            configuration = loadConfiguration(args);
+        } catch (FlinkParseException fpe) {
+            LOG.error("Could not load the configuration.", fpe);
+            System.exit(FAILURE_EXIT_CODE);
+        }
+
+        runTaskManagerProcessSecurely(checkNotNull(configuration));
+    }
+
+    public static void runTaskManagerProcessSecurely(Configuration configuration) {
+        FlinkSecurityManager.setFromConfiguration(configuration);
         final PluginManager pluginManager =
                 PluginUtils.createPluginManagerFromRootFolder(configuration);
         FileSystem.initialize(configuration, pluginManager);
 
-        SecurityUtils.install(new SecurityConfiguration(configuration));
+        int exitCode;
+        Throwable throwable = null;
 
-        SecurityUtils.getInstalledContext()
-                .runSecured(
-                        () -> {
-                            runTaskManager(configuration, pluginManager);
-                            return null;
-                        });
+        try {
+            SecurityUtils.install(new SecurityConfiguration(configuration));
+
+            exitCode =
+                    SecurityUtils.getInstalledContext()
+                            .runSecured(() -> runTaskManager(configuration, pluginManager));
+        } catch (Throwable t) {
+            throwable = ExceptionUtils.stripException(t, UndeclaredThrowableException.class);
+            exitCode = FAILURE_EXIT_CODE;
+        }
+
+        if (throwable != null) {
+            LOG.error("Terminating TaskManagerRunner with exit code {}.", exitCode, throwable);
+        } else {
+            LOG.info("Terminating TaskManagerRunner with exit code {}.", exitCode);
+        }
+
+        System.exit(exitCode);
     }
 
     // --------------------------------------------------------------------------------------------
@@ -264,15 +292,6 @@ public class ApeTaskManagerRunner {
                 metricQueryServiceAddress,
                 blobCacheService,
                 fatalErrorHandler,
-                new TaskExecutorPartitionTrackerImpl(taskManagerServices.getShuffleEnvironment()),
-                createBackPressureSampleService(configuration, rpcService.getScheduledExecutor()));
-    }
-
-    static BackPressureSampleService createBackPressureSampleService(
-            Configuration configuration, ScheduledExecutor scheduledExecutor) {
-        return new BackPressureSampleService(
-                configuration.getInteger(WebOptions.BACKPRESSURE_NUM_SAMPLES),
-                Time.milliseconds(configuration.getInteger(WebOptions.BACKPRESSURE_DELAY)),
-                scheduledExecutor);
+                new TaskExecutorPartitionTrackerImpl(taskManagerServices.getShuffleEnvironment()));
     }
 }

@@ -22,12 +22,13 @@ package org.apache.flink.table.planner.plan.optimize
 import java.util.Collections
 
 import org.apache.calcite.rel.RelNode
+import org.apache.calcite.rex.RexBuilder
 import org.apache.flink.table.api.TableConfig
 import org.apache.flink.table.catalog.{CatalogManager, FunctionCatalog}
 import org.apache.flink.table.planner.calcite.{FlinkContext, SqlExprToRexConverterFactory}
 import org.apache.flink.table.planner.delegation.ApeBatchPlanner
-import org.apache.flink.table.planner.plan.nodes.physical.batch.BatchExecLegacySink
-import org.apache.flink.table.planner.plan.optimize.program.{ApeFlinkBatchProgram, BatchOptimizeContext}
+import org.apache.flink.table.planner.plan.nodes.calcite.{LegacySink, Sink}
+import org.apache.flink.table.planner.plan.optimize.program.{ApeFlinkBatchProgram, BatchOptimizeContext, FlinkBatchProgram}
 import org.apache.flink.table.planner.plan.schema.IntermediateRelTable
 import org.apache.flink.table.planner.utils.TableConfigUtils
 import org.apache.flink.util.Preconditions
@@ -58,7 +59,7 @@ class ApeBatchCommonSubGraphBasedOptimizer(planner: ApeBatchPlanner)
     val optimizedTree = optimizeTree(originTree)
 
     optimizedTree match {
-      case _: BatchExecLegacySink[_] => // ignore
+      case _: LegacySink | _: Sink => // ignore
       case _ =>
         val name = createUniqueIntermediateRelTableName
         val intermediateRelTable = new IntermediateRelTable(Collections.singletonList(name),
@@ -71,11 +72,11 @@ class ApeBatchCommonSubGraphBasedOptimizer(planner: ApeBatchPlanner)
   }
 
   /**
-    * Generates the optimized [[RelNode]] tree from the original relational node tree.
-    *
-    * @param relNode The original [[RelNode]] tree
-    * @return The optimized [[RelNode]] tree
-    */
+   * Generates the optimized [[RelNode]] tree from the original relational node tree.
+   *
+   * @param relNode The original [[RelNode]] tree
+   * @return The optimized [[RelNode]] tree
+   */
   private def optimizeTree(relNode: RelNode): RelNode = {
     val config = planner.getTableConfig
     val programs = TableConfigUtils.getCalciteConfig(config).getBatchProgram
@@ -93,7 +94,12 @@ class ApeBatchCommonSubGraphBasedOptimizer(planner: ApeBatchPlanner)
 
       override def getSqlExprToRexConverterFactory: SqlExprToRexConverterFactory =
         context.getSqlExprToRexConverterFactory
+
+      override def getRexBuilder: RexBuilder = planner.getRelBuilder.getRexBuilder
+
+      override def needFinalTimeIndicatorConversion: Boolean = true
     })
   }
+
 
 }

@@ -19,27 +19,19 @@
 package org.apache.flink.table.catalog.hive;
 
 import org.apache.flink.annotation.VisibleForTesting;
-import org.apache.flink.api.java.hadoop.mapred.utils.HadoopUtils;
 import org.apache.flink.connectors.hive.ApeHiveDynamicTableFactory;
-import org.apache.flink.table.catalog.exceptions.CatalogException;
 import org.apache.flink.table.catalog.hive.client.HiveMetastoreClientWrapper;
 import org.apache.flink.table.catalog.hive.client.HiveShimLoader;
 import org.apache.flink.table.factories.Factory;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.Optional;
 
-import static org.apache.flink.table.catalog.hive.util.HiveTableUtil.getHadoopConfiguration;
 import static org.apache.flink.util.StringUtils.isNullOrWhitespaceOnly;
 
 /** A catalog implementation for Hive. */
@@ -101,46 +93,5 @@ public class ApeHiveCatalog extends HiveCatalog {
     @Override
     public Optional<Factory> getFactory() {
         return Optional.of(new ApeHiveDynamicTableFactory(hiveConf));
-    }
-
-    private static HiveConf createHiveConf(
-            @Nullable String hiveConfDir, @Nullable String hadoopConfDir) {
-        // create HiveConf from hadoop configuration with hadoop conf directory configured.
-        Configuration hadoopConf = null;
-        if (isNullOrWhitespaceOnly(hadoopConfDir)) {
-            for (String possibleHadoopConfPath :
-                    HadoopUtils.possibleHadoopConfPaths(
-                            new org.apache.flink.configuration.Configuration())) {
-                hadoopConf = getHadoopConfiguration(possibleHadoopConfPath);
-                if (hadoopConf != null) {
-                    break;
-                }
-            }
-        } else {
-            hadoopConf = getHadoopConfiguration(hadoopConfDir);
-        }
-        if (hadoopConf == null) {
-            hadoopConf = new Configuration();
-        }
-        HiveConf hiveConf = new HiveConf(hadoopConf, HiveConf.class);
-
-        LOG.info("Setting hive conf dir as {}", hiveConfDir);
-
-        if (hiveConfDir != null) {
-            Path hiveSite = new Path(hiveConfDir, "hive-site.xml");
-            if (!hiveSite.toUri().isAbsolute()) {
-                // treat relative URI as local file to be compatible with previous behavior
-                hiveSite = new Path(new File(hiveSite.toString()).toURI());
-            }
-            try (InputStream inputStream = hiveSite.getFileSystem(hadoopConf).open(hiveSite)) {
-                hiveConf.addResource(inputStream, hiveSite.toString());
-                // trigger a read from the conf so that the input stream is read
-                isEmbeddedMetastore(hiveConf);
-            } catch (IOException e) {
-                throw new CatalogException(
-                        "Failed to load hive-site.xml from specified path:" + hiveSite, e);
-            }
-        }
-        return hiveConf;
     }
 }

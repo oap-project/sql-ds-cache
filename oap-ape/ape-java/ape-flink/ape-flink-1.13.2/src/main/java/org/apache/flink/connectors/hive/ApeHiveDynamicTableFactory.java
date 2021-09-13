@@ -18,9 +18,8 @@
 
 package org.apache.flink.connectors.hive;
 
-import org.apache.flink.table.api.ValidationException;
 import org.apache.flink.table.catalog.CatalogTable;
-import org.apache.flink.table.catalog.config.CatalogConfig;
+import org.apache.flink.table.catalog.hive.HiveCatalog;
 import org.apache.flink.table.connector.source.DynamicTableSource;
 import org.apache.flink.table.factories.FactoryUtil;
 import org.apache.flink.util.Preconditions;
@@ -28,10 +27,6 @@ import org.apache.flink.util.Preconditions;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.mapred.JobConf;
 
-import java.util.HashMap;
-import java.util.Map;
-
-import static org.apache.flink.table.catalog.config.CatalogConfig.IS_GENERIC;
 import static org.apache.flink.table.filesystem.FileSystemOptions.STREAMING_SOURCE_ENABLE;
 import static org.apache.flink.table.filesystem.FileSystemOptions.STREAMING_SOURCE_PARTITION_INCLUDE;
 
@@ -45,25 +40,12 @@ public class ApeHiveDynamicTableFactory extends HiveDynamicTableFactory {
         this.hiveConf = hiveConf;
     }
 
-    private static CatalogTable removeIsGenericFlag(Context context) {
-        Map<String, String> newOptions = new HashMap<>(context.getCatalogTable().getOptions());
-        boolean isGeneric = Boolean.parseBoolean(newOptions.remove(IS_GENERIC));
-        // temporary table doesn't have the IS_GENERIC flag but we still consider it generic
-        if (!isGeneric && !context.isTemporary()) {
-            throw new ValidationException(
-                    "Hive dynamic table factory now only work for generic table.");
-        }
-        return context.getCatalogTable().copy(newOptions);
-    }
-
     @Override
     public DynamicTableSource createDynamicTableSource(Context context) {
-        boolean isGeneric =
-                Boolean.parseBoolean(
-                        context.getCatalogTable().getOptions().get(CatalogConfig.IS_GENERIC));
+        boolean isHiveTable = HiveCatalog.isHiveTable(context.getCatalogTable().getOptions());
 
-        // temporary table doesn't have the IS_GENERIC flag but we still consider it generic
-        if (!isGeneric && !context.isTemporary()) {
+        // we don't support temporary hive tables yet
+        if (isHiveTable && !context.isTemporary()) {
             CatalogTable catalogTable = Preconditions.checkNotNull(context.getCatalogTable());
 
             boolean isStreamingSource =
@@ -104,7 +86,7 @@ public class ApeHiveDynamicTableFactory extends HiveDynamicTableFactory {
             return FactoryUtil.createTableSource(
                     null, // we already in the factory of catalog
                     context.getObjectIdentifier(),
-                    removeIsGenericFlag(context),
+                    context.getCatalogTable(),
                     context.getConfiguration(),
                     context.getClassLoader(),
                     context.isTemporary());
