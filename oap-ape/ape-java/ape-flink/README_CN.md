@@ -130,9 +130,9 @@ git checkout -b ape origin/ape
 
 cd oap-ape/ape-java/
 mvn clean install
-mvn clean package -Pshading -pl :ape-flink
+mvn clean package -Pshading -pl :ape-flink-${FLINK_VERSION}
 
-cp ape-flink/target/ape-flink-1.1.0-SNAPSHOT.jar $FLINK_INSTALL_DIR/lib/
+cp ape-flink/ape-flink-${FLINK_VERSION}/target/ape-flink-${FLINK_VERSION}-1.1.0-SNAPSHOT.jar $FLINK_INSTALL_DIR/lib/
 
 ```
 
@@ -198,7 +198,7 @@ cp ape-flink/target/ape-flink-1.1.0-SNAPSHOT.jar $FLINK_INSTALL_DIR/lib/
 - **提交Flink应用前的准备**
 
 ```
-cp oap-ape/ape-java/ape-flink/target/ape-flink-1.1.0-SNAPSHOT.jar $FLINK_HOME/lib
+cp oap-ape/ape-java/ape-flink/ape-flink-${FLINK_VERSION}/target/ape-flink-${FLINK_VERSION}-1.1.0-SNAPSHOT.jar $FLINK_HOME/lib
 ```
 
 
@@ -237,7 +237,7 @@ io.tmp.dirs: /mnt/pmem
 
 首先，安装APE-Flink Java库
 ```
-cp oap-ape/ape-java/ape-flink/target/ape-flink-1.1.0-SNAPSHOT.jar $FLINK_HOME/lib
+cp oap-ape/ape-java/ape-flink/ape-flink-${FLINK_VERSION}/target/ape-flink-${FLINK_VERSION}-1.1.0-SNAPSHOT.jar $FLINK_HOME/lib
 ```
 
 然后，修改Flink客户端配置文件flink-conf.yaml:

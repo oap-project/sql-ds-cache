@@ -126,9 +126,9 @@ git checkout -b ape origin/ape
 
 cd oap-ape/ape-java/
 mvn clean install
-mvn clean package -Pshading -pl :ape-flink
+mvn clean package -Pshading -pl :ape-flink-${FLINK_VERSION}
 
-cp ape-flink/target/ape-flink-1.1.0-SNAPSHOT.jar $FLINK_INSTALL_DIR/lib/
+cp ape-flink/ape-flink-${FLINK_VERSION}/target/ape-flink-${FLINK_VERSION}-1.1.0-SNAPSHOT.jar $FLINK_INSTALL_DIR/lib/
 ```
 
 <a id="usages-for-data-source-acceleration"></a>
