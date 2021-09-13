@@ -31,32 +31,39 @@ import org.apache.flink.yarn.YarnWorkerNode;
 import org.apache.flink.yarn.configuration.YarnResourceManagerDriverConfiguration;
 
 /**
- * {@link ActiveResourceManagerFactory} implementation which creates a {@link ActiveResourceManager} with {@link ApeYarnResourceManagerDriver}.
+ * {@link ActiveResourceManagerFactory} implementation which creates a {@link ActiveResourceManager}
+ * with {@link ApeYarnResourceManagerDriver}.
  */
 public class ApeYarnResourceManagerFactory extends ActiveResourceManagerFactory<YarnWorkerNode> {
 
-	private static final ApeYarnResourceManagerFactory INSTANCE = new ApeYarnResourceManagerFactory();
+    private static final ApeYarnResourceManagerFactory INSTANCE =
+            new ApeYarnResourceManagerFactory();
 
-	private ApeYarnResourceManagerFactory() {}
+    private ApeYarnResourceManagerFactory() {}
 
-	public static ApeYarnResourceManagerFactory getInstance() {
-		return INSTANCE;
-	}
+    public static ApeYarnResourceManagerFactory getInstance() {
+        return INSTANCE;
+    }
 
-	@Override
-	protected ResourceManagerDriver<YarnWorkerNode> createResourceManagerDriver(Configuration configuration, String webInterfaceUrl, String rpcAddress) {
-		final YarnResourceManagerDriverConfiguration yarnResourceManagerDriverConfiguration = new YarnResourceManagerDriverConfiguration(System.getenv(), rpcAddress, webInterfaceUrl);
+    @Override
+    protected ResourceManagerDriver<YarnWorkerNode> createResourceManagerDriver(
+            Configuration configuration, String webInterfaceUrl, String rpcAddress) {
+        final YarnResourceManagerDriverConfiguration yarnResourceManagerDriverConfiguration =
+                new YarnResourceManagerDriverConfiguration(
+                        System.getenv(), rpcAddress, webInterfaceUrl);
 
-		return new ApeYarnResourceManagerDriver(
-			configuration,
-			yarnResourceManagerDriverConfiguration,
-			DefaultYarnResourceManagerClientFactory.getInstance(),
-			DefaultYarnNodeManagerClientFactory.getInstance());
-	}
+        return new ApeYarnResourceManagerDriver(
+                configuration,
+                yarnResourceManagerDriverConfiguration,
+                DefaultYarnResourceManagerClientFactory.getInstance(),
+                DefaultYarnNodeManagerClientFactory.getInstance());
+    }
 
-	@Override
-	protected ResourceManagerRuntimeServicesConfiguration createResourceManagerRuntimeServicesConfiguration(
-		Configuration configuration) throws ConfigurationException {
-		return ResourceManagerRuntimeServicesConfiguration.fromConfiguration(configuration, YarnWorkerResourceSpecFactory.INSTANCE);
-	}
+    @Override
+    protected ResourceManagerRuntimeServicesConfiguration
+            createResourceManagerRuntimeServicesConfiguration(Configuration configuration)
+                    throws ConfigurationException {
+        return ResourceManagerRuntimeServicesConfiguration.fromConfiguration(
+                configuration, YarnWorkerResourceSpecFactory.INSTANCE);
+    }
 }

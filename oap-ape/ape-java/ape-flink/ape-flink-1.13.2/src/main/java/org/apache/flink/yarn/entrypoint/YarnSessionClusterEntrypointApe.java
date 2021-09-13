@@ -36,53 +36,57 @@ import org.apache.hadoop.yarn.api.ApplicationConstants;
 import java.io.IOException;
 import java.util.Map;
 
-/**
- * Entry point for Yarn session clusters.
- */
+/** Entry point for Yarn session clusters. */
 public class YarnSessionClusterEntrypointApe extends SessionClusterEntrypoint {
 
-	public YarnSessionClusterEntrypointApe(Configuration configuration) {
-		super(configuration);
-	}
+    public YarnSessionClusterEntrypointApe(Configuration configuration) {
+        super(configuration);
+    }
 
-	@Override
-	protected String getRPCPortRange(Configuration configuration) {
-		return configuration.getString(YarnConfigOptions.APPLICATION_MASTER_PORT);
-	}
+    @Override
+    protected String getRPCPortRange(Configuration configuration) {
+        return configuration.getString(YarnConfigOptions.APPLICATION_MASTER_PORT);
+    }
 
-	@Override
-	protected DispatcherResourceManagerComponentFactory createDispatcherResourceManagerComponentFactory(Configuration configuration) {
-		return DefaultDispatcherResourceManagerComponentFactory.createSessionComponentFactory(ApeYarnResourceManagerFactory.getInstance());
-	}
+    @Override
+    protected DispatcherResourceManagerComponentFactory
+            createDispatcherResourceManagerComponentFactory(Configuration configuration) {
+        return DefaultDispatcherResourceManagerComponentFactory.createSessionComponentFactory(
+                ApeYarnResourceManagerFactory.getInstance());
+    }
 
-	public static void main(String[] args) {
-		// startup checks and logging
-		EnvironmentInformation.logEnvironmentInfo(LOG, YarnSessionClusterEntrypointApe.class.getSimpleName(), args);
-		SignalHandler.register(LOG);
-		JvmShutdownSafeguard.installAsShutdownHook(LOG);
+    public static void main(String[] args) {
+        // startup checks and logging
+        EnvironmentInformation.logEnvironmentInfo(
+                LOG, YarnSessionClusterEntrypointApe.class.getSimpleName(), args);
+        SignalHandler.register(LOG);
+        JvmShutdownSafeguard.installAsShutdownHook(LOG);
 
-		Map<String, String> env = System.getenv();
+        Map<String, String> env = System.getenv();
 
-		final String workingDirectory = env.get(ApplicationConstants.Environment.PWD.key());
-		Preconditions.checkArgument(
-			workingDirectory != null,
-			"Working directory variable (%s) not set",
-			ApplicationConstants.Environment.PWD.key());
+        final String workingDirectory = env.get(ApplicationConstants.Environment.PWD.key());
+        Preconditions.checkArgument(
+                workingDirectory != null,
+                "Working directory variable (%s) not set",
+                ApplicationConstants.Environment.PWD.key());
 
-		try {
-			YarnEntrypointUtils.logYarnEnvironmentInformation(env, LOG);
-		} catch (IOException e) {
-			LOG.warn("Could not log YARN environment information.", e);
-		}
+        try {
+            YarnEntrypointUtils.logYarnEnvironmentInformation(env, LOG);
+        } catch (IOException e) {
+            LOG.warn("Could not log YARN environment information.", e);
+        }
 
-		final Configuration dynamicParameters = ClusterEntrypointUtils.parseParametersOrExit(
-			args,
-			new DynamicParametersConfigurationParserFactory(),
-			YarnSessionClusterEntrypointApe.class);
-		final Configuration configuration = YarnEntrypointUtils.loadConfiguration(workingDirectory, dynamicParameters, env);
+        final Configuration dynamicParameters =
+                ClusterEntrypointUtils.parseParametersOrExit(
+                        args,
+                        new DynamicParametersConfigurationParserFactory(),
+                        YarnSessionClusterEntrypointApe.class);
+        final Configuration configuration =
+                YarnEntrypointUtils.loadConfiguration(workingDirectory, dynamicParameters, env);
 
-		YarnSessionClusterEntrypointApe yarnSessionClusterEntrypoint = new YarnSessionClusterEntrypointApe(configuration);
+        YarnSessionClusterEntrypointApe yarnSessionClusterEntrypoint =
+                new YarnSessionClusterEntrypointApe(configuration);
 
-		ClusterEntrypoint.runClusterEntrypoint(yarnSessionClusterEntrypoint);
-	}
+        ClusterEntrypoint.runClusterEntrypoint(yarnSessionClusterEntrypoint);
+    }
 }

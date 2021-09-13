@@ -1,20 +1,20 @@
 /*
-* Licensed to the Apache Software Foundation (ASF) under one
-* or more contributor license agreements.  See the NOTICE file
-* distributed with this work for additional information
-* regarding copyright ownership.  The ASF licenses this file
-* to you under the Apache License, Version 2.0 (the
-* "License"); you may not use this file except in compliance
-* with the License.  You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package org.apache.flink.runtime.taskexecutor;
 
@@ -63,200 +63,216 @@ import static org.apache.flink.runtime.security.ExitTrappingSecurityManager.repl
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
 /**
-* This class is the executable entry point for the task manager in yarn or standalone mode.
-* It constructs the related components (network, I/O manager, memory manager, RPC service, HA service)
-* and starts them.
-*/
+ * This class is the executable entry point for the task manager in yarn or standalone mode. It
+ * constructs the related components (network, I/O manager, memory manager, RPC service, HA service)
+ * and starts them.
+ */
 public class ApeTaskManagerRunner {
 
-	private static final Logger LOG = LoggerFactory.getLogger(ApeTaskManagerRunner.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ApeTaskManagerRunner.class);
 
-	private static final int STARTUP_FAILURE_RETURN_CODE = 1;
+    private static final int STARTUP_FAILURE_RETURN_CODE = 1;
 
-	// --------------------------------------------------------------------------------------------
-	//  Static entry point
-	// --------------------------------------------------------------------------------------------
+    // --------------------------------------------------------------------------------------------
+    //  Static entry point
+    // --------------------------------------------------------------------------------------------
 
-	public static void main(String[] args) throws Exception {
-		// startup checks and logging
-		EnvironmentInformation.logEnvironmentInfo(LOG, "TaskManager", args);
-		SignalHandler.register(LOG);
-		JvmShutdownSafeguard.installAsShutdownHook(LOG);
+    public static void main(String[] args) throws Exception {
+        // startup checks and logging
+        EnvironmentInformation.logEnvironmentInfo(LOG, "TaskManager", args);
+        SignalHandler.register(LOG);
+        JvmShutdownSafeguard.installAsShutdownHook(LOG);
 
-		long maxOpenFileHandles = EnvironmentInformation.getOpenFileHandlesLimit();
+        long maxOpenFileHandles = EnvironmentInformation.getOpenFileHandlesLimit();
 
-		if (maxOpenFileHandles != -1L) {
-			LOG.info("Maximum number of open file descriptors is {}.", maxOpenFileHandles);
-		} else {
-			LOG.info("Cannot determine the maximum number of open file descriptors");
-		}
+        if (maxOpenFileHandles != -1L) {
+            LOG.info("Maximum number of open file descriptors is {}.", maxOpenFileHandles);
+        } else {
+            LOG.info("Cannot determine the maximum number of open file descriptors");
+        }
 
-		runTaskManagerSecurely(args);
-	}
+        runTaskManagerSecurely(args);
+    }
 
-	public static Configuration loadConfiguration(String[] args) throws FlinkParseException {
-		return ConfigurationParserUtils.loadCommonConfiguration(args, TaskManagerRunner.class.getSimpleName());
-	}
+    public static Configuration loadConfiguration(String[] args) throws FlinkParseException {
+        return ConfigurationParserUtils.loadCommonConfiguration(
+                args, TaskManagerRunner.class.getSimpleName());
+    }
 
-	public static void runTaskManager(Configuration configuration, PluginManager pluginManager) throws Exception {
-		final TaskManagerRunner taskManagerRunner = new TaskManagerRunner(configuration, pluginManager, ApeTaskManagerRunner::createTaskExecutorService);
+    public static void runTaskManager(Configuration configuration, PluginManager pluginManager)
+            throws Exception {
+        final TaskManagerRunner taskManagerRunner =
+                new TaskManagerRunner(
+                        configuration,
+                        pluginManager,
+                        ApeTaskManagerRunner::createTaskExecutorService);
 
-		taskManagerRunner.start();
-	}
+        taskManagerRunner.start();
+    }
 
-	public static void runTaskManagerSecurely(String[] args) {
-		try {
-			Configuration configuration = loadConfiguration(args);
-			runTaskManagerSecurely(configuration);
-		} catch (Throwable t) {
-			final Throwable strippedThrowable = ExceptionUtils.stripException(t, UndeclaredThrowableException.class);
-			LOG.error("TaskManager initialization failed.", strippedThrowable);
-			System.exit(STARTUP_FAILURE_RETURN_CODE);
-		}
-	}
+    public static void runTaskManagerSecurely(String[] args) {
+        try {
+            Configuration configuration = loadConfiguration(args);
+            runTaskManagerSecurely(configuration);
+        } catch (Throwable t) {
+            final Throwable strippedThrowable =
+                    ExceptionUtils.stripException(t, UndeclaredThrowableException.class);
+            LOG.error("TaskManager initialization failed.", strippedThrowable);
+            System.exit(STARTUP_FAILURE_RETURN_CODE);
+        }
+    }
 
-	public static void runTaskManagerSecurely(Configuration configuration) throws Exception {
-		replaceGracefulExitWithHaltIfConfigured(configuration);
-		final PluginManager pluginManager = PluginUtils.createPluginManagerFromRootFolder(configuration);
-		FileSystem.initialize(configuration, pluginManager);
+    public static void runTaskManagerSecurely(Configuration configuration) throws Exception {
+        replaceGracefulExitWithHaltIfConfigured(configuration);
+        final PluginManager pluginManager =
+                PluginUtils.createPluginManagerFromRootFolder(configuration);
+        FileSystem.initialize(configuration, pluginManager);
 
-		SecurityUtils.install(new SecurityConfiguration(configuration));
+        SecurityUtils.install(new SecurityConfiguration(configuration));
 
-		SecurityUtils.getInstalledContext().runSecured(() -> {
-			runTaskManager(configuration, pluginManager);
-			return null;
-		});
-	}
+        SecurityUtils.getInstalledContext()
+                .runSecured(
+                        () -> {
+                            runTaskManager(configuration, pluginManager);
+                            return null;
+                        });
+    }
 
-	// --------------------------------------------------------------------------------------------
-	//  Static utilities
-	// --------------------------------------------------------------------------------------------
+    // --------------------------------------------------------------------------------------------
+    //  Static utilities
+    // --------------------------------------------------------------------------------------------
 
-	public static TaskManagerRunner.TaskExecutorService createTaskExecutorService(
-			Configuration configuration,
-			ResourceID resourceID,
-			RpcService rpcService,
-			HighAvailabilityServices highAvailabilityServices,
-			HeartbeatServices heartbeatServices,
-			MetricRegistry metricRegistry,
-			BlobCacheService blobCacheService,
-			boolean localCommunicationOnly,
-			ExternalResourceInfoProvider externalResourceInfoProvider,
-			FatalErrorHandler fatalErrorHandler) throws Exception {
+    public static TaskManagerRunner.TaskExecutorService createTaskExecutorService(
+            Configuration configuration,
+            ResourceID resourceID,
+            RpcService rpcService,
+            HighAvailabilityServices highAvailabilityServices,
+            HeartbeatServices heartbeatServices,
+            MetricRegistry metricRegistry,
+            BlobCacheService blobCacheService,
+            boolean localCommunicationOnly,
+            ExternalResourceInfoProvider externalResourceInfoProvider,
+            FatalErrorHandler fatalErrorHandler)
+            throws Exception {
 
-		final TaskExecutor taskExecutor = startTaskManager(
-				configuration,
-				resourceID,
-				rpcService,
-				highAvailabilityServices,
-				heartbeatServices,
-				metricRegistry,
-				blobCacheService,
-				localCommunicationOnly,
-				externalResourceInfoProvider,
-				fatalErrorHandler);
+        final TaskExecutor taskExecutor =
+                startTaskManager(
+                        configuration,
+                        resourceID,
+                        rpcService,
+                        highAvailabilityServices,
+                        heartbeatServices,
+                        metricRegistry,
+                        blobCacheService,
+                        localCommunicationOnly,
+                        externalResourceInfoProvider,
+                        fatalErrorHandler);
 
-		return TaskExecutorToServiceAdapter.createFor(taskExecutor);
-	}
+        return TaskExecutorToServiceAdapter.createFor(taskExecutor);
+    }
 
-	public static TaskExecutor startTaskManager(
-			Configuration configuration,
-			ResourceID resourceID,
-			RpcService rpcService,
-			HighAvailabilityServices highAvailabilityServices,
-			HeartbeatServices heartbeatServices,
-			MetricRegistry metricRegistry,
-			BlobCacheService blobCacheService,
-			boolean localCommunicationOnly,
-			ExternalResourceInfoProvider externalResourceInfoProvider,
-			FatalErrorHandler fatalErrorHandler) throws Exception {
+    public static TaskExecutor startTaskManager(
+            Configuration configuration,
+            ResourceID resourceID,
+            RpcService rpcService,
+            HighAvailabilityServices highAvailabilityServices,
+            HeartbeatServices heartbeatServices,
+            MetricRegistry metricRegistry,
+            BlobCacheService blobCacheService,
+            boolean localCommunicationOnly,
+            ExternalResourceInfoProvider externalResourceInfoProvider,
+            FatalErrorHandler fatalErrorHandler)
+            throws Exception {
 
-		checkNotNull(configuration);
-		checkNotNull(resourceID);
-		checkNotNull(rpcService);
-		checkNotNull(highAvailabilityServices);
+        checkNotNull(configuration);
+        checkNotNull(resourceID);
+        checkNotNull(rpcService);
+        checkNotNull(highAvailabilityServices);
 
-		LOG.info("Starting TaskManager with ResourceID: {}", resourceID.getStringWithMetadata());
+        LOG.info("Starting TaskManager with ResourceID: {}", resourceID.getStringWithMetadata());
 
-		// replace temp directories with configured numa binding paths
-		String numaBindingNodesIndex = System.getenv(NUMA_BINDING_NODES_INDEX_CONF_KEY);
-		List<String> numaNodeList = configuration.get(ApeYarnOptions.NUMA_BINDING_NODE_LIST);
-		List<String> numaPathList = configuration.get(ApeYarnOptions.NUMA_BINDING_PATH_LIST);
-		if (numaBindingNodesIndex != null
-				&& numaNodeList.size() > 0
-				&& numaNodeList.size() == numaPathList.size()) {
+        // replace temp directories with configured numa binding paths
+        String numaBindingNodesIndex = System.getenv(NUMA_BINDING_NODES_INDEX_CONF_KEY);
+        List<String> numaNodeList = configuration.get(ApeYarnOptions.NUMA_BINDING_NODE_LIST);
+        List<String> numaPathList = configuration.get(ApeYarnOptions.NUMA_BINDING_PATH_LIST);
+        if (numaBindingNodesIndex != null
+                && numaNodeList.size() > 0
+                && numaNodeList.size() == numaPathList.size()) {
 
-			String numaPathsStr = numaPathList.get(Integer.parseInt(numaBindingNodesIndex));
-			String[] numaPaths = numaPathsStr.split(",");
-			if (numaPaths.length > 0) {
-				configuration.set(ApeYarnOptions.NUMA_BINDING_PATH_ENABLED, true);
-				configuration.set(CoreOptions.TMP_DIRS, numaPathsStr);
-			} else {
-				configuration.set(ApeYarnOptions.NUMA_BINDING_PATH_ENABLED, false);
-			}
-		}
+            String numaPathsStr = numaPathList.get(Integer.parseInt(numaBindingNodesIndex));
+            String[] numaPaths = numaPathsStr.split(",");
+            if (numaPaths.length > 0) {
+                configuration.set(ApeYarnOptions.NUMA_BINDING_PATH_ENABLED, true);
+                configuration.set(CoreOptions.TMP_DIRS, numaPathsStr);
+            } else {
+                configuration.set(ApeYarnOptions.NUMA_BINDING_PATH_ENABLED, false);
+            }
+        }
 
-		String externalAddress = rpcService.getAddress();
+        String externalAddress = rpcService.getAddress();
 
-		final TaskExecutorResourceSpec taskExecutorResourceSpec = TaskExecutorResourceUtils.resourceSpecFromConfig(configuration);
+        final TaskExecutorResourceSpec taskExecutorResourceSpec =
+                TaskExecutorResourceUtils.resourceSpecFromConfig(configuration);
 
-		TaskManagerServicesConfiguration taskManagerServicesConfiguration =
-			TaskManagerServicesConfiguration.fromConfiguration(
-				configuration,
-				resourceID,
-				externalAddress,
-				localCommunicationOnly,
-				taskExecutorResourceSpec);
+        TaskManagerServicesConfiguration taskManagerServicesConfiguration =
+                TaskManagerServicesConfiguration.fromConfiguration(
+                        configuration,
+                        resourceID,
+                        externalAddress,
+                        localCommunicationOnly,
+                        taskExecutorResourceSpec);
 
-		Tuple2<TaskManagerMetricGroup, MetricGroup> taskManagerMetricGroup = MetricUtils.instantiateTaskManagerMetricGroup(
-			metricRegistry,
-			externalAddress,
-			resourceID,
-			taskManagerServicesConfiguration.getSystemResourceMetricsProbingInterval());
+        Tuple2<TaskManagerMetricGroup, MetricGroup> taskManagerMetricGroup =
+                MetricUtils.instantiateTaskManagerMetricGroup(
+                        metricRegistry,
+                        externalAddress,
+                        resourceID,
+                        taskManagerServicesConfiguration.getSystemResourceMetricsProbingInterval());
 
-		final ExecutorService ioExecutor = Executors.newFixedThreadPool(
-			taskManagerServicesConfiguration.getNumIoThreads(),
-			new ExecutorThreadFactory("flink-taskexecutor-io"));
+        final ExecutorService ioExecutor =
+                Executors.newFixedThreadPool(
+                        taskManagerServicesConfiguration.getNumIoThreads(),
+                        new ExecutorThreadFactory("flink-taskexecutor-io"));
 
-		TaskManagerServices taskManagerServices = ApeTaskManagerServices.fromConfiguration(
-			taskManagerServicesConfiguration,
-			blobCacheService.getPermanentBlobService(),
-			taskManagerMetricGroup.f1,
-			ioExecutor,
-			fatalErrorHandler);
+        TaskManagerServices taskManagerServices =
+                ApeTaskManagerServices.fromConfiguration(
+                        taskManagerServicesConfiguration,
+                        blobCacheService.getPermanentBlobService(),
+                        taskManagerMetricGroup.f1,
+                        ioExecutor,
+                        fatalErrorHandler);
 
-		MetricUtils.instantiateFlinkMemoryMetricGroup(
-			taskManagerMetricGroup.f1,
-			taskManagerServices.getTaskSlotTable(),
-			taskManagerServices::getManagedMemorySize);
+        MetricUtils.instantiateFlinkMemoryMetricGroup(
+                taskManagerMetricGroup.f1,
+                taskManagerServices.getTaskSlotTable(),
+                taskManagerServices::getManagedMemorySize);
 
-		TaskManagerConfiguration taskManagerConfiguration =
-			TaskManagerConfiguration.fromConfiguration(configuration, taskExecutorResourceSpec, externalAddress);
+        TaskManagerConfiguration taskManagerConfiguration =
+                TaskManagerConfiguration.fromConfiguration(
+                        configuration, taskExecutorResourceSpec, externalAddress);
 
-		String metricQueryServiceAddress = metricRegistry.getMetricQueryServiceGatewayRpcAddress();
+        String metricQueryServiceAddress = metricRegistry.getMetricQueryServiceGatewayRpcAddress();
 
-		return new TaskExecutor(
-			rpcService,
-			taskManagerConfiguration,
-			highAvailabilityServices,
-			taskManagerServices,
-			externalResourceInfoProvider,
-			heartbeatServices,
-			taskManagerMetricGroup.f0,
-			metricQueryServiceAddress,
-			blobCacheService,
-			fatalErrorHandler,
-			new TaskExecutorPartitionTrackerImpl(taskManagerServices.getShuffleEnvironment()),
-			createBackPressureSampleService(configuration, rpcService.getScheduledExecutor()));
-	}
+        return new TaskExecutor(
+                rpcService,
+                taskManagerConfiguration,
+                highAvailabilityServices,
+                taskManagerServices,
+                externalResourceInfoProvider,
+                heartbeatServices,
+                taskManagerMetricGroup.f0,
+                metricQueryServiceAddress,
+                blobCacheService,
+                fatalErrorHandler,
+                new TaskExecutorPartitionTrackerImpl(taskManagerServices.getShuffleEnvironment()),
+                createBackPressureSampleService(configuration, rpcService.getScheduledExecutor()));
+    }
 
-	static BackPressureSampleService createBackPressureSampleService(
-			Configuration configuration,
-			ScheduledExecutor scheduledExecutor) {
-		return new BackPressureSampleService(
-			configuration.getInteger(WebOptions.BACKPRESSURE_NUM_SAMPLES),
-			Time.milliseconds(configuration.getInteger(WebOptions.BACKPRESSURE_DELAY)),
-			scheduledExecutor);
-	}
-
+    static BackPressureSampleService createBackPressureSampleService(
+            Configuration configuration, ScheduledExecutor scheduledExecutor) {
+        return new BackPressureSampleService(
+                configuration.getInteger(WebOptions.BACKPRESSURE_NUM_SAMPLES),
+                Time.milliseconds(configuration.getInteger(WebOptions.BACKPRESSURE_DELAY)),
+                scheduledExecutor);
+    }
 }

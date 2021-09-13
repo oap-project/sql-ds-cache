@@ -11,9 +11,7 @@
     <relativePath>../pom.xml</relativePath>
   </parent>
 
-  <groupId>com.intel.oap</groupId>
   <artifactId>ape-flink</artifactId>
-  <version>${ape.version}</version>
   <packaging>pom</packaging>
   <name>OAP Project APE(Accelerator based Pmem Engine) for Flink</name>
 
