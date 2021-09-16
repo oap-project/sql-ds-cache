@@ -19,7 +19,6 @@
 package org.apache.flink.formats.parquet;
 
 import org.apache.flink.configuration.Configuration;
-import org.apache.flink.connector.base.source.reader.SourceReaderOptions;
 import org.apache.flink.connector.file.src.FileSourceSplit;
 import org.apache.flink.connector.file.src.reader.BulkFormat;
 import org.apache.flink.connector.file.src.util.CheckpointedPosition;
@@ -196,7 +195,9 @@ public abstract class ApeParquetVectorizedInputFormat<T, SplitT extends FileSour
 			}
 		}
 
-		final int numBatchesToCirculate = config.getInteger(SourceReaderOptions.ELEMENT_QUEUE_CAPACITY);
+		// pool size should be 1 before Flink 1.13.0 or there will be shared memory issues.
+		// final int numBatchesToCirculate = config.getInteger(SourceReaderOptions.ELEMENT_QUEUE_CAPACITY);
+		final int numBatchesToCirculate = 1;
 		final Pool<ParquetReaderBatch<T>> poolOfBatches =
 				createPoolOfBatches(split, requestedSchema, numBatchesToCirculate);
 
