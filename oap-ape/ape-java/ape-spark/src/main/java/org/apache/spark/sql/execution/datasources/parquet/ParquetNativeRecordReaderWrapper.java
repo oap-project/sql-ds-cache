@@ -29,6 +29,7 @@ import org.apache.parquet.hadoop.ParquetInputSplit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.spark.sql.catalyst.InternalRow;
 import org.apache.spark.sql.execution.vectorized.NativeColumnVector;
 import org.apache.spark.sql.types.*;
 import org.apache.spark.sql.vectorized.ColumnarBatch;
@@ -43,6 +44,9 @@ public class ParquetNativeRecordReaderWrapper extends ParquetRecordReaderWrapper
 
   private FilterPredicate filterPredicate;
   private String aggExpr;
+
+  private StructType partitionColumns = null;
+  private InternalRow partitionValues = null;
 
   public ParquetNativeRecordReaderWrapper(int capacity) {
     super(capacity);
@@ -100,6 +104,13 @@ public class ParquetNativeRecordReaderWrapper extends ParquetRecordReaderWrapper
     ParquetReaderJNI.setPlasmaCacheRedis(reader, host, port, password);
   }
 
+  // TODO: how about remote reader?
+  @Override
+  public void setPartitionInfo(StructType partitionColumns, InternalRow partitionValues) {
+    this.partitionColumns = partitionColumns;
+    this.partitionValues = partitionValues;
+  }
+
   @Override
   public void close() throws IOException {
     // close columnBatch
@@ -122,6 +133,27 @@ public class ParquetNativeRecordReaderWrapper extends ParquetRecordReaderWrapper
     LOG.info("close reader, spend time: " + readTime + " ns");
   }
 
+  private void dumpPartitionColumns(int rowsRead) {
+    int startId = columnVectors.length - partitionColumns.length();
+    for (int i = 0 ; i < partitionColumns.length(); i++) {
+      DataType dt = columnVectors[startId + i].dataType();
+      long nullPtr = nullPtrs[startId + i];
+      long dataPtr = bufferPtrs[startId + i];
+      byte isNull = partitionValues.isNullAt(i) ? (byte)0 : (byte)1;
+      for (int j = 0; j < rowsRead; j++ ) {
+        Platform.putByte(null, nullPtr + j, isNull);
+        if (dt == DataTypes.IntegerType) {
+          Platform.putInt(null, dataPtr + j * 4, partitionValues.getInt(i));
+        } else if(dt == DataTypes.LongType) {
+          Platform.putLong(null, dataPtr + j * 8, partitionValues.getLong(i));
+        } else {
+          throw new UnsupportedOperationException("Unsupported partition key type: "
+                  + dt.typeName());
+        }
+      }
+    }
+  }
+
   @Override
   public boolean nextBatch() {
     long before = System.nanoTime();
@@ -135,6 +167,11 @@ public class ParquetNativeRecordReaderWrapper extends ParquetRecordReaderWrapper
 
     if (rowsRead < 0) {
       return false;
+    }
+
+    // native reader will read random value into partitioned column buffers, so we will re-fill
+    if (partitionColumns != null) {
+      dumpPartitionColumns(rowsRead);
     }
     // build columnVectors by buffers and nulls
     columnarBatch.setNumRows(0);
