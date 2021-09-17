@@ -31,6 +31,7 @@ import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 
 import static org.apache.parquet.hadoop.ParquetFileReader.readFooter;
 
+import org.apache.spark.sql.catalyst.InternalRow;
 import org.apache.spark.sql.types.*;
 import org.apache.spark.sql.vectorized.ColumnVector;
 import org.apache.spark.sql.vectorized.ColumnarBatch;
@@ -115,6 +116,8 @@ public abstract class ParquetRecordReaderWrapper extends RecordReader<Void, Obje
   public void setAgg(String aggExpresion) {}
 
   public void setPlasmaCacheRedis(String host, int port, String password) {}
+
+  public void setPartitionInfo(StructType partitionColumns, InternalRow partitionValues) {}
 
   public boolean nextBatch() {
     return false;

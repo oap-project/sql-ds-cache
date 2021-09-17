@@ -368,6 +368,9 @@ class ParquetFileFormat
           }
           if (enableParquetFilterPushDown && pushed.isDefined) reader.setFilter(pushed.get)
           if (aggPdEnabled) reader.setAgg(aggExpr)
+          if (partitionSchema.fields.length > 0) {
+            reader.setPartitionInfo(partitionSchema, file.partitionValues)
+          }
           reader.initialize(split, hadoopAttemptContext)
 
           // UnsafeRowParquetRecordReader appends the columns internally to avoid another copy.
