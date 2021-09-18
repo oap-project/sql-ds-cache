@@ -28,22 +28,14 @@
   </properties>
 
   <dependencies>
+    <!-- APE Dependencies -->
+    <dependency>
+      <groupId>com.intel.oap</groupId>
+      <artifactId>ape-flink-common</artifactId>
+      <version>${ape.version}</version>
+    </dependency>
+
     <!-- Flink dependencies -->
-
-    <dependency>
-      <groupId>org.apache.flink</groupId>
-      <artifactId>flink-table-common</artifactId>
-      <version>${flink.version}</version>
-      <scope>provided</scope>
-    </dependency>
-
-    <dependency>
-      <groupId>org.apache.flink</groupId>
-      <artifactId>flink-table-runtime-blink_${scala.binary.version}</artifactId>
-      <version>${flink.version}</version>
-      <scope>provided</scope>
-    </dependency>
-
     <dependency>
       <groupId>org.apache.flink</groupId>
       <artifactId>flink-table-planner-blink_${scala.binary.version}</artifactId>
@@ -67,90 +59,9 @@
 
     <dependency>
       <groupId>org.apache.flink</groupId>
-      <artifactId>flink-runtime_${scala.binary.version}</artifactId>
-      <version>${flink.version}</version>
-      <scope>provided</scope>
-    </dependency>
-
-    <dependency>
-      <groupId>org.apache.flink</groupId>
       <artifactId>flink-yarn_${scala.binary.version}</artifactId>
       <version>${flink.version}</version>
       <scope>provided</scope>
-    </dependency>
-
-    <dependency>
-      <groupId>org.apache.flink</groupId>
-      <artifactId>flink-statebackend-rocksdb_${scala.binary.version}</artifactId>
-      <version>${flink.version}</version>
-      <scope>provided</scope>
-    </dependency>
-    <!-- APE Dependencies -->
-
-    <dependency>
-      <groupId>com.intel.oap</groupId>
-      <artifactId>ape-common</artifactId>
-      <version>${ape.version}</version>
-      <exclusions>
-        <exclusion>
-          <groupId>org.apache.spark</groupId>
-          <artifactId>spark-unsafe_2.12</artifactId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-
-    <dependency>
-      <groupId>com.intel.oap</groupId>
-      <artifactId>ape-client</artifactId>
-      <version>${ape.version}</version>
-      <scope>compile</scope>
-    </dependency>
-
-    <dependency>
-      <groupId>com.intel.oap</groupId>
-      <artifactId>ape-hcfs</artifactId>
-      <version>${ape.version}</version>
-    </dependency>
-
-    <!-- Parquet Dependencies -->
-
-    <dependency>
-      <groupId>org.apache.parquet</groupId>
-      <artifactId>parquet-hadoop</artifactId>
-      <version>${flink.format.parquet.version}</version>
-      <exclusions>
-        <exclusion>
-          <groupId>org.xerial.snappy</groupId>
-          <artifactId>snappy-java</artifactId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-
-    <!-- Hadoop is needed by Parquet -->
-    <dependency>
-      <groupId>org.apache.hadoop</groupId>
-      <artifactId>hadoop-common</artifactId>
-      <version>${hadoop.version}</version>
-      <scope>provided</scope>
-      <exclusions>
-        <exclusion>
-          <groupId>com.google.protobuf</groupId>
-          <artifactId>protobuf-java</artifactId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-
-    <dependency>
-      <groupId>org.apache.hadoop</groupId>
-      <artifactId>hadoop-mapreduce-client-core</artifactId>
-      <version>${hadoop.version}</version>
-      <scope>provided</scope>
-      <exclusions>
-        <exclusion>
-          <groupId>com.google.protobuf</groupId>
-          <artifactId>protobuf-java</artifactId>
-        </exclusion>
-      </exclusions>
     </dependency>
 
     <!-- hive dependencies -->
@@ -420,20 +331,6 @@
       </exclusions>
     </dependency>
 
-    <!-- slf4j -->
-    <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-log4j12</artifactId>
-      <version>1.7.25</version>
-      <scope>provided</scope>
-    </dependency>
-
-    <!--gson-->
-    <dependency>
-      <groupId>com.google.code.gson</groupId>
-      <artifactId>gson</artifactId>
-      <version>2.8.6</version>
-    </dependency>
   </dependencies>
 
   <profiles>
@@ -621,6 +518,7 @@
                       <include>com.intel.oap:ape-common</include>
                       <include>com.intel.oap:ape-hcfs</include>
                       <include>com.intel.oap:ape-client</include>
+                      <include>com.intel.oap:ape-flink-common</include>
                       <include>com.fasterxml.jackson.core:jackson-core</include>
                       <include>com.fasterxml.jackson.core:jackson-annotations</include>
                       <include>com.fasterxml.jackson.core:jackson-databind</include>
