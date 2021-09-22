@@ -28,23 +28,36 @@ import java.util.List;
  * data source. Commonly, filters should be pushed down too so that the data source can get the
  * partial aggregation result.
  *
- * <p>For example, select sum(d_date_sk) from date_dim where d_year = 2000; The original plan of
- * above sql in Flink may be: == Optimized Logical Plan == HashAggregate(isMerge=[true],
- * select=[Final_SUM(sum$0) AS EXPR$0]) +- Exchange(distribution=[single]) +-
- * LocalHashAggregate(select=[Partial_SUM(d_date_sk) AS sum$0]) +- Calc(select=[d_date_sk],
- * where=[=(d_year, 2000)]) +- TableSourceScan(table=[[myhive, tpcds_1g_snappy, date_dim, filter=[],
- * project=[d_date_sk, d_year]]], fields=[d_date_sk, d_year])
+ * <p>
+ * For example,
+ *     select sum(d_date_sk) from date_dim where d_year = 2000;
+ * The original plan of above sql in Flink may be:
+ * == Optimized Logical Plan ==
+ * HashAggregate(isMerge=[true], select=[Final_SUM(sum$0) AS EXPR$0])
+ * +- Exchange(distribution=[single])
+ *    +- LocalHashAggregate(select=[Partial_SUM(d_date_sk) AS sum$0])
+ *       +- Calc(select=[d_date_sk], where=[=(d_year, 2000)])
+ *          +- TableSourceScan(table=[[myhive, tpcds_1g_snappy, date_dim, filter=[],
+ *              project=[d_date_sk, d_year]]], fields=[d_date_sk, d_year])
  *
- * <p>The plan after filters are pushed down: == Optimized Logical Plan ==
- * HashAggregate(isMerge=[true], select=[Final_SUM(sum$0) AS EXPR$0]) +-
- * Exchange(distribution=[single]) +- LocalHashAggregate(select=[Partial_SUM(d_date_sk) AS sum$0])
- * +- TableSourceScan(table=[[myhive, tpcds_1g_snappy, date_dim, filter=[equals(d_year, 2000)],
- * project=[d_date_sk]]], fields=[d_date_sk])
+ * The plan after filters are pushed down:
+ *== Optimized Logical Plan ==
+ * HashAggregate(isMerge=[true], select=[Final_SUM(sum$0) AS EXPR$0])
+ * +- Exchange(distribution=[single])
+ *    +- LocalHashAggregate(select=[Partial_SUM(d_date_sk) AS sum$0])
+ *       +- TableSourceScan(table=[[myhive, tpcds_1g_snappy, date_dim,
+ *          filter=[equals(d_year, 2000)], project=[d_date_sk]]], fields=[d_date_sk])
+ * </p>
  *
- * <p>Moreover, aggregations are pushed down, the optimized plan becomes: == Optimized Logical Plan
- * == HashAggregate(isMerge=[true], select=[Final_SUM(sum$0) AS EXPR$0]) +-
- * Exchange(distribution=[single]) +- TableSourceScan(table=[[myhive, tpcds_1g_snappy, date_dim,
- * filter=[equals(d_year, 2000)], project=[d_date_sk], aggregation=[sum$0]]], fields=[sum$0])
+ * <p>
+ * Moreover, aggregations are pushed down, the optimized plan becomes:
+ * == Optimized Logical Plan ==
+ * HashAggregate(isMerge=[true], select=[Final_SUM(sum$0) AS EXPR$0])
+ * +- Exchange(distribution=[single])
+ *    +- TableSourceScan(table=[[myhive, tpcds_1g_snappy, date_dim,
+ *          filter=[equals(d_year, 2000)], project=[d_date_sk], aggregation=[sum$0]]],
+ *          fields=[sum$0])
+ * </p>
  */
 public interface SupportsAggregationPushDown {
 
