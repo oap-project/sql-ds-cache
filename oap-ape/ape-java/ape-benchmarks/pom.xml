@@ -12,7 +12,6 @@
     </parent>
 
     <artifactId>ape-benchmarks</artifactId>
-    <version>${ape.version}</version>
     <packaging>pom</packaging>
     <name>OAP Project APE(Accelerator based Pmem Engine) Benchmarks</name>
 

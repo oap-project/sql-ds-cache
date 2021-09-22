@@ -1,0 +1,95 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.apache.flink.connectors.hive;
+
+import org.apache.flink.table.catalog.CatalogTable;
+import org.apache.flink.table.catalog.hive.HiveCatalog;
+import org.apache.flink.table.connector.source.DynamicTableSource;
+import org.apache.flink.table.factories.FactoryUtil;
+import org.apache.flink.util.Preconditions;
+
+import org.apache.hadoop.hive.conf.HiveConf;
+import org.apache.hadoop.mapred.JobConf;
+
+import static org.apache.flink.table.filesystem.FileSystemOptions.STREAMING_SOURCE_ENABLE;
+import static org.apache.flink.table.filesystem.FileSystemOptions.STREAMING_SOURCE_PARTITION_INCLUDE;
+
+/** A dynamic table factory implementation for Hive catalog. */
+public class ApeHiveDynamicTableFactory extends HiveDynamicTableFactory {
+
+    private final HiveConf hiveConf;
+
+    public ApeHiveDynamicTableFactory(HiveConf hiveConf) {
+        super(hiveConf);
+        this.hiveConf = hiveConf;
+    }
+
+    @Override
+    public DynamicTableSource createDynamicTableSource(Context context) {
+        boolean isHiveTable = HiveCatalog.isHiveTable(context.getCatalogTable().getOptions());
+
+        // we don't support temporary hive tables yet
+        if (isHiveTable && !context.isTemporary()) {
+            CatalogTable catalogTable = Preconditions.checkNotNull(context.getCatalogTable());
+
+            boolean isStreamingSource =
+                    Boolean.parseBoolean(
+                            catalogTable
+                                    .getOptions()
+                                    .getOrDefault(
+                                            STREAMING_SOURCE_ENABLE.key(),
+                                            STREAMING_SOURCE_ENABLE.defaultValue().toString()));
+
+            boolean includeAllPartition =
+                    STREAMING_SOURCE_PARTITION_INCLUDE
+                            .defaultValue()
+                            .equals(
+                                    catalogTable
+                                            .getOptions()
+                                            .getOrDefault(
+                                                    STREAMING_SOURCE_PARTITION_INCLUDE.key(),
+                                                    STREAMING_SOURCE_PARTITION_INCLUDE
+                                                            .defaultValue()));
+            // hive table source that has not lookup ability
+            if (isStreamingSource && includeAllPartition) {
+                return new ApeHiveTableSource(
+                        new JobConf(hiveConf),
+                        context.getConfiguration(),
+                        context.getObjectIdentifier().toObjectPath(),
+                        catalogTable);
+            } else {
+                // hive table source that has scan and lookup ability
+                return new ApeHiveLookupTableSource(
+                        new JobConf(hiveConf),
+                        context.getConfiguration(),
+                        context.getObjectIdentifier().toObjectPath(),
+                        catalogTable);
+            }
+
+        } else {
+            return FactoryUtil.createTableSource(
+                    null, // we already in the factory of catalog
+                    context.getObjectIdentifier(),
+                    context.getCatalogTable(),
+                    context.getConfiguration(),
+                    context.getClassLoader(),
+                    context.isTemporary());
+        }
+    }
+}

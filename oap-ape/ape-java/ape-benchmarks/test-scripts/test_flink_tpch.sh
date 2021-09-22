@@ -44,3 +44,4 @@ $FLINK_DIR/bin/flink run -t yarn-session -Dyarn.application.id=$YARN_APP_ID \
     -sourceTablePath "$TABLE_DIR" -queryPath "$QUERY_DIR" -sinkTablePath "$RESULT_DIR" -useTableStats "$USE_TABLE_STATS" \
     -useHiveMetaStore "$USE_HIVE_METASTORE" -hiveConfDir $FLINK_DIR/conf -hiveDatabaseName "$HIVE_DATABASE_NAME"\
       -cmdBeforeQuery "$CMD_BEFORE_QUERY" -sourceParallelism $PARALLELISM -querySet $QUERIES -enableApe $ENABLE_APE
+
