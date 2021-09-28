@@ -12,7 +12,8 @@ In the future, we will support more CPU features like AVX-512. Meanwhile, we wil
 Native Parquet reader and Spark/Flink adapter - Done  
 Fine-grained filter pushing down - Done  
 Parquet ColumnChunk level Cache - Done  
-Aggregation pushing down - WIP
+Aggregation pushing down - WIP, experimental
+Remote reader service - experimental
 
 
 # How to Use APE
@@ -61,7 +62,9 @@ export LIBHDFS3_CONF=/path/to/your/hdfs-site.xml
 
 ## APE Build
 
-ICL jar build
+APE have some Intel optimized Java library dependency which not published in maven central repo. so, user have to install them into your local maven repository manually.
+
+### Java dependency: ICL jar build step
 ```
 cd /tmp;
 git clone https://github.com/Intel-bigdata/IntelCodecLibrary;
@@ -69,14 +72,25 @@ cd IntelCodecLibrary/;
 mvn clean install
 ```
 
-Java build, we will use `$OAP_ROOT_DIR/oap-ape/ape-java/ape-common/target/ape-common-1.1.0-SNAPSHOT.jar`, `$OAP_ROOT_DIR/oap-ape/ape-java/ape-spark/target/ape-spark-1.1.0-SNAPSHOT.jar`, `$OAP_ROOT_DIR/oap-ape/ape-java/ape-flink/target/ape-flink-1.1.0-SNAPSHOT.jar` later.
+### Jave dependency: Pmem-common jar build step
+```
+cd /tmp
+git clone https://github.com/oap-project/pmem-common.git
+cd pmem-common/
+git checkout branch-1.1-spark-3.x
+mvn install -am -q -DskipTests
+```
+
+### Java build step
+we will use `$OAP_ROOT_DIR/oap-ape/ape-java/ape-common/target/ape-common-1.1.0-SNAPSHOT.jar`, 
+`$OAP_ROOT_DIR/oap-ape/ape-java/ape-spark/target/ape-spark-1.1.0-SNAPSHOT.jar`, `$OAP_ROOT_DIR/oap-ape/ape-java/ape-flink/target/ape-flink-1.1.0-SNAPSHOT.jar` later.
 
 ```
 cd $OAP_ROOT_DIR/oap-ape/ape-java
 mvn clean package -am
 ```
 
-CPP build
+### CPP build step
 ```
 cd $OAP_ROOT_DIR/oap-ape/ape-native/
 mkdir build
@@ -107,6 +121,8 @@ Extra configuration to enable ape features:
 |`spark.sql.ape.reader.location` | use local or remote reader in spark | local |
 |`spark.sql.ape.remote.reader.compressed `| enable compression when use remote reader | false |
 |`spark.sql.ape.remote.reader.compress.codec`| compression codec setting when enable compression, such as zstd, lz4-ipp, zlib-ipp, igzip. | zstd |
+
+**Note: For Tianchi Competition users, we only recommend to enable `spark.sql.parquet.filterPushdown ` and `spark.sql.ape.parquet.cache.enabled`. For other config, we don't guarantee it works in competition test environments, user need to verify and modify by themselves.**
 
 For disaggrated mode, cp `$OAP_ROOT_DIR/oap-ape/ape-java/ape-server/target/ape-server-1.1.0-SNAPSHOT.jar` to APE server and launch it using script like:
 ```
