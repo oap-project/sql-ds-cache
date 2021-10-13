@@ -14,7 +14,9 @@ cd arrow && git checkout branch-0.17.0-oap-1.0
 mkdir -p cpp/release-build
 cd cpp/release-build
 ARROW_INSTALL_DIR=/usr
-cmake -DCMAKE_INSTALL_PREFIX=$ARROW_INSTALL_DIR -DARROW_PARQUET=ON -DARROW_HDFS=ON -DARROW_JNI=ON -DARROW_FILESYSTEM=ON -DARROW_ORC=ON -DARROW_DEPENDENCY_SOURCE=BUNDLED ..
+cmake -DCMAKE_INSTALL_PREFIX=$ARROW_INSTALL_DIR -DARROW_PARQUET=ON -DARROW_HDFS=ON -DARROW_FILESYSTEM=ON -DARROW_PLASMA=ON \
+      -DARROW_DEPENDENCY_SOURCE=BUNDLED -DARROW_ORC=ON -DProtobuf_SOURCE=BUNDLED -DARROW_JNI=ON -DARROW_WITH_BZ2=ON  \
+      -DARROW_WITH_ZLIB=ON -DARROW_WITH_LZ4=ON -DARROW_WITH_SNAPPY=ON -DARROW_WITH_ZSTD=ON -DARROW_WITH_BROTLI=ON -DARROW_BUILD_STATIC=ON ..
 make -j
 sudo make install
 
@@ -52,7 +54,13 @@ ll src/libhdfs3.so.2.2.30
 rm $HADOOP_HOME/lib/native/libhdfs.so
 ln -f -s $TMP_DIR/libhdfs3/build/src/libhdfs3.so.2.2.30 $HADOOP_HOME/lib/native/libhdfs.so
 
-#build native
+# build ape for both java and native
+# Note: This will package libparquet_jni.so into ape-spark-1.1.0-SNAPSHOT.jar under linux/64/lib folder.
+# if you want to load the libparquet_jni.so from system library, please copy it to /usr/lib
+cd $PROJECT_ROOT/oap-ape/ape-java
+mvn clean package -am -Pshading -Pnative
+
+#build native only
 cd $PROJECT_ROOT/oap-ape/ape-native
 mkdir build
 cd build
@@ -60,7 +68,7 @@ cmake ..
 make -j
 sudo cp lib/libparquet_jni.so /usr/lib
 
-#build java
+#build java only
 
 # install oap-common
 cd $PROJECT_ROOT

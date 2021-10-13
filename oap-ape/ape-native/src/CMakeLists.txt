@@ -75,5 +75,29 @@ add_compile_options("-I$ENV{JAVA_HOME}/include/linux")
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O3")
 
-target_link_libraries(parquet_jni ${ARROW_LIB} ${PARQUET_LIB} ${PLASMA_LIB} ${JNI} nlohmann_json::nlohmann_json OpenSSL::SSL ${HIREDIS_LIB} ${REDIS_PLUS_PLUS_LIB})
+INSTALL(TARGETS parquet_jni LIBRARY DESTINATION lib)
+
+LINK_DIRECTORIES(/lib /lib64 /usr/local/lib /usr )
+
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+find_package(Arrow REQUIRED)
+
+target_link_libraries(parquet_jni
+    -Wl,-Bstatic
+    -Wl,--whole-archive
+    -Wl,--start-group
+    arrow_static
+    libhiredis.a
+    libredis++.a
+    libplasma.a
+    libparquet.a
+    -Wl,--end-group
+    -Wl,--no-whole-archive
+    -Wl,-Bdynamic
+    -Wl,--as-needed
+    ${JNI} nlohmann_json::nlohmann_json OpenSSL::SSL Threads::Threads
+    -Wl,--no-as-needed)
+
+#target_link_libraries(parquet_jni ${ARROW_LIB} ${PARQUET_LIB} ${PLASMA_LIB} ${JNI} nlohmann_json::nlohmann_json OpenSSL::SSL ${HIREDIS_LIB} ${REDIS_PLUS_PLUS_LIB})
 target_link_libraries(parse nlohmann_json::nlohmann_json ${ARROW_LIB})
