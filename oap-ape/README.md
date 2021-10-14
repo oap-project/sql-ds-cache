@@ -69,15 +69,14 @@ cd IntelCodecLibrary/;
 mvn clean install
 ```
 
-Both Java and native build, we will use `$OAP_ROOT_DIR/oap-ape/ape-java/ape-spark/target/ape-spark-1.1.0-SNAPSHOT.jar`, `$OAP_ROOT_DIR/oap-ape/ape-java/ape-flink/target/ape-flink-1.1.0-SNAPSHOT.jar` later.
-
+Native and Java build. We will use `$OAP_ROOT_DIR/oap-ape/ape-java/ape-spark/target/ape-spark-1.1.0-SNAPSHOT.jar`, `$OAP_ROOT_DIR/oap-ape/ape-java/ape-flink/ape-flink-x.xx.x/target/ape-flink-x.xx.x-1.1.0-SNAPSHOT.jar` later.
 ```
 cd $OAP_ROOT_DIR/oap-ape/ape-java
-mvn clean package -am -Pshading -Pnative
+mvn clean package -am -Pshading
 ```
 
 Note: This will package libparquet_jni.so into ape-spark-1.1.0-SNAPSHOT.jar under linux/64/lib folder.
-if you want to load the libparquet_jni.so from system library, please copy it to /usr/lib
+If you want to load the libparquet_jni.so from system library, please copy it to /usr/lib
 
 CPP build only
 ```

@@ -100,4 +100,12 @@ target_link_libraries(parquet_jni
     -Wl,--no-as-needed)
 
 #target_link_libraries(parquet_jni ${ARROW_LIB} ${PARQUET_LIB} ${PLASMA_LIB} ${JNI} nlohmann_json::nlohmann_json OpenSSL::SSL ${HIREDIS_LIB} ${REDIS_PLUS_PLUS_LIB})
-target_link_libraries(parse nlohmann_json::nlohmann_json ${ARROW_LIB})
+target_link_libraries(parse
+    -Wl,-Bstatic
+    -Wl,--whole-archive
+    arrow_static
+    -Wl,--no-whole-archive
+    -Wl,-Bdynamic
+    -Wl,--as-needed
+    Threads::Threads nlohmann_json::nlohmann_json
+    -Wl,--no-as-needed)

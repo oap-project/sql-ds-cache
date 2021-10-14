@@ -55,7 +55,30 @@
     <profile>
       <id>shading</id>
       <build>
+        <resources>
+          <resource>
+            <directory>${basedir}/src/resources</directory>
+          </resource>
+        </resources>
         <plugins>
+          <plugin>
+            <artifactId>exec-maven-plugin</artifactId>
+            <groupId>org.codehaus.mojo</groupId>
+            <version>${exec.maven.version}</version>
+            <executions>
+              <execution>
+                <id>Compile native part</id>
+                <phase>generate-resources</phase>
+                <goals>
+                  <goal>exec</goal>
+                </goals>
+                <configuration>
+                  <executable>${basedir}/../../ape-native/src/compile.sh</executable>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-compiler-plugin</artifactId>
@@ -214,36 +237,6 @@
                 <goals>
                   <goal>check</goal>
                 </goals>
-              </execution>
-            </executions>
-          </plugin>
-        </plugins>
-      </build>
-    </profile>
-
-    <profile>
-      <id>native</id>
-      <build>
-        <resources>
-          <resource>
-            <directory>${basedir}/src/resources</directory>
-          </resource>
-        </resources>
-        <plugins>
-          <plugin>
-            <artifactId>exec-maven-plugin</artifactId>
-            <groupId>org.codehaus.mojo</groupId>
-            <version>${exec.maven.version}</version>
-            <executions>
-              <execution>
-                <id>Compile native part</id>
-                <phase>generate-resources</phase>
-                <goals>
-                  <goal>exec</goal>
-                </goals>
-                <configuration>
-                  <executable>${basedir}/../../ape-native/src/compile.sh</executable>
-                </configuration>
               </execution>
             </executions>
           </plugin>

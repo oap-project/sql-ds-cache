@@ -31,4 +31,4 @@ jobs:
       - name: ICL library dependency
         run: cd /tmp; git clone https://github.com/Intel-bigdata/IntelCodecLibrary; cd IntelCodecLibrary/; mvn clean install
       - name: Build with Maven
-        run: cd oap-ape/ape-java; mvn clean package -am --batch-mode -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+        run: cd oap-ape/ape-java; mvn clean package -am -Pshading --batch-mode -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
