@@ -35,4 +35,4 @@ jobs:
       - name: install APE dependency
         run: ci_scripts/install_APE_dependency.sh
       - name: Build with Maven
-        run: cd oap-ape/ape-java; mvn clean package -am -Pshading --batch-mode -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+        run: cd oap-ape/ape-java; mvn clean package -am --batch-mode -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
