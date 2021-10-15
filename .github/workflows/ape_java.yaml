@@ -30,5 +30,9 @@ jobs:
         run: cd /tmp; git clone https://github.com/oap-project/pmem-common.git; cd pmem-common/; git checkout branch-1.1-spark-3.x; mvn install -am -q -DskipTests
       - name: ICL library dependency
         run: cd /tmp; git clone https://github.com/Intel-bigdata/IntelCodecLibrary; cd IntelCodecLibrary/; mvn clean install
+      - name: install arrow
+        run: ci_scripts/install_arrow.sh
+      - name: install APE dependency
+        run: ci_scripts/install_APE_dependency.sh
       - name: Build with Maven
         run: cd oap-ape/ape-java; mvn clean package -am -Pshading --batch-mode -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn

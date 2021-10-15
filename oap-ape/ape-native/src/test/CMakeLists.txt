@@ -48,70 +48,23 @@ set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 find_package(Arrow REQUIRED)
 
+set(ARROW_STATIC -Wl,-Bstatic; -Wl,--whole-archive; arrow_static; -Wl,--no-whole-archive)
+set(THREAD -Wl,-Bdynamic;-Wl,--as-needed;Threads::Threads;-Wl,--no-as-needed)
+
 add_executable(convertorTest convertorTest.cc)
-target_link_libraries(convertorTest gtest_main parse
-    -Wl,-Bstatic
-    -Wl,--whole-archive
-    arrow_static
-    -Wl,--no-whole-archive
-    -Wl,-Bdynamic
-    -Wl,--as-needed
-    Threads::Threads
-    -Wl,--no-as-needed)
+target_link_libraries(convertorTest gtest_main parse ${ARROW_STATIC} ${THREAD})
 add_test(NAME convertorTest COMMAND ${EXECUTABLE_OUTPUT_PATH}/convertorTest)
 
 add_executable(decimalTest decimalTest.cc)
-target_link_libraries(decimalTest gtest_main parquet_jni
-    -Wl,-Bstatic
-    -Wl,--whole-archive
-    -Wl,--start-group
-    arrow_static
-    libhiredis.a
-    libredis++.a
-    libplasma.a
-    libparquet.a
-    -Wl,--end-group
-    -Wl,--no-whole-archive
-    -Wl,-Bdynamic
-    -Wl,--as-needed
-    Threads::Threads
-    -Wl,--no-as-needed)
+target_link_libraries(decimalTest gtest_main parquet_jni ${ARROW_STATIC} ${THREAD})
 add_test(NAME decimalTest COMMAND ${EXECUTABLE_OUTPUT_PATH}/decimalTest)
 
 add_executable(aggParserTest aggParserTest.cc)
-target_link_libraries(aggParserTest gtest_main parquet_jni
-   -Wl,-Bstatic
-    -Wl,--whole-archive
-    -Wl,--start-group
-    arrow_static
-    libhiredis.a
-    libredis++.a
-    libplasma.a
-    libparquet.a
-    -Wl,--end-group
-    -Wl,--no-whole-archive
-    -Wl,-Bdynamic
-    -Wl,--as-needed
-    Threads::Threads
-    -Wl,--no-as-needed)
+target_link_libraries(aggParserTest gtest_main parquet_jni ${ARROW_STATIC} ${THREAD})
 add_test(NAME aggParserTest COMMAND ${EXECUTABLE_OUTPUT_PATH}/aggParserTest)
 
 add_executable(apeHashMapTest apeHashMapTest.cc)
-target_link_libraries(apeHashMapTest gtest_main parquet_jni
-    -Wl,-Bstatic
-    -Wl,--whole-archive
-    -Wl,--start-group
-    arrow_static
-    libhiredis.a
-    libredis++.a
-    libplasma.a
-    libparquet.a
-    -Wl,--end-group
-    -Wl,--no-whole-archive
-    -Wl,-Bdynamic
-    -Wl,--as-needed
-    Threads::Threads
-    -Wl,--no-as-needed)
+target_link_libraries(apeHashMapTest gtest_main parquet_jni ${ARROW_STATIC} ${THREAD})
 add_test(NAME apeHashMapTest COMMAND ${EXECUTABLE_OUTPUT_PATH}/apeHashMapTest)
 
 # these test works well on my dev machine, but it will fail on ci env
@@ -119,38 +72,10 @@ add_test(NAME apeHashMapTest COMMAND ${EXECUTABLE_OUTPUT_PATH}/apeHashMapTest)
 # it in your local machine to test.
 
 add_executable(parquetHdfsTest parquetHdfsTest.cc)
-target_link_libraries(parquetHdfsTest gtest_main parquet_jni
-   -Wl,-Bstatic
-    -Wl,--whole-archive
-    -Wl,--start-group
-    arrow_static
-    libhiredis.a
-    libredis++.a
-    libplasma.a
-    libparquet.a
-    -Wl,--end-group
-    -Wl,--no-whole-archive
-    -Wl,-Bdynamic
-    -Wl,--as-needed
-    Threads::Threads
-    -Wl,--no-as-needed)
+target_link_libraries(parquetHdfsTest gtest_main parquet_jni ${ARROW_STATIC} ${THREAD})
 
 add_executable(plasmaTest plasmaTest.cc)
-target_link_libraries(plasmaTest gtest_main parquet_jni
-   -Wl,-Bstatic
-    -Wl,--whole-archive
-    -Wl,--start-group
-    arrow_static
-    libhiredis.a
-    libredis++.a
-    libplasma.a
-    libparquet.a
-    -Wl,--end-group
-    -Wl,--no-whole-archive
-    -Wl,-Bdynamic
-    -Wl,--as-needed
-    Threads::Threads
-    -Wl,--no-as-needed)
+target_link_libraries(plasmaTest gtest_main parquet_jni ${ARROW_STATIC} ${THREAD})
 
 if(APE_CI)
   # Will not run these test
