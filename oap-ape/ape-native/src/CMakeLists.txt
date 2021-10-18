@@ -25,7 +25,6 @@ set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 find_package(Arrow REQUIRED)
 
-#find_library(ARROW_LIB arrow)
 find_library(PARQUET_LIB parquet)
 
 find_package(nlohmann_json 3.2.0 REQUIRED)
@@ -42,10 +41,6 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
 # redis
 find_library(HIREDIS_LIB hiredis)
 find_library(REDIS_PLUS_PLUS_LIB redis++)
-
-if(NOT Arrow)
-  message(FATAL_ERROR "Arrow library not found")
-endif()
 
 if(NOT PARQUET_LIB)
   message(FATAL_ERROR "Parquet library not found")
