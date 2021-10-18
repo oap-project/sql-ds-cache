@@ -43,7 +43,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
 find_library(HIREDIS_LIB hiredis)
 find_library(REDIS_PLUS_PLUS_LIB redis++)
 
-if(NOT ARROW_LIB)
+if(NOT Arrow)
   message(FATAL_ERROR "Arrow library not found")
 endif()
 
