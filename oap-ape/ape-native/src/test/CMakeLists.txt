@@ -16,6 +16,10 @@
 # under the License.
 
 
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+find_package(Arrow REQUIRED)
+
 # Download and unpack googletest at configure time
 configure_file(CMakeLists.txt.in googletest-download/CMakeLists.txt)
 execute_process(COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" .
@@ -44,9 +48,6 @@ add_subdirectory(${CMAKE_CURRENT_BINARY_DIR}/googletest-src
 set(CMAKE_CXX_STANDARD 17)
 
 LINK_DIRECTORIES(/lib /lib64 /usr/local/lib /usr )
-set(THREADS_PREFER_PTHREAD_FLAG ON)
-find_package(Threads REQUIRED)
-find_package(Arrow REQUIRED)
 
 set(ARROW_STATIC -Wl,-Bstatic; -Wl,--whole-archive; arrow_static; -Wl,--no-whole-archive)
 set(THREAD -Wl,-Bdynamic;-Wl,--as-needed;Threads::Threads;-Wl,--no-as-needed)

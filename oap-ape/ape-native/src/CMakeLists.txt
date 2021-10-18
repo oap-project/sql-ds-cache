@@ -21,7 +21,11 @@ project(APE)
 
 set(CMAKE_CXX_STANDARD 17)
 
-find_library(ARROW_LIB arrow)
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+find_package(Arrow REQUIRED)
+
+#find_library(ARROW_LIB arrow)
 find_library(PARQUET_LIB parquet)
 
 find_package(nlohmann_json 3.2.0 REQUIRED)
@@ -79,33 +83,29 @@ INSTALL(TARGETS parquet_jni LIBRARY DESTINATION lib)
 
 LINK_DIRECTORIES(/lib /lib64 /usr/local/lib /usr )
 
-set(THREADS_PREFER_PTHREAD_FLAG ON)
-find_package(Threads REQUIRED)
-find_package(Arrow REQUIRED)
+set(STATIC_PAR_START -Wl,-Bstatic; -Wl,--whole-archive; -Wl,--start-group)
+set(STATIC_PAR_END -Wl,--end-group; -Wl,--no-whole-archive)
+
+set(DYN_PAR_START -Wl,-Bdynamic;-Wl,--as-needed)
+set(DYN_PAR_END -Wl,--no-as-needed)
 
 target_link_libraries(parquet_jni
-    -Wl,-Bstatic
-    -Wl,--whole-archive
-    -Wl,--start-group
+    ${STATIC_PAR_START}
     arrow_static
     libhiredis.a
     libredis++.a
     libplasma.a
     libparquet.a
-    -Wl,--end-group
-    -Wl,--no-whole-archive
-    -Wl,-Bdynamic
-    -Wl,--as-needed
+    ${STATIC_PAR_END}
+    ${DYN_PAR_START}
     ${JNI} nlohmann_json::nlohmann_json OpenSSL::SSL Threads::Threads
-    -Wl,--no-as-needed)
+    ${DYN_PAR_END})
 
 #target_link_libraries(parquet_jni ${ARROW_LIB} ${PARQUET_LIB} ${PLASMA_LIB} ${JNI} nlohmann_json::nlohmann_json OpenSSL::SSL ${HIREDIS_LIB} ${REDIS_PLUS_PLUS_LIB})
 target_link_libraries(parse
-    -Wl,-Bstatic
-    -Wl,--whole-archive
+    ${STATIC_PAR_START}
     arrow_static
-    -Wl,--no-whole-archive
-    -Wl,-Bdynamic
-    -Wl,--as-needed
+    ${STATIC_PAR_END}
+    ${DYN_PAR_START}
     Threads::Threads nlohmann_json::nlohmann_json
-    -Wl,--no-as-needed)
+    ${DYN_PAR_END})

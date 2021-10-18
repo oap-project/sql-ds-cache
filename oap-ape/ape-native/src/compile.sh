@@ -24,9 +24,6 @@ case ${OS} in
   'Linux' )
     OS='linux'
     ;;
-  'Darwin')
-    OS='mac'
-    ;;
   *)
     echo "The platform: ${OS} is not supported."
     exit -1
@@ -71,4 +68,7 @@ make install
 popd
 
 popd
+
+echo "Successfully build the ape native part by compile.sh"
+
 set +eu
