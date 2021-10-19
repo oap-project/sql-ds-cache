@@ -47,8 +47,6 @@ add_subdirectory(${CMAKE_CURRENT_BINARY_DIR}/googletest-src
 
 set(CMAKE_CXX_STANDARD 17)
 
-LINK_DIRECTORIES(/lib /lib64 /usr/local/lib /usr )
-
 set(ARROW_STATIC -Wl,-Bstatic; -Wl,--whole-archive; arrow_static; -Wl,--no-whole-archive)
 set(THREAD -Wl,-Bdynamic;-Wl,--as-needed;Threads::Threads;-Wl,--no-as-needed)
 

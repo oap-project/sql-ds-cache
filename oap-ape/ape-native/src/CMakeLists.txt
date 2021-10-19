@@ -76,8 +76,6 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O3")
 
 INSTALL(TARGETS parquet_jni LIBRARY DESTINATION lib)
 
-LINK_DIRECTORIES(/lib /lib64 /usr/local/lib /usr )
-
 set(STATIC_PAR_START -Wl,-Bstatic; -Wl,--whole-archive; -Wl,--start-group)
 set(STATIC_PAR_END -Wl,--end-group; -Wl,--no-whole-archive)
 
