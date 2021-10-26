@@ -89,7 +89,7 @@ sudo cp ./lib/libparquet_jni.so /usr/lib/
 ```
 
 ## Run Spark with APE
- 1. make sure you have installed `libparquet_jni.so` on all of your worker nodes.
+ 1. make sure you have installed `libparquet_jni.so` on APE server node when using remote reader.
  2. copy `$OAP_ROOT_DIR/oap-ape/ape-java/ape-spark/target/ape-spark-1.1.0-SNAPSHOT.jar` to Spark master node, add below configuration in your `spark-defaults.conf` file 
 ```
 spark.files                         file:///path/to/ape-spark-1.1.0-SNAPSHOT.jar
