@@ -21,7 +21,10 @@ project(APE)
 
 set(CMAKE_CXX_STANDARD 17)
 
-find_library(ARROW_LIB arrow)
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+find_package(Arrow REQUIRED)
+
 find_library(PARQUET_LIB parquet)
 
 find_package(nlohmann_json 3.2.0 REQUIRED)
@@ -38,10 +41,6 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
 # redis
 find_library(HIREDIS_LIB hiredis)
 find_library(REDIS_PLUS_PLUS_LIB redis++)
-
-if(NOT ARROW_LIB)
-  message(FATAL_ERROR "Arrow library not found")
-endif()
 
 if(NOT PARQUET_LIB)
   message(FATAL_ERROR "Parquet library not found")
@@ -75,5 +74,31 @@ add_compile_options("-I$ENV{JAVA_HOME}/include/linux")
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O3")
 
-target_link_libraries(parquet_jni ${ARROW_LIB} ${PARQUET_LIB} ${PLASMA_LIB} ${JNI} nlohmann_json::nlohmann_json OpenSSL::SSL ${HIREDIS_LIB} ${REDIS_PLUS_PLUS_LIB})
-target_link_libraries(parse nlohmann_json::nlohmann_json ${ARROW_LIB})
+INSTALL(TARGETS parquet_jni LIBRARY DESTINATION lib)
+
+set(STATIC_PAR_START -Wl,-Bstatic; -Wl,--whole-archive; -Wl,--start-group)
+set(STATIC_PAR_END -Wl,--end-group; -Wl,--no-whole-archive)
+
+set(DYN_PAR_START -Wl,-Bdynamic;-Wl,--as-needed)
+set(DYN_PAR_END -Wl,--no-as-needed)
+
+target_link_libraries(parquet_jni
+    ${STATIC_PAR_START}
+    arrow_static
+    libhiredis.a
+    libredis++.a
+    libplasma.a
+    libparquet.a
+    ${STATIC_PAR_END}
+    ${DYN_PAR_START}
+    ${JNI} nlohmann_json::nlohmann_json OpenSSL::SSL Threads::Threads
+    ${DYN_PAR_END})
+
+#target_link_libraries(parquet_jni ${ARROW_LIB} ${PARQUET_LIB} ${PLASMA_LIB} ${JNI} nlohmann_json::nlohmann_json OpenSSL::SSL ${HIREDIS_LIB} ${REDIS_PLUS_PLUS_LIB})
+target_link_libraries(parse
+    ${STATIC_PAR_START}
+    arrow_static
+    ${STATIC_PAR_END}
+    ${DYN_PAR_START}
+    Threads::Threads nlohmann_json::nlohmann_json
+    ${DYN_PAR_END})

@@ -69,14 +69,16 @@ cd IntelCodecLibrary/;
 mvn clean install
 ```
 
-Java build, we will use `$OAP_ROOT_DIR/oap-ape/ape-java/ape-common/target/ape-common-1.1.0-SNAPSHOT.jar`, `$OAP_ROOT_DIR/oap-ape/ape-java/ape-spark/target/ape-spark-1.1.0-SNAPSHOT.jar`, `$OAP_ROOT_DIR/oap-ape/ape-java/ape-flink/target/ape-flink-1.1.0-SNAPSHOT.jar` later.
-
+Native and Java build. We will use `$OAP_ROOT_DIR/oap-ape/ape-java/ape-spark/target/ape-spark-1.1.0-SNAPSHOT.jar`, `$OAP_ROOT_DIR/oap-ape/ape-java/ape-flink/ape-flink-x.xx.x/target/ape-flink-x.xx.x-1.1.0-SNAPSHOT.jar` later.
 ```
 cd $OAP_ROOT_DIR/oap-ape/ape-java
-mvn clean package -am
+mvn clean package -am -Pshading
 ```
 
-CPP build
+Note: This will package libparquet_jni.so into ape-spark-1.1.0-SNAPSHOT.jar under linux/64/lib folder.
+If you want to load the libparquet_jni.so from system library, please copy it to /usr/lib
+
+CPP build only
 ```
 cd $OAP_ROOT_DIR/oap-ape/ape-native/
 mkdir build
@@ -87,12 +89,12 @@ sudo cp ./lib/libparquet_jni.so /usr/lib/
 ```
 
 ## Run Spark with APE
- 1. make sure you have installed `libparquet_jni.so` on all of your worker nodes.
- 2. copy `$OAP_ROOT_DIR/oap-ape/ape-java/ape-common/target/ape-common-1.1.0-SNAPSHOT.jar` these file to Spark master node, add below configuration in your `spark-defaults.conf` file 
+ 1. make sure you have installed `libparquet_jni.so` on APE server node when using remote reader.
+ 2. copy `$OAP_ROOT_DIR/oap-ape/ape-java/ape-spark/target/ape-spark-1.1.0-SNAPSHOT.jar` to Spark master node, add below configuration in your `spark-defaults.conf` file 
 ```
-spark.files                         file:///path/to/ape-common-1.1.0-SNAPSHOT-jar-with-dependencies.jar,file:///path/to/ape-spark-1.1.0-SNAPSHOT.jar
-spark.executor.extraClassPath       ./ape-common-1.1.0-SNAPSHOT-jar-with-dependencies.jar:./ape-spark-1.1.0-SNAPSHOT.jar
-spark.driver.extraClassPath         file:///path/to/ape-common-1.1.0-SNAPSHOT-jar-with-dependencies.jar:file:///path/to/ape-spark-1.1.0-SNAPSHOT.jar
+spark.files                         file:///path/to/ape-spark-1.1.0-SNAPSHOT.jar
+spark.executor.extraClassPath       ./ape-spark-1.1.0-SNAPSHOT.jar
+spark.driver.extraClassPath         file:///path/to/ape-spark-1.1.0-SNAPSHOT.jar
 ```
 
  3. run spark-sql workload
@@ -118,7 +120,7 @@ To enable plasma cache, you also need to start plasma server on APE server node:
 ```
 nohup plasma-store-server -m 1200000000000 -d /mnt/pmem -s /tmp/plasmaStore >> plasma.log 2>&1 &
 ```
-Then at compute cluster side, cp jars of ape-server/ape-client to $spark_home/jars. Update hdfs-site.xml with following setting:
+Then at compute cluster side. Update hdfs-site.xml with following setting:
 ```
     <property>
         <name>fs.ape.client.remote.servers</name>
