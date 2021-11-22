@@ -142,6 +142,11 @@ public class ApeHiveTableSource implements
 				ApeHiveOptions.TABLE_EXEC_HIVE_PARQUET_USE_NATIVE_READER.key(),
 				flinkConf.get(ApeHiveOptions.TABLE_EXEC_HIVE_PARQUET_USE_NATIVE_READER)
 		);
+
+		jobConf.set(
+				ApeHiveOptions.TABLE_EXEC_HIVE_PARQUET_NATIVE_READER_MODE.key(),
+				flinkConf.get(ApeHiveOptions.TABLE_EXEC_HIVE_PARQUET_NATIVE_READER_MODE)
+		);
 	}
 
 	@Override
