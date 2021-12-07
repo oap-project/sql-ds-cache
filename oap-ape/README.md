@@ -72,7 +72,7 @@ mvn clean install
 Native and Java build. We will use `$OAP_ROOT_DIR/oap-ape/ape-java/ape-spark/target/ape-spark-1.1.0-SNAPSHOT.jar`, `$OAP_ROOT_DIR/oap-ape/ape-java/ape-flink/ape-flink-x.xx.x/target/ape-flink-x.xx.x-1.1.0-SNAPSHOT.jar` later.
 ```
 cd $OAP_ROOT_DIR/oap-ape/ape-java
-mvn clean package -am -Pshading
+mvn clean package -am -PsparkNative
 ```
 
 Note: This will package libparquet_jni.so into ape-spark-1.1.0-SNAPSHOT.jar under linux/64/lib folder.
@@ -86,6 +86,12 @@ cd build
 cmake ..
 make
 sudo cp ./lib/libparquet_jni.so /usr/lib/
+```
+
+Java build only
+```
+cd $OAP_ROOT_DIR/oap-ape/ape-java
+mvn clean package -am
 ```
 
 ## Run Spark with APE
