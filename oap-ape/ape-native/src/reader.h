@@ -37,6 +37,23 @@
 #include "src/utils/GroupByUtils.h"
 #include "src/utils/DumpUtils.h"
 
+struct readReady
+{
+  std::vector<int64_t>* buffersPtr;
+  std::vector<int64_t>* nullsPtr;
+  int totalRowGroups ;
+  int totalRowGroupsRead ;
+  int totalColumns ;
+  int64_t totalRows ;
+  int firstRowGroupIndex ;
+  int currentRowGroup ;
+  int64_t totalRowsRead ;
+  int64_t totalRowsLoadedSoFar ;
+  int rowsToRead;
+
+  int currentBufferedRowGroup ;
+};
+
 namespace ape {
 class Reader {
  public:
@@ -116,15 +133,9 @@ class Reader {
   std::vector<std::shared_ptr<parquet::ColumnReader>> columnReaders;
   std::vector<int> requiredRowGroupId;
 
-  int totalRowGroups = 0;
-  int totalRowGroupsRead = 0;
-  int totalColumns = 0;
-  int64_t totalRows = 0;
-  int firstRowGroupIndex = 0;
+  struct readReady* lastRead;
 
-  int currentRowGroup = 0;
-  int64_t totalRowsRead = 0;
-  int64_t totalRowsLoadedSoFar = 0;
+
 
   std::shared_ptr<RootFilterExpression> filterExpression;
   std::chrono::duration<double> filterTime = std::chrono::nanoseconds::zero();
@@ -154,7 +165,7 @@ class Reader {
   std::shared_ptr<sw::redis::ConnectionOptions> redisConnectionOptions;
 
   bool preBufferEnabled = false;
-  int currentBufferedRowGroup = -1;
+  
 
   std::vector<int> usedInitBufferIndex;
   std::vector<parquet::Type::type> typeVector = std::vector<parquet::Type::type>();
