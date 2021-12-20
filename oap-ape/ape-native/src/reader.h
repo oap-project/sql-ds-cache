@@ -52,6 +52,11 @@ struct readReady
   int rowsToRead;
 
   int currentBufferedRowGroup ;
+
+  int currentBatchSize = 0;
+  int initRequiredColumnCount = 0;
+  int initPlusFilterRequiredColumnCount = 0;
+  int32_t dumpAggCursor = 0;
 };
 
 namespace ape {
@@ -144,13 +149,10 @@ class Reader {
   std::vector<char*> extraByteArrayBuffers;
 
   bool filterReset = false;
-  int currentBatchSize = 0;
-  int initRequiredColumnCount = 0;
   std::vector<std::string> filterColumnNames;
   std::vector<char*> filterDataBuffers;
   std::vector<char*> filterNullBuffers;
 
-  int initPlusFilterRequiredColumnCount = 0;
   bool aggReset = false;
   std::vector<std::string> aggColumnNames;
   std::vector<char*> aggDataBuffers;
@@ -174,6 +176,6 @@ class Reader {
   std::vector<Key> keys = std::vector<Key>();
   ApeHashMap map;
 
-  int32_t dumpAggCursor = 0;
+  
 };
 }  // namespace ape
