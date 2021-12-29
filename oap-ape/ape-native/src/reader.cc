@@ -45,7 +45,7 @@ void Reader::init(std::string fileName, std::string hdfsHost, int hdfsPort,
   lastRead-> initRequiredColumnCount = 0;
   lastRead-> initPlusFilterRequiredColumnCount = 0;
   lastRead-> dumpAggCursor = 0;
-  std::cout<<"Reader::init new"<<"\n";
+  std::cout<<"Reader::init new 1229"<<"\n";
 
   options = new arrow::fs::HdfsOptions();
   ARROW_LOG(DEBUG) << "hdfsHost " << hdfsHost << " port " << hdfsPort;
@@ -190,11 +190,19 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
   }
     lastRead->buffersPtr= &fbuffersPtr;
     lastRead->nullsPtr= &fnullsPtr;
-    //allocateExtraBuffers(batchSize, *(lastRead->buffersPtr), *(lastRead->nullsPtr));
+    allocateExtraBuffers(batchSize, *(lastRead->buffersPtr), *(lastRead->nullsPtr));
+    
+
 
     //to do_________________________________________________________________________________________________
     if (aggExprs.size() == 0) {  // will not do agg
     std::cout<<"Reader::readBatch 180"<<"\n";
+    std::cout << "doReadBatch buffer 181 = { ";
+    for (int n : *(lastRead->buffersPtr)) {
+        std::cout << n << ", ";
+    }
+    std::cout << "}; \n";
+
     int rowsToRead = doReadBatch(batchSize, *(lastRead->buffersPtr), *(lastRead->nullsPtr));
     lastRead->totalRowsRead += rowsToRead;
     lastRead->rowsToRead = rowsToRead;
@@ -217,65 +225,122 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
       } 
     }
     std::cout<<"Reader::readBatch 202"<<"\n";
+    std::cout << "after read 228 = { ";
+    for (int n : *(lastRead->buffersPtr)) {
+        std::cout << n << ", ";
+    }
+    std::cout << "}; \n";
+
   }
 
 
   preBufferRowGroups();
+      std::cout << "after read preBufferRowGroups = { ";
+    for (int n : *(lastRead->buffersPtr)) {
+        std::cout << n << ", ";
+    }
+    std::cout << "}; \n";
   // Init grow group readers.
   // This should be called after preBufferRowGroups
   initRowGroupReaders();
+      std::cout << "after read initRowGroupReaders = { ";
+    for (int n : *(lastRead->buffersPtr)) {
+        std::cout << n << ", ";
+    }
+    std::cout << "}; \n";
 
   // this reader have read all rows
   if (lastRead->totalRowsRead >= lastRead->totalRows && lastRead->dumpAggCursor == 0) {
     return -1;
   }
   checkEndOfRowGroup();
-  struct readReady *ReadReady = (struct readReady *)malloc(sizeof(struct readReady));
-  ReadReady-> totalRowGroups = lastRead->totalRowGroups;
-  ReadReady-> totalRowGroupsRead = lastRead->totalRowGroupsRead;
-  ReadReady-> totalColumns = lastRead->totalColumns;
-  ReadReady-> totalRows = lastRead->totalRows;
-  ReadReady-> firstRowGroupIndex = lastRead->firstRowGroupIndex;
-  ReadReady-> currentRowGroup = lastRead->currentRowGroup;
-  ReadReady-> totalRowsRead = lastRead->totalRowsRead;
-  ReadReady-> totalRowsLoadedSoFar = lastRead->totalRowsLoadedSoFar;
-  ReadReady-> rowsToRead=lastRead->rowsToRead;
-  ReadReady-> currentBufferedRowGroup=lastRead->currentBufferedRowGroup;
+        std::cout << "after read checkEndOfRowGroup = { ";
+    for (int n : *(lastRead->buffersPtr)) {
+        std::cout << n << ", ";
+    }
+    std::cout << "}; \n";
+  struct readReady readReady;
+  struct readReady *ReadReady = &readReady;
+  (ReadReady-> totalRowGroups) = (lastRead->totalRowGroups);
+  (ReadReady-> totalRowGroupsRead) = (lastRead->totalRowGroupsRead);
+  (ReadReady-> totalColumns) = (lastRead->totalColumns);
+  (ReadReady-> totalRows) = (lastRead->totalRows);
+  (ReadReady-> firstRowGroupIndex )= (lastRead->firstRowGroupIndex);
+  (ReadReady-> currentRowGroup) = (lastRead->currentRowGroup);
+  (ReadReady-> totalRowsRead) = (lastRead->totalRowsRead);
+  (ReadReady-> totalRowsLoadedSoFar) = (lastRead->totalRowsLoadedSoFar);
+  (ReadReady-> rowsToRead)=(lastRead->rowsToRead);
+  (ReadReady-> currentBufferedRowGroup)=lastRead->currentBufferedRowGroup;
 
   ReadReady->currentBatchSize=lastRead-> currentBatchSize;
   ReadReady->initRequiredColumnCount=lastRead-> initRequiredColumnCount ;
   ReadReady->initPlusFilterRequiredColumnCount=lastRead-> initPlusFilterRequiredColumnCount ;
   ReadReady->dumpAggCursor=lastRead-> dumpAggCursor;
-  
 
-  std::vector<int64_t> buffersPtr(lastRead->initRequiredColumnCount);
-  std::vector<int64_t> nullsPtr(lastRead->initRequiredColumnCount);
+  //allocateExtraBuffers(batchSize, *(ReadReady->buffersPtr), *(ReadReady->nullsPtr));
   std::cout<<"Reader::readBatch 219"<<"\n";
+  // std::cout<<(*(lastRead->buffersPtr)).size()<<"   "<<(*(ReadReady->buffersPtr)).size()<<"\n";
+  // (*(ReadReady->buffersPtr)).resize((*(lastRead->buffersPtr)).size());
+  // std::cout<<(*(lastRead->buffersPtr)).size()<<"   "<<(*(ReadReady->buffersPtr)).size()<<"\n";
 
   // Not all input buffers can be used for column data loading.
   // espeically when agg pushing down is enabled.
   // E.g. input buffers could be in types of "tbl_col_a, sum(tbl_col_b)",
   // in which only the first buffer can be used for column data loading.
-  for (int i = 0; i < usedInitBufferIndex.size(); i++) {
-    buffersPtr[i] = buffersPtr_[usedInitBufferIndex[i]];
-    nullsPtr[i] = nullsPtr_[usedInitBufferIndex[i]];
+
+  (ReadReady->buffersPtr)= (lastRead->buffersPtr);
+  (ReadReady->nullsPtr)= (lastRead->nullsPtr);
+          std::cout << "last buffer 271 = { ";
+    for (int n : *(ReadReady->buffersPtr)) {
+        std::cout << n << ", ";
+    }
+    std::cout << "}; \n";
+            std::cout << "last buffer should be 271 = { ";
+    for (int n : *(lastRead->buffersPtr)) {
+        std::cout << n << ", ";
+    }
+    std::cout << "}; \n";
+  lastRead->buffersPtr= new std::vector<int64_t> (lastRead->initRequiredColumnCount);
+  lastRead->nullsPtr= new std::vector<int64_t> (lastRead->initRequiredColumnCount);
+  for (int i = 0; i < lastRead->initRequiredColumnCount; i++) {
+    ((*(lastRead->buffersPtr))[i]) = (int64_t)(new std::vector<int64_t> (batchSize*16));
+    ((*(lastRead->nullsPtr))[i]) = (int64_t)(new std::vector<int64_t> (batchSize));
   }
-  ReadReady->buffersPtr= &buffersPtr;
-  ReadReady->nullsPtr= &nullsPtr;
+  allocateExtraBuffers(batchSize, *(lastRead->buffersPtr), *(lastRead->nullsPtr));
+
+
+
+
+  //   for (int i = 0; i < usedInitBufferIndex.size(); i++) {
+  //   ((*(lastRead->buffersPtr))[i]) = ((*(lastRead->buffersPtr))[usedInitBufferIndex[i]]);
+  //   (*(lastRead->nullsPtr))[i] = (*(lastRead->nullsPtr))[usedInitBufferIndex[i]];
+  // }
   std::cout<<"Reader::readBatch 231"<<"\n";
 
 
-  allocateExtraBuffers(batchSize, *(ReadReady->buffersPtr), *(ReadReady->nullsPtr));
-
+  
   lastRead->currentBatchSize = batchSize;
   int rowsRet = 0;
   if (aggExprs.size() == 0) {  // will not do agg
   std::cout<<"Reader::readBatch 239"<<"\n";
+  if (lastRead->totalRowsLoadedSoFar - lastRead->totalRowsRead>0){
+        std::cout << "doReadBatch buffer 283 = { ";
+    for (int n : *(lastRead->buffersPtr)) {
+        std::cout << n << ", ";
+    }
+    std::cout << "}; \n";
     int rowsToRead = doReadBatch(batchSize, *(lastRead->buffersPtr), *(lastRead->nullsPtr));
     lastRead->totalRowsRead += rowsToRead;
     lastRead->rowsToRead = rowsToRead;
-    ARROW_LOG(DEBUG) << "total rows read yet: " << lastRead->totalRowsRead;
+    ARROW_LOG(DEBUG) << "total rows read yet: " << lastRead->totalRowsRead;}
+        std::cout << "doFilter buffer 292 = { ";
+    for (int n : *(ReadReady->buffersPtr)) {
+        std::cout << n << ", ";
+    }
+    std::cout << "}; \n";
+    std::cout <<"lastread->rowstoread :" <<lastRead->rowsToRead<<"  readready->rowstoread :"<<ReadReady->rowsToRead<<"\n";
     rowsRet = doFilter(ReadReady->rowsToRead, *(ReadReady->buffersPtr), *(ReadReady->nullsPtr));
+    std::cout<<"Reader::readBatch 282"<<"\n";
   } else {
     std::cout<<"Reader::readBatch 246"<<"\n";
     if (lastRead->dumpAggCursor == 0) {  // will read a whole RowGroup and do agg
@@ -287,11 +352,12 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
       }
       while (lastRead->totalRowsRead < lastRead->totalRows && !checkEndOfRowGroup()) {
         std::cout<<"Reader::readBatch 255"<<"\n";
+        if (lastRead->totalRowsLoadedSoFar - lastRead->totalRowsRead>0){
         int rowsToRead = doReadBatch(batchSize, *(lastRead->buffersPtr), *(lastRead->nullsPtr));
         lastRead->totalRowsRead += rowsToRead;
         lastRead->rowsToRead = rowsToRead;
         ARROW_LOG(DEBUG) << "total rows read yet: " << lastRead->totalRowsRead;
-
+}
         int rowsAfterFilter = doFilter(ReadReady->rowsToRead, *(ReadReady->buffersPtr), *(ReadReady->nullsPtr));
         ARROW_LOG(DEBUG) << "after filter " << rowsAfterFilter;
 
@@ -347,6 +413,15 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
   }
   std::cout<<"Reader::readBatch 314"<<"\n";
 
+  for (int i = 0; i < (*(ReadReady->buffersPtr)).size(); i++) {
+    delete((std::vector<int64_t> *)((*(ReadReady->buffersPtr))[i])) ;
+    delete((std::vector<int64_t> *)((*(ReadReady->nullsPtr))[i])) ;
+  }
+  delete(ReadReady->buffersPtr);
+  delete(ReadReady->nullsPtr);
+  ReadReady->buffersPtr=NULL;
+  ReadReady->nullsPtr=NULL;
+
   free(ReadReady);
   ReadReady=NULL;
   ARROW_LOG(DEBUG) << "ret rows " << rowsRet;
@@ -369,6 +444,7 @@ int Reader::doReadBatch(int batchSize, std::vector<int64_t>& buffersPtr,
     // ReadBatchSpaced API will return rows left in a data page
     while (rows < rowsToRead) {
       std::cout<<"Reader::doReadBatch 337"<<"\n";
+      std::cout<<rows<<"   "<<rowsToRead<<"\n";
       // TODO: refactor. it's ugly, but didn't find some better way.
       switch (typeVector[i]) {
         std::cout<<"Reader::doReadBatch 340"<<"\n";
@@ -499,6 +575,7 @@ int Reader::doFilter(int batchSize, std::vector<int64_t>& buffersPtr,
     int rowsRet =
         filterExpression->ExecuteWithParam(batchSize, buffersPtr, nullsPtr, tmp);
     filterTime += std::chrono::steady_clock::now() - start;
+    std::cout<<"Reader::doFilter 507"<<"\n";
     return rowsRet;
   }
   return batchSize;
