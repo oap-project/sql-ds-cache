@@ -40,7 +40,9 @@
 struct readReady
 {
   std::vector<int64_t>* buffersPtr;
+  std::vector<int64_t>* buffersPtr_;
   std::vector<int64_t>* nullsPtr;
+  std::vector<int64_t>* nullsPtr_;
   int totalRowGroups ;
   int totalRowGroupsRead ;
   int totalColumns ;

@@ -300,12 +300,56 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
         std::cout << n << ", ";
     }
     std::cout << "}; \n";
+  lastRead->buffersPtr_= new std::vector<int64_t> (lastRead->initRequiredColumnCount);
+  lastRead->nullsPtr_= new std::vector<int64_t> (lastRead->initRequiredColumnCount);
+  for (int i = 0; i < lastRead->initRequiredColumnCount; i++) {
+    switch (fileMetaData->schema()->Column(requiredColumnIndex[i])->physical_type()) {
+      case parquet::Type::BOOLEAN:
+        ((*(lastRead->buffersPtr_))[i])=  (int64_t)new bool[batchSize];
+        ((*(lastRead->nullsPtr_))[i]) = (int64_t)new int64_t[batchSize];
+        break;
+      case parquet::Type::INT32:
+        ((*(lastRead->buffersPtr_))[i]) = (int64_t)new int32_t[batchSize];
+        ((*(lastRead->nullsPtr_))[i]) = (int64_t)new int64_t[batchSize];
+        break;
+      case parquet::Type::INT64:
+        ((*(lastRead->buffersPtr_))[i]) = (int64_t)new int64_t[batchSize];
+        ((*(lastRead->nullsPtr_))[i]) = (int64_t)new int64_t[batchSize];
+        break;
+      case parquet::Type::INT96:
+        ((*(lastRead->buffersPtr_))[i]) = (int64_t)new parquet::Int96[batchSize];
+        ((*(lastRead->nullsPtr_))[i]) = (int64_t)new int64_t[batchSize];
+        break;
+      case parquet::Type::FLOAT:
+        ((*(lastRead->buffersPtr_))[i]) = (int64_t)new float[batchSize];
+        ((*(lastRead->nullsPtr_))[i]) = (int64_t)new int64_t[batchSize];
+        break;
+      case parquet::Type::DOUBLE:
+        ((*(lastRead->buffersPtr_))[i]) = (int64_t)new double[batchSize];
+        ((*(lastRead->nullsPtr_))[i]) = (int64_t)new int64_t[batchSize];
+        break;
+      case parquet::Type::BYTE_ARRAY:
+        ((*(lastRead->buffersPtr_))[i]) = (int64_t)new parquet::ByteArray[batchSize];
+        ((*(lastRead->nullsPtr_))[i]) = (int64_t)new int64_t[batchSize];
+        break;
+      case parquet::Type::FIXED_LEN_BYTE_ARRAY:
+        ((*(lastRead->buffersPtr_))[i]) = (int64_t)new parquet::FixedLenByteArray[batchSize];
+        ((*(lastRead->nullsPtr_))[i]) = (int64_t)new int64_t[batchSize];
+        break;
+      default:
+        ARROW_LOG(WARNING) << "Unsupported Type!";
+        continue;
+    }
+  }
+    std::cout<<"Reader::readBatch 344"<<"\n";
   lastRead->buffersPtr= new std::vector<int64_t> (lastRead->initRequiredColumnCount);
   lastRead->nullsPtr= new std::vector<int64_t> (lastRead->initRequiredColumnCount);
-  for (int i = 0; i < lastRead->initRequiredColumnCount; i++) {
-    ((*(lastRead->buffersPtr))[i]) = (int64_t)(new std::vector<int64_t> (batchSize*16));
-    ((*(lastRead->nullsPtr))[i]) = (int64_t)(new std::vector<int64_t> (batchSize));
+    std::cout<<"Reader::readBatch 347"<<"\n";
+  for (int i = 0; i < usedInitBufferIndex.size(); i++) {
+    lastRead->buffersPtr[i] = lastRead->buffersPtr_[usedInitBufferIndex[i]];
+    lastRead->nullsPtr[i] = lastRead->nullsPtr_[usedInitBufferIndex[i]];
   }
+    std::cout<<"Reader::readBatch 345"<<"\n";
   allocateExtraBuffers(batchSize, *(lastRead->buffersPtr), *(lastRead->nullsPtr));
 
 
@@ -413,18 +457,54 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
   }
   std::cout<<"Reader::readBatch 314"<<"\n";
 
-  for (int i = 0; i < (*(ReadReady->buffersPtr)).size(); i++) {
-    delete((std::vector<int64_t> *)((*(ReadReady->buffersPtr))[i])) ;
-    delete((std::vector<int64_t> *)((*(ReadReady->nullsPtr))[i])) ;
+  for (int i = 0; i < (*(ReadReady->buffersPtr_)).size(); i++) {
+    switch (fileMetaData->schema()->Column(requiredColumnIndex[i])->physical_type()) {
+      case parquet::Type::BOOLEAN:
+        delete((bool*)((*(ReadReady->buffersPtr_))[i]));
+        break;
+      case parquet::Type::INT32:
+        delete((int32_t*)((*(ReadReady->buffersPtr_))[i]));
+        break;
+      case parquet::Type::INT64:
+        delete((int64_t*)((*(ReadReady->buffersPtr_))[i]));
+      case parquet::Type::INT96:
+        delete((parquet::Int96*)((*(ReadReady->buffersPtr_))[i]));
+        break;
+        
+      case parquet::Type::FLOAT:
+        delete((float*)((*(ReadReady->buffersPtr_))[i]));
+        break;
+        
+      case parquet::Type::DOUBLE:
+        delete((double*)((*(ReadReady->buffersPtr_))[i]));
+        break;
+      case parquet::Type::BYTE_ARRAY:
+        delete((parquet::ByteArray*)((*(ReadReady->buffersPtr_))[i]));
+        break;
+        
+      case parquet::Type::FIXED_LEN_BYTE_ARRAY:
+        delete((parquet::FixedLenByteArray*)((*(ReadReady->buffersPtr_))[i]));
+        break;
+      default:
+        ARROW_LOG(WARNING) << "Unsupported Type!";
+        continue;
+    }
+    delete((int64_t *)((*(ReadReady->nullsPtr_))[i])) ;
   }
+    std::cout<<"Reader::readBatch 494"<<"\n";
+  delete(ReadReady->buffersPtr_);
+  delete(ReadReady->nullsPtr_);
+    std::cout<<"Reader::readBatch 497"<<"\n";
   delete(ReadReady->buffersPtr);
   delete(ReadReady->nullsPtr);
+  ReadReady->buffersPtr_=NULL;
+  ReadReady->nullsPtr_=NULL; 
   ReadReady->buffersPtr=NULL;
   ReadReady->nullsPtr=NULL;
-
   free(ReadReady);
   ReadReady=NULL;
   ARROW_LOG(DEBUG) << "ret rows " << rowsRet;
+  std::cout<<"Reader::readBatch 507"<<"\n";
   return rowsRet;
 }
 
