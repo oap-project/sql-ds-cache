@@ -27,6 +27,7 @@
 
 #include "src/utils/AggExpression.h"
 #include "src/utils/FilterExpression.h"
+#include "src/utils/PredicateExpression.h"
 #include "src/utils/Expression.h"
 
 namespace ape {
@@ -35,6 +36,9 @@ class JsonConvertor {
  public:
   static std::shared_ptr<Expression> parseToFilterExpression(std::string jsonString);
   static std::shared_ptr<Expression> parseToFilterExpression(nlohmann::json root);
+
+  static std::shared_ptr<PredicateExpression> parseToPredicateExpression(std::string jsonString);
+  static std::shared_ptr<PredicateExpression> parseToPredicateExpression(nlohmann::json root);
 
   static std::vector<std::shared_ptr<Expression>> parseToGroupByExpressions(
       std::string jsonString);

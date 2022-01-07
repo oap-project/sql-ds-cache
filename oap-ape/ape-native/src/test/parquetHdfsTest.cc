@@ -25,11 +25,13 @@
 #include <parquet/api/reader.h>
 #include <gtest/gtest.h>
 
+#include <nlohmann/json.hpp>
+
 TEST(ParquetHdfsTest, ReadTest) {
   arrow::fs::HdfsOptions options_;
 
-  std::string hdfs_host = "sr585";
-  int hdfs_port = 9000;
+  std::string hdfs_host = "clx06-AEP";
+  int hdfs_port = 8020;
   // std::string hdfs_user = "kunshang";
 
   options_.ConfigureEndPoint(hdfs_host, hdfs_port);
@@ -42,8 +44,8 @@ TEST(ParquetHdfsTest, ReadTest) {
       std::make_shared<arrow::fs::SubTreeFileSystem>("", *result);
 
   std::string file_name =
-      "/tpcds_10g/store_sales/"
-      "part-00000-74feb3b4-1954-4be7-802d-a50912793bea-c000.snappy.parquet";
+      "/user/hive/warehouse/tpcds_hdfs_parquet_10.db/store_sales/ss_sold_date_sk=2450816/"
+      "part-00009-0828d1ab-ef1f-4b55-bf94-c071fb76c353.c000.snappy.parquet";
 
   auto file_result = fs_->OpenInputFile(file_name);
   EXPECT_TRUE(file_result.ok()) << "Open hdfs file failed";
@@ -84,7 +86,7 @@ TEST(ParquetHdfsTest, ReadTest) {
   column_reader = row_group_reader->Column(1);
   parquet::Int32Reader* int32_reader =
       static_cast<parquet::Int32Reader*>(column_reader.get());
-  int batch_size = 10000;
+  int batch_size = 1000;
   int32_t* values_rb = (int32_t*)std::malloc(batch_size * sizeof(int32_t));
   int64_t values_read = 0;
   int64_t rows_read = 0;
@@ -105,10 +107,15 @@ TEST(ParquetHdfsTest, ReadTest) {
 
   // ReadBatchSpaced will record a null bitmap.
   std::cout << std::endl << "test ReadBatchSpaced API" << std::endl;
+  std::cout<<"malloc values_rbs"<<std::endl;
   int32_t* values_rbs = (int32_t*)std::malloc(batch_size * sizeof(int32_t));
+  std::cout<<"malloc def_levels"<<std::endl;
   int16_t* def_levels = (int16_t*)std::malloc(batch_size * sizeof(int16_t));
+  std::cout<<"malloc rep_devels"<<std::endl;
   int16_t* rep_levels = (int16_t*)std::malloc(batch_size * sizeof(int16_t));
+  std::cout<<"malloc valid_bits"<<std::endl;
   uint8_t* valid_bits = (uint8_t*)std::malloc(batch_size * sizeof(uint8_t));
+  std::cout<<"***********************"<<std::endl;
   int64_t levels_read = 0;
   int64_t null_count = 0;
 
@@ -132,4 +139,5 @@ TEST(ParquetHdfsTest, ReadTest) {
   std::free(def_levels);
   std::free(rep_levels);
   std::free(valid_bits);
+  std::cout<<"parquetHdfsTest done!"<<std::endl;
 }
