@@ -31,7 +31,7 @@ Reader::Reader() {}
 
 void Reader::init(std::string fileName, std::string hdfsHost, int hdfsPort,
                   std::string requiredSchema, int firstRowGroup, int rowGroupToRead) {
-  readPart = (struct readReady*)malloc(sizeof(struct readReady));
+  readPart = new struct readReady;
   readPart->totalRowGroups = 0;
   readPart->totalRowGroupsRead = 0;
   readPart->totalColumns = 0;
@@ -45,7 +45,7 @@ void Reader::init(std::string fileName, std::string hdfsHost, int hdfsPort,
   readPart->initRequiredColumnCount = 0;
   readPart->initPlusFilterRequiredColumnCount = 0;
   readPart->dumpAggCursor = 0;
-  std::cout << "Reader::init new 1229"
+  std::cout << "Reader::init new 0106"
             << "\n";
 
   options = new arrow::fs::HdfsOptions();
@@ -167,41 +167,41 @@ void convertBitMap(uint8_t* srcBitMap, uint8_t* dstByteMap, int len) {
   }
 }
 
-void copyStruct(struct readReady* readPart, struct readReady* filterPart) {
-  (filterPart->totalRowGroups) = (readPart->totalRowGroups);
-  (filterPart->totalRowGroupsRead) = (readPart->totalRowGroupsRead);
-  (filterPart->totalColumns) = (readPart->totalColumns);
-  (filterPart->totalRows) = (readPart->totalRows);
-  (filterPart->firstRowGroupIndex) = (readPart->firstRowGroupIndex);
-  (filterPart->currentRowGroup) = (readPart->currentRowGroup);
-  (filterPart->totalRowsRead) = (readPart->totalRowsRead);
-  (filterPart->totalRowsLoadedSoFar) = (readPart->totalRowsLoadedSoFar);
-  (filterPart->rowsToRead) = (readPart->rowsToRead);
-  (filterPart->currentBufferedRowGroup) = readPart->currentBufferedRowGroup;
+// void copyStruct(struct readReady* readPart, struct readReady* filterPart) {
+//   (filterPart->totalRowGroups) = (readPart->totalRowGroups);
+//   (filterPart->totalRowGroupsRead) = (readPart->totalRowGroupsRead);
+//   (filterPart->totalColumns) = (readPart->totalColumns);
+//   (filterPart->totalRows) = (readPart->totalRows);
+//   (filterPart->firstRowGroupIndex) = (readPart->firstRowGroupIndex);
+//   (filterPart->currentRowGroup) = (readPart->currentRowGroup);
+//   (filterPart->totalRowsRead) = (readPart->totalRowsRead);
+//   (filterPart->totalRowsLoadedSoFar) = (readPart->totalRowsLoadedSoFar);
+//   (filterPart->rowsToRead) = (readPart->rowsToRead);
+//   (filterPart->currentBufferedRowGroup) = readPart->currentBufferedRowGroup;
 
-  filterPart->currentBatchSize = readPart->currentBatchSize;
-  filterPart->initRequiredColumnCount = readPart->initRequiredColumnCount;
-  filterPart->initPlusFilterRequiredColumnCount =
-      readPart->initPlusFilterRequiredColumnCount;
-  filterPart->dumpAggCursor = readPart->dumpAggCursor;
+//   filterPart->currentBatchSize = readPart->currentBatchSize;
+//   filterPart->initRequiredColumnCount = readPart->initRequiredColumnCount;
+//   filterPart->initPlusFilterRequiredColumnCount =
+//       readPart->initPlusFilterRequiredColumnCount;
+//   filterPart->dumpAggCursor = readPart->dumpAggCursor;
 
-  // allocateExtraBuffers(batchSize, *(filterPart->buffersPtr), *(filterPart->nullsPtr));
-  std::cout << "Reader::readBatch 219"
-            << "\n";
-  // std::cout<<(*(readPart->buffersPtr)).size()<<"
-  // "<<(*(filterPart->buffersPtr)).size()<<"\n";
-  // (*(filterPart->buffersPtr)).resize((*(readPart->buffersPtr)).size());
-  // std::cout<<(*(readPart->buffersPtr)).size()<<"
-  // "<<(*(filterPart->buffersPtr)).size()<<"\n";
+//   // allocateExtraBuffers(batchSize, *(filterPart->buffersPtr), *(filterPart->nullsPtr));
+//   std::cout << "Reader::readBatch 219"
+//             << "\n";
+//   // std::cout<<(*(readPart->buffersPtr)).size()<<"
+//   // "<<(*(filterPart->buffersPtr)).size()<<"\n";
+//   // (*(filterPart->buffersPtr)).resize((*(readPart->buffersPtr)).size());
+//   // std::cout<<(*(readPart->buffersPtr)).size()<<"
+//   // "<<(*(filterPart->buffersPtr)).size()<<"\n";
 
-  // Not all input buffers can be used for column data loading.
-  // espeically when agg pushing down is enabled.
-  // E.g. input buffers could be in types of "tbl_col_a, sum(tbl_col_b)",
-  // in which only the first buffer can be used for column data loading.
+//   // Not all input buffers can be used for column data loading.
+//   // espeically when agg pushing down is enabled.
+//   // E.g. input buffers could be in types of "tbl_col_a, sum(tbl_col_b)",
+//   // in which only the first buffer can be used for column data loading.
 
-  (filterPart->buffersPtr) = (readPart->buffersPtr);
-  (filterPart->nullsPtr) = (readPart->nullsPtr);
-}
+//   (filterPart->buffersPtr) = (readPart->buffersPtr);
+//   (filterPart->nullsPtr) = (readPart->nullsPtr);
+// }
 
 int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr_) {
   std::cout << "Reader::readBatch start 162"
@@ -229,6 +229,11 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
       (*(readPart->buffersPtr))[i] = buffersPtr_[usedInitBufferIndex[i]];
       (*(readPart->nullsPtr))[i] = nullsPtr_[usedInitBufferIndex[i]];
     }
+    std::cout << "read buffer 232 = { ";
+      for (int n : *(readPart->buffersPtr)) {
+        std::cout << n << ", ";
+      }
+      std::cout << "}; \n";
 
     allocateExtraBuffers(batchSize, *(readPart->buffersPtr), *(readPart->nullsPtr));
 
@@ -294,6 +299,7 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
 
   // this reader have read all rows
   if (readPart->totalRowsRead >= readPart->totalRows && readPart->dumpAggCursor == 0) {
+    std::cout << "302 if in\n ";
     return -1;
   }
   checkEndOfRowGroup();
@@ -303,8 +309,38 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
   }
   std::cout << "}; \n";
   struct readReady* filterPart = new struct readReady;
-  copyStruct(readPart, filterPart);
+  std::cout << "before copyStruct 311 ";
+
+  //copyStruct(readPart, filterPart);
+  (filterPart->totalRowGroups) = (readPart->totalRowGroups);
+  (filterPart->totalRowGroupsRead) = (readPart->totalRowGroupsRead);
+  (filterPart->totalColumns) = (readPart->totalColumns);
+  (filterPart->totalRows) = (readPart->totalRows);
+  (filterPart->firstRowGroupIndex) = (readPart->firstRowGroupIndex);
+  (filterPart->currentRowGroup) = (readPart->currentRowGroup);
+  (filterPart->totalRowsRead) = (readPart->totalRowsRead);
+  (filterPart->totalRowsLoadedSoFar) = (readPart->totalRowsLoadedSoFar);
+  (filterPart->rowsToRead) = (readPart->rowsToRead);
+  (filterPart->currentBufferedRowGroup) = readPart->currentBufferedRowGroup;
+
+  filterPart->currentBatchSize = readPart->currentBatchSize;
+  filterPart->initRequiredColumnCount = readPart->initRequiredColumnCount;
+  filterPart->initPlusFilterRequiredColumnCount =
+      readPart->initPlusFilterRequiredColumnCount;
+  filterPart->dumpAggCursor = readPart->dumpAggCursor;
+
+
+  std::cout << "Reader::readBatch 219"
+            << "\n";
+  std::cout << "filterPart->buffersPtr before new pointed to "<<(int64_t)(filterPart->buffersPtr)
+            << "\n";
+  (filterPart->buffersPtr) = (readPart->buffersPtr);
+  (filterPart->nullsPtr) = (readPart->nullsPtr);
+  std::cout << "filterPart->buffersPtr after new pointed to "<<(int64_t)(filterPart->buffersPtr)
+            << "\n";
   // for debug________________________________________________________
+    (filterPart->buffersPtr_) = (readPart->buffersPtr_);
+  (filterPart->nullsPtr_) = (readPart->nullsPtr_);
   std::cout << "last buffer 271 = { ";
   for (int n : *(filterPart->buffersPtr)) {
     std::cout << n << ", ";
@@ -317,42 +353,44 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
   std::cout << "}; \n";
   // for debug________________________________________________________
 
-  readPart->buffersPtr_ = new std::vector<int64_t>(readPart->initRequiredColumnCount);
-  readPart->nullsPtr_ = new std::vector<int64_t>(readPart->initRequiredColumnCount);
+  readPart->buffersPtr_ = new int64_t[readPart->initRequiredColumnCount];
+  readPart->nullsPtr_ = new int64_t[readPart->initRequiredColumnCount];
+  
   for (int i = 0; i < readPart->initRequiredColumnCount; i++) {
+    std::cout <<"type: "<<fileMetaData->schema()->Column(requiredColumnIndex[i])->physical_type()<<"\n";
     switch (fileMetaData->schema()->Column(requiredColumnIndex[i])->physical_type()) {
       case parquet::Type::BOOLEAN:
-        ((*(readPart->buffersPtr_))[i]) = (int64_t) new bool[batchSize];
-        ((*(readPart->nullsPtr_))[i]) = (int64_t) new int64_t[batchSize];
+        (((readPart->buffersPtr_))[i]) = (int64_t) new bool[batchSize];
+        (((readPart->nullsPtr_))[i]) = (int64_t) new int64_t[batchSize];
         break;
       case parquet::Type::INT32:
-        ((*(readPart->buffersPtr_))[i]) = (int64_t) new int32_t[batchSize];
-        ((*(readPart->nullsPtr_))[i]) = (int64_t) new int64_t[batchSize];
+        (((readPart->buffersPtr_))[i]) = (int64_t) new int32_t[batchSize];
+        (((readPart->nullsPtr_))[i]) = (int64_t) new int64_t[batchSize];
         break;
       case parquet::Type::INT64:
-        ((*(readPart->buffersPtr_))[i]) = (int64_t) new int64_t[batchSize];
-        ((*(readPart->nullsPtr_))[i]) = (int64_t) new int64_t[batchSize];
+        (((readPart->buffersPtr_))[i]) = (int64_t) new int64_t[batchSize];
+        (((readPart->nullsPtr_))[i]) = (int64_t) new int64_t[batchSize];
         break;
       case parquet::Type::INT96:
-        ((*(readPart->buffersPtr_))[i]) = (int64_t) new parquet::Int96[batchSize];
-        ((*(readPart->nullsPtr_))[i]) = (int64_t) new int64_t[batchSize];
+        (((readPart->buffersPtr_))[i]) = (int64_t) new parquet::Int96[batchSize];
+        (((readPart->nullsPtr_))[i]) = (int64_t) new int64_t[batchSize];
         break;
       case parquet::Type::FLOAT:
-        ((*(readPart->buffersPtr_))[i]) = (int64_t) new float[batchSize];
-        ((*(readPart->nullsPtr_))[i]) = (int64_t) new int64_t[batchSize];
+        (((readPart->buffersPtr_))[i]) = (int64_t) new float[batchSize];
+        (((readPart->nullsPtr_))[i]) = (int64_t) new int64_t[batchSize];
         break;
       case parquet::Type::DOUBLE:
-        ((*(readPart->buffersPtr_))[i]) = (int64_t) new double[batchSize];
-        ((*(readPart->nullsPtr_))[i]) = (int64_t) new int64_t[batchSize];
+        (((readPart->buffersPtr_))[i]) = (int64_t) new double[batchSize];
+        (((readPart->nullsPtr_))[i]) = (int64_t) new int64_t[batchSize];
         break;
       case parquet::Type::BYTE_ARRAY:
-        ((*(readPart->buffersPtr_))[i]) = (int64_t) new parquet::ByteArray[batchSize];
-        ((*(readPart->nullsPtr_))[i]) = (int64_t) new int64_t[batchSize];
+        (((readPart->buffersPtr_))[i]) = (int64_t) new parquet::ByteArray[batchSize];
+        (((readPart->nullsPtr_))[i]) = (int64_t) new int64_t[batchSize];
         break;
       case parquet::Type::FIXED_LEN_BYTE_ARRAY:
-        ((*(readPart->buffersPtr_))[i]) =
+        (((readPart->buffersPtr_))[i]) =
             (int64_t) new parquet::FixedLenByteArray[batchSize];
-        ((*(readPart->nullsPtr_))[i]) = (int64_t) new int64_t[batchSize];
+        (((readPart->nullsPtr_))[i]) = (int64_t) new int64_t[batchSize];
         break;
       default:
         ARROW_LOG(WARNING) << "Unsupported Type!";
@@ -361,13 +399,19 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
   }
   std::cout << "Reader::readBatch 344"
             << "\n";
+  std::cout << "readPart->buffersPtr before new pointed to "<<(int64_t)(readPart->buffersPtr)
+            << "\n";
   readPart->buffersPtr = new std::vector<int64_t>(readPart->initRequiredColumnCount);
   readPart->nullsPtr = new std::vector<int64_t>(readPart->initRequiredColumnCount);
+    std::cout << "readPart->buffersPtr after new pointed to "<<(int64_t)(readPart->buffersPtr)
+            << "\n";
   std::cout << "Reader::readBatch 347"
             << "\n";
+  std::cout << (*(readPart->buffersPtr)).size()<<" "<<(*(readPart->nullsPtr)).size()<<" "<<usedInitBufferIndex.size()<<"\n";
   for (int i = 0; i < usedInitBufferIndex.size(); i++) {
-    readPart->buffersPtr[i] = readPart->buffersPtr_[usedInitBufferIndex[i]];
-    readPart->nullsPtr[i] = readPart->nullsPtr_[usedInitBufferIndex[i]];
+    std::cout<<"loop readPart->buffersPtr_[usedInitBufferIndex[i]] "<<(int64_t)(((readPart->buffersPtr_))[usedInitBufferIndex[i]])<<"\n";
+    (*(readPart->buffersPtr))[i] = ((readPart->buffersPtr_))[usedInitBufferIndex[i]];
+    (*(readPart->nullsPtr))[i] = ((readPart->nullsPtr_))[usedInitBufferIndex[i]];
   }
   std::cout << "Reader::readBatch 345"
             << "\n";
@@ -440,6 +484,10 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
         // group num
         if (tmp != 0) rowsRet = tmp;
       }
+      if (readPart->totalRowsRead != 0){
+        buffersPtr_ = filterPart->buffersPtr_;
+        nullsPtr_ = filterPart->nullsPtr_;
+      }
       int rowsDump = rowsRet;
       if (rowsRet > batchSize) {
         std::cout << "Reader::readBatch 272"
@@ -493,45 +541,51 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
   }
   std::cout << "Reader::readBatch 314"
             << "\n";
+  if (readPart->totalRowsRead != 0) {
 
-  for (int i = 0; i < (*(filterPart->buffersPtr_)).size(); i++) {
+  for (int i = 0; i < sizeof((filterPart->buffersPtr_)) / sizeof((filterPart->buffersPtr_)[0]); i++) {
+    std::cout <<"type: "<<fileMetaData->schema()->Column(requiredColumnIndex[i])->physical_type()<<"\n";}
+
+  for (int i = 0; i < sizeof((filterPart->buffersPtr_)) / sizeof((filterPart->buffersPtr_)[0]); i++) {
+    std::cout <<"type: "<<fileMetaData->schema()->Column(requiredColumnIndex[i])->physical_type()<<"\n";
     switch (fileMetaData->schema()->Column(requiredColumnIndex[i])->physical_type()) {
       case parquet::Type::BOOLEAN:
-        delete ((bool*)((*(filterPart->buffersPtr_))[i]));
+        delete ((bool*)(((filterPart->buffersPtr_))[i]));
         break;
       case parquet::Type::INT32:
-        delete ((int32_t*)((*(filterPart->buffersPtr_))[i]));
+        delete ((int32_t*)(((filterPart->buffersPtr_))[i]));
         break;
       case parquet::Type::INT64:
-        delete ((int64_t*)((*(filterPart->buffersPtr_))[i]));
+        delete ((int64_t*)(((filterPart->buffersPtr_))[i]));
       case parquet::Type::INT96:
-        delete ((parquet::Int96*)((*(filterPart->buffersPtr_))[i]));
+        delete ((parquet::Int96*)(((filterPart->buffersPtr_))[i]));
         break;
 
       case parquet::Type::FLOAT:
-        delete ((float*)((*(filterPart->buffersPtr_))[i]));
+        delete ((float*)(((filterPart->buffersPtr_))[i]));
         break;
 
       case parquet::Type::DOUBLE:
-        delete ((double*)((*(filterPart->buffersPtr_))[i]));
+        delete ((double*)(((filterPart->buffersPtr_))[i]));
         break;
       case parquet::Type::BYTE_ARRAY:
-        delete ((parquet::ByteArray*)((*(filterPart->buffersPtr_))[i]));
+        delete ((parquet::ByteArray*)(((filterPart->buffersPtr_))[i]));
         break;
 
       case parquet::Type::FIXED_LEN_BYTE_ARRAY:
-        delete ((parquet::FixedLenByteArray*)((*(filterPart->buffersPtr_))[i]));
+        delete ((parquet::FixedLenByteArray*)(((filterPart->buffersPtr_))[i]));
         break;
       default:
         ARROW_LOG(WARNING) << "Unsupported Type!";
         continue;
     }
-    delete ((int64_t*)((*(filterPart->nullsPtr_))[i]));
+    delete ((int64_t*)(((filterPart->nullsPtr_))[i]));
   }
   std::cout << "Reader::readBatch 494"
             << "\n";
-  delete (filterPart->buffersPtr_);
-  delete (filterPart->nullsPtr_);
+  delete [](filterPart->buffersPtr_);
+  delete [](filterPart->nullsPtr_);
+  }
   std::cout << "Reader::readBatch 497"
             << "\n";
   delete (filterPart->buffersPtr);
@@ -540,7 +594,7 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
   filterPart->nullsPtr_ = NULL;
   filterPart->buffersPtr = NULL;
   filterPart->nullsPtr = NULL;
-  free(filterPart);
+  delete(filterPart);
   filterPart = NULL;
   ARROW_LOG(DEBUG) << "ret rows " << rowsRet;
   std::cout << "Reader::readBatch 507"
@@ -687,13 +741,14 @@ int Reader::doReadBatch(int batchSize, std::vector<int64_t>& buffersPtr,
           break;
       }
       convertBitMap(nullBitMap.data(), (uint8_t*)nullsPtr[i] + rows, tmpRows);
+      std::cout<<"have read rows = "<<tmpRows<<"\n";
       rows += tmpRows;
       std::cout << "Reader::doReadBatch 449"
                 << "\n";
     }
     assert(rowsToRead == rows);
     ARROW_LOG(DEBUG) << "columnReader read rows: " << rows;
-    std::cout << "Reader::doReadBatch 453"
+    std::cout << "Reader::doReadBatch 453 "<<rows
               << "\n";
   }
   std::cout << "Reader::doReadBatch 393"

@@ -40,9 +40,9 @@
 struct readReady
 {
   std::vector<int64_t>* buffersPtr;
-  std::vector<int64_t>* buffersPtr_;
+  int64_t* buffersPtr_;
   std::vector<int64_t>* nullsPtr;
-  std::vector<int64_t>* nullsPtr_;
+  int64_t* nullsPtr_;
   int totalRowGroups ;
   int totalRowGroupsRead ;
   int totalColumns ;
@@ -123,7 +123,7 @@ class Reader {
   int dumpBufferAfterAgg(int groupBySize, int aggExprsSize, const std::vector<Key>& keys,
                          const std::vector<DecimalVector>& results, int64_t* oriBufferPtr,
                          int64_t* oriNullsPtr, int32_t offset, int32_t length);
-  void copyStruct(struct readReady *readPart,  struct readReady *filterPart);                       
+  //void copyStruct(struct readReady *readPart,  struct readReady *filterPart);                       
 
   arrow::Result<std::shared_ptr<arrow::fs::HadoopFileSystem>> fsResult;
   arrow::fs::HdfsOptions* options;
