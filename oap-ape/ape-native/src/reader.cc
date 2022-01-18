@@ -68,6 +68,7 @@ void Reader::init(std::string fileName, std::string hdfsHost, int hdfsPort,
 
   fileMetaData = parquetReader->metadata();
 
+  this->useRowGroupFilter = false;
   this->firstRowGroupIndex = firstRowGroup;
   this->totalRowGroups = rowGroupToRead;
 
@@ -565,10 +566,17 @@ bool Reader::checkEndOfRowGroup() {
   // rowGroupReaders index starts from 0
   ARROW_LOG(DEBUG) << "totalRowsLoadedSoFar: " << totalRowsLoadedSoFar;
   //find next row group passing the predicate filter
-  while(!doPredicateFilter(currentRowGroup)){
-    currentRowGroup++;
-    totalRowGroupsRead++;
+  if(useRowGroupFilter)
+  {
+    while(!doPredicateFilter(currentRowGroup)){
+      currentRowGroup++;
+      totalRowGroupsRead++;
+    }
+    if(currentRowGroup > firstRowGroupIndex + totalRowGroups - 1){
+      return true;
+    }
   }
+  
   rowGroupReader = rowGroupReaders[currentRowGroup - firstRowGroupIndex];
   currentRowGroup++;
   totalRowGroupsRead++;
@@ -599,10 +607,13 @@ void Reader::setFilter(std::string filterJsonStr) {
       "root", std::dynamic_pointer_cast<FilterExpression>(tmpExpression));
 
   //set predicate filter
-  std::shared_ptr<PredicateExpression> tmpExpressionP =
-      JsonConvertor::parseToPredicateExpression(filterJsonStr);
+  if(useRowGroupFilter)
+  {
+    std::shared_ptr<PredicateExpression> tmpExpressionP =
+        JsonConvertor::parseToPredicateExpression(filterJsonStr);
 
-  predicateExpression = std::make_shared<RootPredicateExpression>("root", tmpExpressionP);
+    predicateExpression = std::make_shared<RootPredicateExpression>("root", tmpExpressionP);
+  }
 
   // get column names from expression
   filterColumnNames.clear();
@@ -893,7 +904,8 @@ bool Reader::isNativeEnabled() {
 bool Reader::doPredicateFilter(int rowGroupIndex){
   int8_t res;
 
-  if(!predicateExpression or rowGroupIndex >= firstRowGroupIndex + totalRowGroups - 1){
+  if(!predicateExpression or rowGroupIndex > firstRowGroupIndex + totalRowGroups - 1){
+    //std::cout<<"rowGroupIndex: "<<rowGroupIndex<<" firstRowGroupIndex: "<<firstRowGroupIndex<<" totalRowGroups: "<<totalRowGroups<<std::endl;
     return true;
   }
 

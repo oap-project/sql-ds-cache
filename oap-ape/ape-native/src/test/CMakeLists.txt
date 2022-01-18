@@ -51,7 +51,7 @@ set(ARROW_STATIC -Wl,-Bstatic; -Wl,--whole-archive; arrow_static; -Wl,--no-whole
 set(THREAD -Wl,-Bdynamic;-Wl,--as-needed;Threads::Threads;-Wl,--no-as-needed)
 
 add_executable(convertorTest convertorTest.cc)
-target_link_libraries(convertorTest gtest_main parquet_jni)
+target_link_libraries(convertorTest gtest_main parquet_jni ${ARROW_STATIC} ${THREAD})
 add_test(NAME convertorTest COMMAND ${EXECUTABLE_OUTPUT_PATH}/convertorTest)
 
 add_executable(decimalTest decimalTest.cc)
@@ -77,7 +77,7 @@ add_executable(plasmaTest plasmaTest.cc)
 target_link_libraries(plasmaTest gtest_main parquet_jni ${ARROW_STATIC} ${THREAD})
 
 add_executable(predicateFilterTest predicateFilterTest.cc)
-target_link_libraries(predicateFilterTest gtest_main parquet_jni)
+target_link_libraries(predicateFilterTest gtest_main parquet_jni ${ARROW_STATIC} ${THREAD})
 add_test(NAME predicateFilterTest COMMAND ${EXECUTABLE_OUTPUT_PATH}/predicateFilterTest)
 
 if(APE_CI)

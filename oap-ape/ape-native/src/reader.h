@@ -136,6 +136,7 @@ class Reader {
 
   std::vector<char*> extraByteArrayBuffers;
 
+  bool useRowGroupFilter = false;
   bool filterReset = false;
   int currentBatchSize = 0;
   int initRequiredColumnCount = 0;
