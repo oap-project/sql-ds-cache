@@ -30,6 +30,7 @@
 
 #include "utils/AggExpression.h"
 #include "utils/FilterExpression.h"
+#include "utils/PredicateExpression.h"
 #include "utils/PlasmaCacheManager.h"
 #include "utils/JsonConvertor.h"
 #include "utils/Type.h"
@@ -65,6 +66,8 @@ class Reader {
   void setPlasmaCacheRedis(std::string host, int port, std::string password);
 
   void setPreBufferEnabled(bool isEnabled);
+
+  bool doPredicateFilter(int rowGroupIndex);
 
   static bool isNativeEnabled();
 
@@ -127,11 +130,13 @@ class Reader {
   int64_t totalRowsLoadedSoFar = 0;
 
   std::shared_ptr<RootFilterExpression> filterExpression;
+  std::shared_ptr<RootPredicateExpression> predicateExpression;
   std::chrono::duration<double> filterTime = std::chrono::nanoseconds::zero();
   std::chrono::duration<double> aggTime = std::chrono::nanoseconds::zero();
 
   std::vector<char*> extraByteArrayBuffers;
 
+  bool useRowGroupFilter = false;
   bool filterReset = false;
   int currentBatchSize = 0;
   int initRequiredColumnCount = 0;

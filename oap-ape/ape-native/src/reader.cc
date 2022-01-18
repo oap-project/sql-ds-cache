@@ -35,7 +35,7 @@ void Reader::init(std::string fileName, std::string hdfsHost, int hdfsPort,
   ARROW_LOG(DEBUG) << "hdfsHost " << hdfsHost << " port " << hdfsPort;
 
   options->ConfigureEndPoint(hdfsHost, hdfsPort);
-  // todo: if we delete `options`, it will core dump, seems like free twice.
+  // TODO: if we delete `options`, it will core dump, seems like free twice.
   auto result = arrow::fs::HadoopFileSystem::Make(*options);
   if (!result.ok()) {
     ARROW_LOG(WARNING) << "HadoopFileSystem Make failed! err msg:"
@@ -68,6 +68,7 @@ void Reader::init(std::string fileName, std::string hdfsHost, int hdfsPort,
 
   fileMetaData = parquetReader->metadata();
 
+  this->useRowGroupFilter = false;
   this->firstRowGroupIndex = firstRowGroup;
   this->totalRowGroups = rowGroupToRead;
 
@@ -457,7 +458,7 @@ int Reader::allocateExtraBuffers(int batchSize, std::vector<int64_t>& buffersPtr
     allocateFilterBuffers(batchSize);
   }
 
-  if (aggExprs.size()) {  // todo: group by agg size
+  if (aggExprs.size()) {  // TODO: group by agg size
     allocateAggBuffers(batchSize);
   }
 
@@ -564,6 +565,18 @@ bool Reader::checkEndOfRowGroup() {
   // if a splitFile contains rowGroup [2,5], currentRowGroup is 2
   // rowGroupReaders index starts from 0
   ARROW_LOG(DEBUG) << "totalRowsLoadedSoFar: " << totalRowsLoadedSoFar;
+  //find next row group passing the predicate filter
+  if(useRowGroupFilter)
+  {
+    while(!doPredicateFilter(currentRowGroup)){
+      currentRowGroup++;
+      totalRowGroupsRead++;
+    }
+    if(currentRowGroup > firstRowGroupIndex + totalRowGroups - 1){
+      return true;
+    }
+  }
+  
   rowGroupReader = rowGroupReaders[currentRowGroup - firstRowGroupIndex];
   currentRowGroup++;
   totalRowGroupsRead++;
@@ -592,6 +605,15 @@ void Reader::setFilter(std::string filterJsonStr) {
 
   filterExpression = std::make_shared<RootFilterExpression>(
       "root", std::dynamic_pointer_cast<FilterExpression>(tmpExpression));
+
+  //set predicate filter
+  if(useRowGroupFilter)
+  {
+    std::shared_ptr<PredicateExpression> tmpExpressionP =
+        JsonConvertor::parseToPredicateExpression(filterJsonStr);
+
+    predicateExpression = std::make_shared<RootPredicateExpression>("root", tmpExpressionP);
+  }
 
   // get column names from expression
   filterColumnNames.clear();
@@ -877,6 +899,31 @@ void Reader::setPreBufferEnabled(bool isEnabled) { preBufferEnabled = isEnabled;
 bool Reader::isNativeEnabled() {
   return arrow::internal::CpuInfo::GetInstance()->vendor() ==
          arrow::internal::CpuInfo::Vendor::Intel;
+}
+
+bool Reader::doPredicateFilter(int rowGroupIndex){
+  int8_t res;
+
+  if(!predicateExpression or rowGroupIndex > firstRowGroupIndex + totalRowGroups - 1){
+    //std::cout<<"rowGroupIndex: "<<rowGroupIndex<<" firstRowGroupIndex: "<<firstRowGroupIndex<<" totalRowGroups: "<<totalRowGroups<<std::endl;
+    return true;
+  }
+
+  std::unique_ptr<parquet::RowGroupMetaData> urgMataData = fileMetaData->RowGroup(rowGroupIndex);
+  std::shared_ptr<parquet::RowGroupMetaData> rgMataData = std::move(urgMataData);
+
+  predicateExpression->setSchema(schema);
+  predicateExpression->setStatistic(rgMataData);
+  predicateExpression->PredicateWithParam(res);
+
+  if(res > 0){
+    ARROW_LOG(DEBUG) <<"predicate pass.";
+    return true;
+  }
+  else{
+    ARROW_LOG(DEBUG) <<"predicate not pass.";
+    return false;
+  }
 }
 
 }  // namespace ape
