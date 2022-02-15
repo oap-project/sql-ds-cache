@@ -164,5 +164,7 @@ class Reader {
   ApeHashMap map;
 
   int32_t dumpAggCursor = 0;
+  int64_t * buffersPtrNew_;
+  int64_t * nullsPtrNew_;
 };
 }  // namespace ape
