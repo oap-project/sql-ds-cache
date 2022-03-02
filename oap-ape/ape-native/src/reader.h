@@ -94,7 +94,8 @@ class Reader {
                     std::vector<int64_t>& nullsPtr);
 
   int allocateExtraBuffers(int batchSize, std::vector<int64_t>& buffersPtr,
-                           std::vector<int64_t>& nullsPtr);
+                                 std::vector<int64_t>& nullsPtr, std::vector<int64_t>& buffersPtrReal,
+                                 std::vector<int64_t>& nullsPtrReal) ;
 
   int dumpBufferAfterAgg(int groupBySize, int aggExprsSize, const std::vector<Key>& keys,
                          const std::vector<DecimalVector>& results, int64_t* oriBufferPtr,
@@ -138,7 +139,8 @@ class Reader {
   std::vector<std::string> filterColumnNames;
   std::vector<char*> filterDataBuffers;
   std::vector<char*> filterNullBuffers;
-
+  std::vector<char*> filterDataBuffersReal;
+  std::vector<char*> filterNullBuffersReal;
   int initPlusFilterRequiredColumnCount = 0;
   bool aggReset = false;
   std::vector<std::string> aggColumnNames;
