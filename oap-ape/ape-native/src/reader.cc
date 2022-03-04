@@ -18,6 +18,7 @@
 #include <algorithm>
 #include <nlohmann/json.hpp>
 #include <iostream>
+#include<thread>
 #include "arrow/util/cpu_info.h"
 
 #undef NDEBUG
@@ -25,6 +26,8 @@
 #include <string.h>
 
 #include "src/reader.h"
+
+
 
 namespace ape {
 
@@ -149,12 +152,119 @@ void convertBitMap(uint8_t* srcBitMap, uint8_t* dstByteMap, int len) {
 }
 
 int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr_) {
-  std::cout<< "initRequiredColumnCount is "<<initRequiredColumnCount<<"\n";
+std::cout<<"NEW BATCH!!!!!!!!!!!!!!!!!!!!!!!\n";
+std::cout<<"aggre = "<<aggExprs.size()<<"\n";
+//if agg
+  if (aggExprs.size()!= 0) {
+  std::cout<<"AGGGGGGGRE\n";
+    preBufferRowGroups();
+    initRowGroupReaders();
+  if (totalRowsRead >= totalRows && dumpAggCursor == 0) {
+    return -1;
+  }
+  std::cout<<"161currentRowGroup before check = "<<currentRowGroup<<"\n";
+  checkEndOfRowGroup();
+  std::cout<<"163currentRowGroup after check = "<<currentRowGroup<<"\n";
+  std::vector<int64_t> buffersPtr(initRequiredColumnCount);
+  std::vector<int64_t> nullsPtr(initRequiredColumnCount);
+  for (int i = 0; i < usedInitBufferIndex.size(); i++) {
+    buffersPtr[i] = buffersPtr_[usedInitBufferIndex[i]];
+    nullsPtr[i] = nullsPtr_[usedInitBufferIndex[i]];
+  }
+  allocateExtraBuffersOrigin(batchSize, buffersPtr, nullsPtr);
+  currentBatchSize = batchSize;
+  int rowsRet = 0;
+      if (dumpAggCursor == 0) {  // will read a whole RowGroup and do agg
+      results.resize(aggExprs.size());
+      for (int i = 0; i < aggExprs.size(); i++) {
+        std::vector<uint8_t> nullVector(1);
+        results[i].nullVector = std::make_shared<std::vector<uint8_t>>(nullVector);
+      }
+      while (totalRowsRead < totalRows && !checkEndOfRowGroup()) {
+        int rowsToRead = doReadBatch(batchSize, buffersPtr, nullsPtr);
+        totalRowsRead += rowsToRead;
+        ARROW_LOG(DEBUG) << "total rows read yet: " << totalRowsRead;
+
+        int rowsAfterFilter = doFilter(rowsToRead, buffersPtr, nullsPtr);
+        ARROW_LOG(DEBUG) << "after filter " << rowsAfterFilter;
+
+        int tmp =
+            doAggregation(rowsAfterFilter, map, keys, results, buffersPtr, nullsPtr);
+        // if the last batch are empty after filter, it will return 0 regard less of the
+        // group num
+        if (tmp != 0) rowsRet = tmp;
+      }
+      int rowsDump = rowsRet;
+      if (rowsRet > batchSize) {
+        rowsDump = batchSize;
+        dumpAggCursor = batchSize;
+      }
+
+      if (aggExprs.size()) {
+        dumpBufferAfterAgg(groupByExprs.size(), aggExprs.size(), keys, results,
+                           buffersPtr_, nullsPtr_, 0, rowsDump);
+      }
+      if (rowsRet <=
+          batchSize) {  // return all result in one call, so clear buffers here.
+        map.clear();
+        keys.clear();
+        results.clear();
+      }
+      rowsRet = rowsDump;
+    } else {  // this row group aggregation result is more than default batch size, we
+      // will return them via mutilple call
+      rowsRet = ((keys.size() - dumpAggCursor) > batchSize)
+                    ? batchSize
+                    : ((keys.size() - dumpAggCursor));
+      if (aggExprs.size()) {
+        dumpBufferAfterAgg(groupByExprs.size(), aggExprs.size(), keys, results,
+                           buffersPtr_, nullsPtr_, dumpAggCursor, rowsRet);
+      }
+      if ((keys.size() - dumpAggCursor) <=
+          batchSize) {  // the last batch, let's clear buffers
+        map.clear();
+        keys.clear();
+        results.clear();
+        dumpAggCursor = 0;
+      } else {
+        dumpAggCursor += batchSize;
+      }
+    }
+  ARROW_LOG(DEBUG) << "ret rows " << rowsRet;
+  return rowsRet;
+  } else {
+// no agg
   //if first batch
-  //if (totalRowsRead == 0) {
-      buffersPtrNew_ = new int64_t[initRequiredColumnCount];
-      nullsPtrNew_ = new int64_t[initRequiredColumnCount];
-  
+  if (totalRowsRead == 0){
+    std::cout<<"this is the first BATCH!!!!!!!!!!!!!!!!!!!!!!!\n";
+  preBufferRowGroups();
+  initRowGroupReaders();
+  if (totalRowsRead >= totalRows && dumpAggCursor == 0) {
+    std::cout<<"________________totalRowsRead = "<<totalRowsRead<<"\n";
+    std::cout<<"Read finished 237 !!!!!!!!!!!!!!!!!!!!!!!\n";
+    return -1;
+  }
+  std::cout<<"241currentRowGroup before check = "<<currentRowGroup<<"\n";
+  checkEndOfRowGroup();
+  std::cout<<"243currentRowGroup after check = "<<currentRowGroup<<"\n";
+  std::vector<int64_t> buffersPtr(initRequiredColumnCount);
+  std::vector<int64_t> nullsPtr(initRequiredColumnCount);
+  for (int i = 0; i < usedInitBufferIndex.size(); i++) {
+    buffersPtr[i] = buffersPtr_[usedInitBufferIndex[i]];
+    nullsPtr[i] = nullsPtr_[usedInitBufferIndex[i]];
+  }
+  std::cout<<"FIRST BATCH NORMAL ALLOCATE\n";
+  allocateExtraBuffersOrigin(batchSize, buffersPtr, nullsPtr);
+  currentBatchSize = batchSize;
+  int rowsRet = 0;
+  int rowsToRead = doReadBatch(batchSize, buffersPtr, nullsPtr);
+  totalRowsRead += rowsToRead;
+  ARROW_LOG(DEBUG) << "total rows read yet: " << totalRowsRead;
+  rowsRet = doFilter(rowsToRead, buffersPtr, nullsPtr);
+  //read next batch
+  buffersPtrNew_ = new int64_t[initRequiredColumnCount];
+  nullsPtrNew_ = new int64_t[initRequiredColumnCount];
+  //prepare the buffer
   for (int i = 0; i < initRequiredColumnCount; i++) {
     std::cout <<"type: "<<fileMetaData->schema()->Column(requiredColumnIndex[i])->physical_type()<<"\n";
     nullsPtrNew_[i] = (int64_t) new bool[batchSize];
@@ -188,219 +298,290 @@ int Reader::readBatch(int32_t batchSize, int64_t* buffersPtr_, int64_t* nullsPtr
         break;
       default:
         ARROW_LOG(WARNING) << "Unsupported Type!";
-        continue;
-      
+        continue;     
     }
-  
-
   }
-  //}
-  std::cout<< "create buffer has done\n";
-
-// for (int i=0;i<batchSize;i++){
-//   std::cout<<((parquet::ByteArray *)(buffersPtr_[0]))[i]<<"\n";
-// }
-
-
-
-
-
-
-
-
-  // Pre buffer row groups.
-  // This is not called in `init` because `requiredColumnIndex`
-  // may be changed by `setFilter` after `init`.
+  //buffer prepared
   preBufferRowGroups();
-    std::cout<< "preBufferRowGroups has done\n";
-  // Init grow group readers.
-  // This should be called after preBufferRowGroups
   initRowGroupReaders();
-    std::cout<< "initRowGroupReaders has done\n";
-  // this reader have read all rows
   if (totalRowsRead >= totalRows && dumpAggCursor == 0) {
+    std::cout<<"________________totalRowsRead = "<<totalRowsRead<<"\n";
+    std::cout<<"Read finished 299 !!!!!!!!!!!!!!!!!!!!!!!\n";
+    return rowsRet;
+  }
+  std::cout<<"304currentRowGroup before check = "<<currentRowGroup<<"\n";
+  checkEndOfRowGroup();
+  std::cout<<"306currentRowGroup after check = "<<currentRowGroup<<"\n";
+  buffersPtrNext=new std::vector<int64_t>(initRequiredColumnCount);
+  nullsPtrNext=new std::vector<int64_t>(initRequiredColumnCount);
+  for (int i = 0; i < usedInitBufferIndex.size(); i++) {
+    (*buffersPtrNext)[i] = buffersPtrNew_[usedInitBufferIndex[i]];
+    (*nullsPtrNext)[i] = nullsPtrNew_[usedInitBufferIndex[i]];
+  }
+  std::cout<<"FIRST BATCH NEW ALLOCATE\n";
+  int newLength = allocateExtraBuffersOrigin(batchSize, (*buffersPtrNext), (*nullsPtrNext));
+  currentBatchSize = batchSize;
+    rowsToReadNext = doReadBatch(batchSize, (*buffersPtrNext), (*nullsPtrNext));
+    totalRowsRead += rowsToReadNext;
+    std::cout<<"________________totalRowsRead = "<<totalRowsRead<<"\n";
+    return rowsRet;
+  } else {
+  if (haveRead ==0){
     return -1;
   }
-  checkEndOfRowGroup();
-    std::cout<< "checkEndOfRowGroup has done\n";
+  //not the first batch
+  //int rowsRet = doFilter(rowsToReadNext, *buffersPtrNext, *nullsPtrNext);
   std::vector<int64_t> buffersPtr(initRequiredColumnCount);
   std::vector<int64_t> nullsPtr(initRequiredColumnCount);
-  std::vector<int64_t> buffersPtrReal(initRequiredColumnCount);
-  std::vector<int64_t> nullsPtrReal(initRequiredColumnCount);
-  // Not all input buffers can be used for column data loading.
-  // espeically when agg pushing down is enabled.
-  // E.g. input buffers could be in types of "tbl_col_a, sum(tbl_col_b)",
-  // in which only the first buffer can be used for column data loading.
   for (int i = 0; i < usedInitBufferIndex.size(); i++) {
-    buffersPtr[i] = buffersPtrNew_[usedInitBufferIndex[i]];
-    buffersPtrReal[i] = buffersPtr_[usedInitBufferIndex[i]];
-    nullsPtr[i] = nullsPtrNew_[usedInitBufferIndex[i]];
-    nullsPtrReal[i] = nullsPtr_[usedInitBufferIndex[i]];
+    buffersPtr[i] = buffersPtr_[usedInitBufferIndex[i]];
+    nullsPtr[i] = nullsPtr_[usedInitBufferIndex[i]];
   }
-    std::cout<<initRequiredColumnCount<< " loop1 has done\n";
-  int newLength = allocateExtraBuffers(batchSize, buffersPtr, nullsPtr,buffersPtrReal, nullsPtrReal);
-  std::cout<<" allocateExtraBuffers has done\n";
-  // int newLengthReal = allocateExtraBuffers(batchSize, buffersPtrReal, nullsPtrReal);
-  // std::cout<<"newLength = "<< newLength <<"newLengthREal= "<<newLengthReal<<"\n";
-    // std::cout<<newLength<<  " allocateExtraBuffersREal has done\n";
+  int newLength = allocateExtraBuffersOrigin(batchSize, buffersPtr, nullsPtr);
   currentBatchSize = batchSize;
-  int rowsRet = 0;
-  if (aggExprs.size() == 0) {  // will not do agg
-  std::cout<< "before read batch has done\n";
-    int rowsToRead = doReadBatch(batchSize, buffersPtr, nullsPtr);
-  std::cout<< "after read batch has done\n";
-    totalRowsRead += rowsToRead;
-    std::cout << "total rows read yet: " << totalRowsRead<<"\n";
-    rowsRet = doFilter(rowsToRead, buffersPtr, nullsPtr);
-    
- 
-
-
-  } 
-  // else {
-
-    // if (dumpAggCursor == 0) {  // will read a whole RowGroup and do agg
-    //   results.resize(aggExprs.size());
-    //   for (int i = 0; i < aggExprs.size(); i++) {
-    //     std::vector<uint8_t> nullVector(1);
-    //     results[i].nullVector = std::make_shared<std::vector<uint8_t>>(nullVector);
-    //   }
-    //   while (totalRowsRead < totalRows && !checkEndOfRowGroup()) {
-    //     int rowsToRead = doReadBatch(batchSize, buffersPtr, nullsPtr);
-    //     totalRowsRead += rowsToRead;
-    //     ARROW_LOG(DEBUG) << "total rows read yet: " << totalRowsRead;
-
-    //     int rowsAfterFilter = doFilter(rowsToRead, buffersPtr, nullsPtr);
-    //     ARROW_LOG(DEBUG) << "after filter " << rowsAfterFilter;
-
-    //     int tmp =
-    //         doAggregation(rowsAfterFilter, map, keys, results, buffersPtr, nullsPtr);
-    //     // if the last batch are empty after filter, it will return 0 regard less of the
-    //     // group num
-    //     if (tmp != 0) rowsRet = tmp;
-    //   }
-    //   int rowsDump = rowsRet;
-    //   if (rowsRet > batchSize) {
-    //     rowsDump = batchSize;
-    //     dumpAggCursor = batchSize;
-    //   }
-
-    //   if (aggExprs.size()) {
-    //     dumpBufferAfterAgg(groupByExprs.size(), aggExprs.size(), keys, results,
-    //                        buffersPtr_, nullsPtr_, 0, rowsDump);
-    //   }
-    //   if (rowsRet <=
-    //       batchSize) {  // return all result in one call, so clear buffers here.
-    //     map.clear();
-    //     keys.clear();
-    //     results.clear();
-    //   }
-    //   rowsRet = rowsDump;
-    // } else {  // this row group aggregation result is more than default batch size, we
-    //   // will return them via mutilple call
-    //   rowsRet = ((keys.size() - dumpAggCursor) > batchSize)
-    //                 ? batchSize
-    //                 : ((keys.size() - dumpAggCursor));
-    //   if (aggExprs.size()) {
-    //     dumpBufferAfterAgg(groupByExprs.size(), aggExprs.size(), keys, results,
-    //                        buffersPtr_, nullsPtr_, dumpAggCursor, rowsRet);
-    //   }
-    //   if ((keys.size() - dumpAggCursor) <=
-    //       batchSize) {  // the last batch, let's clear buffers
-    //     map.clear();
-    //     keys.clear();
-    //     results.clear();
-    //     dumpAggCursor = 0;
-    //   } else {
-    //     dumpAggCursor += batchSize;
-    //   }
-    // }
-  // }
   for (int i=0;i<newLength;i++){
-    memcpy((((bool*)(nullsPtrReal[i]))),(((bool*)(nullsPtr[i]))),batchSize*sizeof(bool));
+    memcpy((((bool*)(nullsPtr[i]))),(((bool*)((*nullsPtrNext)[i]))),batchSize*sizeof(bool));
 
     switch (fileMetaData->schema()->Column(requiredColumnIndex[i])->physical_type()) {
       
       case parquet::Type::BOOLEAN:
-        memcpy((((bool*)(buffersPtrReal[i]))),(((bool*)(buffersPtr[i]))),batchSize*sizeof(bool));
+        memcpy((((bool*)(buffersPtr[i]))),(((bool*)((*buffersPtrNext)[i]))),batchSize*sizeof(bool));
         break;
       case parquet::Type::INT32:
-        memcpy((((int32_t*)(buffersPtrReal[i]))),(((int32_t*)(buffersPtr[i]))),batchSize*sizeof(int32_t));
+        memcpy((((int32_t*)(buffersPtr[i]))),(((int32_t*)((*buffersPtrNext)[i]))),batchSize*sizeof(int32_t));
         break;
       case parquet::Type::INT64:
-        memcpy((((int64_t*)(buffersPtrReal[i]))),(((int64_t*)(buffersPtr[i]))),batchSize*sizeof(int64_t));
+        memcpy((((int64_t*)(buffersPtr[i]))),(((int64_t*)((*buffersPtrNext)[i]))),batchSize*sizeof(int64_t));
         break;
       case parquet::Type::INT96:
-        memcpy((((parquet::Int96*)(buffersPtrReal[i]))),(((parquet::Int96*)(buffersPtr[i]))),batchSize*sizeof(parquet::Int96));
+        memcpy((((parquet::Int96*)(buffersPtr[i]))),(((parquet::Int96*)((*buffersPtrNext)[i]))),batchSize*sizeof(parquet::Int96));
         break;
       case parquet::Type::FLOAT:
-        memcpy((((float*)(buffersPtrReal[i]))),(((float*)(buffersPtr[i]))),batchSize*sizeof(float));
+        memcpy((((float*)(buffersPtr[i]))),(((float*)((*buffersPtrNext)[i]))),batchSize*sizeof(float));
         break;
       case parquet::Type::DOUBLE:
-        memcpy((((double*)(buffersPtrReal[i]))),(((double*)(buffersPtr[i]))),batchSize*sizeof(double));
+        memcpy((((double*)(buffersPtr[i]))),(((double*)((*buffersPtrNext)[i]))),batchSize*sizeof(double));
         break;
       case parquet::Type::BYTE_ARRAY:
-        memcpy((((parquet::ByteArray*)(buffersPtrReal[i]))),(((parquet::ByteArray*)(buffersPtr[i]))),batchSize*sizeof(parquet::ByteArray));
+        memcpy((((parquet::ByteArray*)(buffersPtr[i]))),(((parquet::ByteArray*)((*buffersPtrNext)[i]))),batchSize*sizeof(parquet::ByteArray));
         break;
       case parquet::Type::FIXED_LEN_BYTE_ARRAY:
-        memcpy((void *)(((parquet::FixedLenByteArray*)buffersPtr_[i])),(void*)(((parquet::FixedLenByteArray*)buffersPtrNew_[i])),batchSize*sizeof(parquet::FixedLenByteArray));
-        delete((parquet::FixedLenByteArray*)buffersPtrNew_[i]);
-        memcpy((((parquet::FixedLenByteArray*)(buffersPtrReal[i]))),(((parquet::FixedLenByteArray*)(buffersPtr[i]))),batchSize*sizeof(parquet::FixedLenByteArray));
+        memcpy((((parquet::FixedLenByteArray*)(buffersPtr[i]))),(((parquet::FixedLenByteArray*)((*buffersPtrNext)[i]))),batchSize*sizeof(parquet::FixedLenByteArray));
         break;
       default:
         ARROW_LOG(WARNING) << "Unsupported Type!";
         continue;
     
     }
-  
-
   }
-std::cout<< "before copy has done\n";
-//COPY THE BUFFER TO THE GIVEN BUFFER WHICH WILL BE RETURN TO THE JAVA PART
-  for (int i = 0; i < initRequiredColumnCount; i++) {
-    std::cout <<"type: "<<fileMetaData->schema()->Column(requiredColumnIndex[i])->physical_type()<<"\n";
-    delete((bool*)nullsPtrNew_[i]);
-    switch (fileMetaData->schema()->Column(requiredColumnIndex[i])->physical_type()) {
-      
-      case parquet::Type::BOOLEAN:
-        delete((bool*)buffersPtrNew_[i]);
-        break;
-      case parquet::Type::INT32:
-        delete((int32_t*)buffersPtrNew_[i]);
-        break;
-      case parquet::Type::INT64:
-        delete((int64_t*)buffersPtrNew_[i]);
-        break;
-      case parquet::Type::INT96:
-        delete((parquet::Int96*)buffersPtrNew_[i]);
-        break;
-      case parquet::Type::FLOAT:
-        delete((float*)buffersPtrNew_[i]);
-        break;
-      case parquet::Type::DOUBLE:
-        delete((double*)buffersPtrNew_[i]);
-        break;
-      case parquet::Type::BYTE_ARRAY:
-        delete((parquet::ByteArray*)buffersPtrNew_[i]);
-        break;
-      case parquet::Type::FIXED_LEN_BYTE_ARRAY:
-        delete((parquet::FixedLenByteArray*)buffersPtrNew_[i]);
-        break;
-      default:
-        ARROW_LOG(WARNING) << "Unsupported Type!";
-        continue;
-    
-    }
-  
-  }
- delete(buffersPtrNew_);
- delete(nullsPtrNew_);
-std::cout<< " copy has done, copy size = "<<std::min((int64_t)batchSize, totalRowsLoadedSoFar - totalRowsRead)<<"\n";
-  
+  //int rowsRet = doFilter(rowsToReadNext, buffersPtr,nullsPtr);
+ 
+  preBufferRowGroups();
+  initRowGroupReaders();
+    if (totalRowsRead >= totalRows && dumpAggCursor == 0) {
+      int rowsRet = doFilter(rowsToReadNext, buffersPtr,nullsPtr);
+  std::cout<<"not the first batch but read finished \n";
+    std::cout<<"________________totalRowsRead = "<<totalRowsRead<<"\n";
+    haveRead = 0;
+    return rowsRet;
+  } else {
+    std::thread newThread1(&Reader::doFilter,this,rowsToReadNext, std::ref(buffersPtr),std::ref(nullsPtr));
+    std::cout<<"372currentRowGroup before check = "<<currentRowGroup<<"\n";
+  checkEndOfRowGroup();
+  std::cout<<"374currentRowGroup after check = "<<currentRowGroup<<"\n";
+  currentBatchSize = batchSize;
+  int tmpToRead = doReadBatch(batchSize, (*buffersPtrNext), (*nullsPtrNext));
 
-  ARROW_LOG(DEBUG) << "ret rows " << rowsRet;
-  std::cout<< "ret rows " << rowsRet<< " ____________________________________________________________________________\n";
+  rowsToReadNext = tmpToRead;
+
+  totalRowsRead += rowsToReadNext;
+  std::cout<<"________________totalRowsRead = "<<totalRowsRead<<"\n";
+  newThread1.join();
+  int rowsRet=multiThreadRowsRet;
   return rowsRet;
+  }
+
+
+  }
+
+
+
+
+
+
+//   std::cout<< "initRequiredColumnCount is "<<initRequiredColumnCount<<"\n";
+//   //if first batch
+//   //if (totalRowsRead == 0) {
+//       buffersPtrNew_ = new int64_t[initRequiredColumnCount];
+//       nullsPtrNew_ = new int64_t[initRequiredColumnCount];
+  
+//   for (int i = 0; i < initRequiredColumnCount; i++) {
+//     std::cout <<"type: "<<fileMetaData->schema()->Column(requiredColumnIndex[i])->physical_type()<<"\n";
+//     nullsPtrNew_[i] = (int64_t) new bool[batchSize];
+//     switch (fileMetaData->schema()->Column(requiredColumnIndex[i])->physical_type()) {
+//       case parquet::Type::BOOLEAN:
+//         (((buffersPtrNew_))[i]) = (int64_t) new bool[batchSize];
+//         break;
+//       case parquet::Type::INT32:
+//         (((buffersPtrNew_))[i]) = (int64_t) new int32_t[batchSize];
+//         break;
+//       case parquet::Type::INT64:
+//         (((buffersPtrNew_))[i]) = (int64_t) new int64_t[batchSize];
+//         break;
+//       case parquet::Type::INT96:
+//         (((buffersPtrNew_))[i]) = (int64_t) new parquet::Int96[batchSize];
+//         break;
+//       case parquet::Type::FLOAT:
+//         (((buffersPtrNew_))[i]) = (int64_t) new float[batchSize];
+//         break;
+//       case parquet::Type::DOUBLE:
+//         (((buffersPtrNew_))[i]) = (int64_t) new double[batchSize];
+//         break;
+//       case parquet::Type::BYTE_ARRAY:
+//         (((buffersPtrNew_))[i]) = (int64_t) new parquet::ByteArray[batchSize];
+//         std::cout <<"type size = "<<sizeof(parquet::ByteArray)<<"\n";
+//         std::cout <<"type = BYTE_ARRAY ,bufferPtr size=" <<initRequiredColumnCount<<" batchsize = "<<batchSize<<"\n";
+//         break;
+//       case parquet::Type::FIXED_LEN_BYTE_ARRAY:
+//         (((buffersPtrNew_))[i]) =
+//             (int64_t) new parquet::FixedLenByteArray[batchSize];
+//         break;
+//       default:
+//         ARROW_LOG(WARNING) << "Unsupported Type!";
+//         continue;
+      
+//     }
+  
+
+//   }
+//   //}
+//   std::cout<< "create buffer has done\n";
+
+// // for (int i=0;i<batchSize;i++){
+// //   std::cout<<((parquet::ByteArray *)(buffersPtr_[0]))[i]<<"\n";
+// // }
+
+
+
+
+
+
+
+
+//   // Pre buffer row groups.
+//   // This is not called in `init` because `requiredColumnIndex`
+//   // may be changed by `setFilter` after `init`.
+//   preBufferRowGroups();
+//     std::cout<< "preBufferRowGroups has done\n";
+//   // Init grow group readers.
+//   // This should be called after preBufferRowGroups
+//   initRowGroupReaders();
+//     std::cout<< "initRowGroupReaders has done\n";
+//   // this reader have read all rows
+//   if (totalRowsRead >= totalRows && dumpAggCursor == 0) {
+//     return -1;
+//   }
+//   checkEndOfRowGroup();
+//     std::cout<< "checkEndOfRowGroup has done\n";
+//   buffersPtrNext=new std::vector<int64_t>(initRequiredColumnCount);
+//   nullsPtrNext=new std::vector<int64_t>(initRequiredColumnCount);
+//   std::vector<int64_t> buffersPtrReal(initRequiredColumnCount);
+//   std::vector<int64_t> nullsPtrReal(initRequiredColumnCount);
+//   for (int i = 0; i < usedInitBufferIndex.size(); i++) {
+//     (*buffersPtrNext)[i] = buffersPtrNew_[usedInitBufferIndex[i]];
+//     buffersPtrReal[i] = buffersPtr_[usedInitBufferIndex[i]];
+//     (*nullsPtrNext)[i] = nullsPtrNew_[usedInitBufferIndex[i]];
+//     nullsPtrReal[i] = nullsPtr_[usedInitBufferIndex[i]];
+//   }
+//     std::cout<<initRequiredColumnCount<< " loop1 has done\n";
+//   int newLength = allocateExtraBuffers(batchSize, (*buffersPtrNext), (*nullsPtrNext),buffersPtrReal, nullsPtrReal);
+//   std::cout<<" allocateExtraBuffers has done\n";
+//   currentBatchSize = batchSize;
+//   int rowsRet = 0;
+//   std::cout<< "before read batch has done\n";
+//     int rowsToRead = doReadBatch(batchSize, (*buffersPtrNext), (*nullsPtrNext));
+//   std::cout<< "after read batch has done\n";
+//     totalRowsRead += rowsToRead;
+//     std::cout << "total rows read yet: " << totalRowsRead<<"\n";
+//     rowsRet = doFilter(rowsToRead, (*buffersPtrNext), (*nullsPtrNext));
+//   for (int i=0;i<newLength;i++){
+//     memcpy((((bool*)(nullsPtrReal[i]))),(((bool*)((*nullsPtrNext)[i]))),batchSize*sizeof(bool));
+
+//     switch (fileMetaData->schema()->Column(requiredColumnIndex[i])->physical_type()) {
+      
+//       case parquet::Type::BOOLEAN:
+//         memcpy((((bool*)(buffersPtrReal[i]))),(((bool*)((*buffersPtrNext)[i]))),batchSize*sizeof(bool));
+//         break;
+//       case parquet::Type::INT32:
+//         memcpy((((int32_t*)(buffersPtrReal[i]))),(((int32_t*)((*buffersPtrNext)[i]))),batchSize*sizeof(int32_t));
+//         break;
+//       case parquet::Type::INT64:
+//         memcpy((((int64_t*)(buffersPtrReal[i]))),(((int64_t*)((*buffersPtrNext)[i]))),batchSize*sizeof(int64_t));
+//         break;
+//       case parquet::Type::INT96:
+//         memcpy((((parquet::Int96*)(buffersPtrReal[i]))),(((parquet::Int96*)((*buffersPtrNext)[i]))),batchSize*sizeof(parquet::Int96));
+//         break;
+//       case parquet::Type::FLOAT:
+//         memcpy((((float*)(buffersPtrReal[i]))),(((float*)((*buffersPtrNext)[i]))),batchSize*sizeof(float));
+//         break;
+//       case parquet::Type::DOUBLE:
+//         memcpy((((double*)(buffersPtrReal[i]))),(((double*)((*buffersPtrNext)[i]))),batchSize*sizeof(double));
+//         break;
+//       case parquet::Type::BYTE_ARRAY:
+//         memcpy((((parquet::ByteArray*)(buffersPtrReal[i]))),(((parquet::ByteArray*)((*buffersPtrNext)[i]))),batchSize*sizeof(parquet::ByteArray));
+//         break;
+//       case parquet::Type::FIXED_LEN_BYTE_ARRAY:
+//         memcpy((((parquet::FixedLenByteArray*)(buffersPtrReal[i]))),(((parquet::FixedLenByteArray*)((*buffersPtrNext)[i]))),batchSize*sizeof(parquet::FixedLenByteArray));
+//         break;
+//       default:
+//         ARROW_LOG(WARNING) << "Unsupported Type!";
+//         continue;
+    
+//     }
+//   }
+// std::cout<< "before copy has done\n";
+// //COPY THE BUFFER TO THE GIVEN BUFFER WHICH WILL BE RETURN TO THE JAVA PART
+//   for (int i = 0; i < initRequiredColumnCount; i++) {
+//     std::cout <<"type: "<<fileMetaData->schema()->Column(requiredColumnIndex[i])->physical_type()<<"\n";
+//     delete((bool*)nullsPtrNew_[i]);
+//     switch (fileMetaData->schema()->Column(requiredColumnIndex[i])->physical_type()) {
+      
+//       case parquet::Type::BOOLEAN:
+//         delete((bool*)buffersPtrNew_[i]);
+//         break;
+//       case parquet::Type::INT32:
+//         delete((int32_t*)buffersPtrNew_[i]);
+//         break;
+//       case parquet::Type::INT64:
+//         delete((int64_t*)buffersPtrNew_[i]);
+//         break;
+//       case parquet::Type::INT96:
+//         delete((parquet::Int96*)buffersPtrNew_[i]);
+//         break;
+//       case parquet::Type::FLOAT:
+//         delete((float*)buffersPtrNew_[i]);
+//         break;
+//       case parquet::Type::DOUBLE:
+//         delete((double*)buffersPtrNew_[i]);
+//         break;
+//       case parquet::Type::BYTE_ARRAY:
+//         delete((parquet::ByteArray*)buffersPtrNew_[i]);
+//         break;
+//       case parquet::Type::FIXED_LEN_BYTE_ARRAY:
+//         delete((parquet::FixedLenByteArray*)buffersPtrNew_[i]);
+//         break;
+//       default:
+//         ARROW_LOG(WARNING) << "Unsupported Type!";
+//         continue;
+//     }
+//   }
+//  delete(buffersPtrNew_);
+//  delete(nullsPtrNew_);
+// std::cout<< " copy has done, copy size = "<<std::min((int64_t)batchSize, totalRowsLoadedSoFar - totalRowsRead)<<"\n";
+//   ARROW_LOG(DEBUG) << "ret rows " << rowsRet;
+//   std::cout<< "ret rows " << rowsRet<< " ____________________________________________________________________________\n";
+//   return rowsRet;
+}
 }
 
 int Reader::doReadBatch(int batchSize, std::vector<int64_t>& buffersPtr,
@@ -537,8 +718,10 @@ int Reader::doFilter(int batchSize, std::vector<int64_t>& buffersPtr,
     int rowsRet =
         filterExpression->ExecuteWithParam(batchSize, buffersPtr, nullsPtr, tmp);
     filterTime += std::chrono::steady_clock::now() - start;
+    multiThreadRowsRet=rowsRet;
     return rowsRet;
   }
+  multiThreadRowsRet=batchSize;
   return batchSize;
 }
 
@@ -612,7 +795,40 @@ int Reader::dumpBufferAfterAgg(int groupBySize, int aggExprsSize,
 
   return 0;
 }
+int Reader::allocateExtraBuffersOrigin(int batchSize, std::vector<int64_t>& buffersPtr,
+                                 std::vector<int64_t>& nullsPtr) {
+  if (filterExpression) {
+    allocateFilterBuffers(batchSize);
+  }
 
+  if (aggExprs.size()) {  // todo: group by agg size
+    allocateAggBuffers(batchSize);
+  }
+
+  int filterBufferCount = filterDataBuffers.size();
+  int aggBufferCount = aggDataBuffers.size();
+
+  if (filterBufferCount > 0 || aggBufferCount > 0) {
+    ARROW_LOG(DEBUG) << "use extra filter buffers count: " << filterBufferCount
+                     << "use extra agg buffers count: " << aggBufferCount;
+
+    buffersPtr.resize(initRequiredColumnCount + filterBufferCount + aggBufferCount);
+    nullsPtr.resize(initRequiredColumnCount + filterBufferCount + aggBufferCount);
+
+    for (int i = 0; i < filterBufferCount; i++) {
+      buffersPtr[initRequiredColumnCount + i] = (int64_t)filterDataBuffers[i];
+      nullsPtr[initRequiredColumnCount + i] = (int64_t)filterNullBuffers[i];
+    }
+
+    for (int i = 0; i < aggBufferCount; i++) {
+      buffersPtr[initRequiredColumnCount + filterBufferCount + i] =
+          (int64_t)aggDataBuffers[i];
+      nullsPtr[initRequiredColumnCount + filterBufferCount + i] =
+          (int64_t)aggNullBuffers[i];
+    }
+  }
+  return initRequiredColumnCount + filterBufferCount + aggBufferCount;
+}
 int Reader::allocateExtraBuffers(int batchSize, std::vector<int64_t>& buffersPtr,
                                  std::vector<int64_t>& nullsPtr, std::vector<int64_t>& buffersPtrReal,
                                  std::vector<int64_t>& nullsPtrReal) {
