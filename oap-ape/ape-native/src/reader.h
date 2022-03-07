@@ -67,6 +67,7 @@ class Reader {
   void setPreBufferEnabled(bool isEnabled);
 
   static bool isNativeEnabled();
+  
 
  private:
   void convertSchema(std::string requiredColumnName);
@@ -94,8 +95,10 @@ class Reader {
                     std::vector<int64_t>& nullsPtr);
 
   int allocateExtraBuffers(int batchSize, std::vector<int64_t>& buffersPtr,
-                           std::vector<int64_t>& nullsPtr);
-
+                                 std::vector<int64_t>& nullsPtr, std::vector<int64_t>& buffersPtrReal,
+                                 std::vector<int64_t>& nullsPtrReal) ;
+  int allocateExtraBuffersOrigin(int batchSize, std::vector<int64_t>& buffersPtr,
+                                 std::vector<int64_t>& nullsPtr);
   int dumpBufferAfterAgg(int groupBySize, int aggExprsSize, const std::vector<Key>& keys,
                          const std::vector<DecimalVector>& results, int64_t* oriBufferPtr,
                          int64_t* oriNullsPtr, int32_t offset, int32_t length);
@@ -138,7 +141,8 @@ class Reader {
   std::vector<std::string> filterColumnNames;
   std::vector<char*> filterDataBuffers;
   std::vector<char*> filterNullBuffers;
-
+  std::vector<char*> filterDataBuffersReal;
+  std::vector<char*> filterNullBuffersReal;
   int initPlusFilterRequiredColumnCount = 0;
   bool aggReset = false;
   std::vector<std::string> aggColumnNames;
@@ -164,5 +168,12 @@ class Reader {
   ApeHashMap map;
 
   int32_t dumpAggCursor = 0;
+  int64_t * buffersPtrNew_;
+  int64_t * nullsPtrNew_;
+  std::vector<int64_t> *buffersPtrNext;
+  std::vector<int64_t> *nullsPtrNext;
+  int rowsToReadNext=0;
+  int haveRead = 1;
+  int multiThreadRowsRet =0;
 };
 }  // namespace ape
